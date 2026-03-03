@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌆 Platform Partisipasi Publik – SDG 11
 
-## Getting Started
+## 📌 Pendahuluan
 
-First, run the development server:
+Platform ini dibangun untuk mendukung partisipasi publik dalam pembangunan kota yang inklusif dan berkelanjutan, sejalan dengan:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **SDG 11.3**: Meningkatkan urbanisasi yang inklusif dan berkelanjutan melalui sistem pemungutan suara (voting) kebijakan.
+- **SDG 11.7**: Menyediakan akses universal ke ruang publik yang aman dan inklusif melalui pelaporan kerusakan fasilitas umum.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Aplikasi ini menghubungkan warga dan pihak berwenang dalam satu ekosistem digital yang transparan, real-time, dan akuntabel.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# 👥 User Personas
 
-## Learn More
+## Persona A – Budi (Warga / Mahasiswa Peduli)
+- Ingin melaporkan jalan rusak dengan cepat.
+- Tidak ingin melalui birokrasi berbelit.
+- Ingin tahu progres perbaikan secara transparan.
+- Peduli terhadap kebijakan publik.
 
-To learn more about Next.js, take a look at the following resources:
+## Persona B – Siti (Pejabat Publik / Dosen)
+- Membutuhkan data real-time untuk menentukan prioritas anggaran.
+- Ingin mendengar aspirasi warga secara transparan.
+- Membutuhkan dashboard manajemen laporan yang efisien.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# 🗺️ User Journey Map
 
-## Deploy on Vercel
+## 🛠️ Skenario Pelaporan
+1. Melihat lampu jalan mati.
+2. Membuka aplikasi.
+3. Foto & kirim laporan.
+4. Menerima notifikasi: *"Sedang Diperbaiki"*.
+5. Menerima notifikasi: *"Selesai"*.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🗳️ Skenario Voting
+1. Menerima push notification kebijakan baru.
+2. Membaca ringkasan kebijakan.
+3. Melihat diskusi warga.
+4. Klik **"Setuju"**.
+5. Melihat grafik dukungan meningkat secara real-time.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+# 🧭 Peta Navigasi (Sitemap)
+
+Aplikasi menggunakan **Bottom Navigation** dengan 5 pilar utama:
+
+1. **Beranda (Home)**  
+   Ringkasan aktivitas dan laporan di sekitar pengguna.
+
+2. **Lapor (Report)**  
+   Peta interaktif dan formulir pengaduan fasilitas publik.
+
+3. **Kebijakan (Policy)**  
+   Modul siaran kebijakan dan voting warga.
+
+4. **Donasi**  
+   Penggalangan dana (misal: bantuan banjir/longsor, program sosial, kolaborasi produk).
+
+5. **Profil (Profile)**  
+   Riwayat laporan, status verifikasi, dan pengaturan akun.
+
+# 🎨 Prinsip Desain & UX
+
+### 🎨 Warna
+- Kuning SDG 11: `#F99D26` (CTA & elemen aksi) (Selebihnya diserahkan ke tim FE)
+
+### ♿ Aksesibilitas
+- Kontras tinggi
+- Tombol besar
+- Mudah digunakan semua kalangan usia
+
+### 🔔 Feedback Loop
+Setiap perubahan status laporan wajib mengirim **push notification** ke pengguna.
+
+# 🎯 Outcome
+
+Platform ini diharapkan mampu:
+
+- Meningkatkan partisipasi warga dalam kebijakan publik.
+- Mempercepat respons terhadap kerusakan fasilitas umum.
+- Mewujudkan tata kelola kota yang transparan dan berbasis data.
+- Mendukung SDG 11 secara konkret melalui teknologi digital.
