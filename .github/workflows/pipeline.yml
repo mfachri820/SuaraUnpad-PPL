@@ -1,0 +1,37 @@
+jobs:
+  # 1. Tahap CI & Security
+  integration-and-security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Wajib 0 agar Gitleaks bisa mengecek seluruh history commit
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # --- CONTINUOUS SECURITY (CS) ---
+      - name: Run Gitleaks (Secret Scanner)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run NPM Security Audit
+        run: npm audit --audit-level=high || true 
+
+      # --- CONTINUOUS INTEGRATION (CI) ---
+      - name: Validate Prisma Schema
+        run: npx prisma validate
+
+      - name: Type Check (TypeScript)
+        run: npx tsc --noEmit
+
+      - name: Run Linter (ESLint)
+        run: npm run lint

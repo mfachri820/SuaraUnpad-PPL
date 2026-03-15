@@ -1,0 +1,325 @@
+generator client {
+  provider = "prisma-client-js"
+  // output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  
+}
+
+// --- ENUMS ---
+
+enum Role {
+  STUDENT
+  LECTURER
+  ADMIN
+}
+
+enum ReportCategory {
+  INFRASTRUCTURE
+  CLEANLINESS
+  SECURITY
+  OTHER
+}
+
+enum ReportStatus {
+  SUBMITTED
+  VERIFIED
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum PolicyStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+enum VoteChoice {
+  AGREE
+  DISAGREE
+}
+
+enum CampaignStatus {
+  ACTIVE
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  EXPIRED
+}
+
+enum NotificationType {
+  COMMENT_ON_POST
+  REPLY_ON_COMMENT
+  UPVOTE_REPORT
+  UPVOTE_POST
+  UPVOTE_COMMENT
+}
+
+// --- MODELS ---
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique @db.VarChar
+  passwordHash String   @map("password_hash") @db.VarChar
+  role         Role
+  isVerified   Boolean  @default(false) @map("is_verified")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relasi 1-to-1
+  studentProfile  StudentProfile?
+  lecturerProfile LecturerProfile?
+  adminProfile    AdminProfile?
+
+  // Relasi 1-to-Many
+  reports          Report[]
+  reportUpvotes    ReportUpvote[]
+  policies         Policy[]
+  votes            Vote[]
+  posts            Post[]
+  comments         Comment[]
+  commentMentions  CommentMention[]
+  transactions     Transaction[]
+  postUpvotes      PostUpvote[]
+  commentUpvotes   CommentUpvote[]
+  notificationsRec Notification[]   @relation("NotificationRecipient")
+  notificationsAct Notification[]   @relation("NotificationActor")
+
+  @@map("users")
+}
+
+model StudentProfile {
+  id        String @id @default(uuid()) @db.Uuid
+  userId    String @unique @map("user_id") @db.Uuid
+  fullName  String @map("full_name") @db.VarChar
+  studentId String @unique @map("student_id") @db.VarChar
+  faculty   String @db.VarChar
+  major     String @db.VarChar
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("student_profiles")
+}
+
+model LecturerProfile {
+  id         String @id @default(uuid()) @db.Uuid
+  userId     String @unique @map("user_id") @db.Uuid
+  fullName   String @map("full_name") @db.VarChar
+  employeeId String @unique @map("employee_id") @db.VarChar
+  faculty    String @db.VarChar
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("lecturer_profiles")
+}
+
+model AdminProfile {
+  id         String @id @default(uuid()) @db.Uuid
+  userId     String @unique @map("user_id") @db.Uuid
+  fullName   String @map("full_name") @db.VarChar
+  department String @db.VarChar
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admin_profiles")
+}
+
+model Report {
+  id          String         @id @default(uuid()) @db.Uuid
+  authorId    String         @map("author_id") @db.Uuid
+  title       String         @db.VarChar
+  description String         @db.Text
+  category    ReportCategory
+  location    String         @db.VarChar
+  imageUrl    String         @map("image_url") @db.VarChar
+  status      ReportStatus   @default(SUBMITTED)
+  upvoteCount Int            @default(0) @map("upvote_count")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  author        User           @relation(fields: [authorId], references: [id])
+  reportUpvotes ReportUpvote[]
+  notifications Notification[]
+
+  @@map("reports")
+}
+
+model ReportUpvote {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  reportId  String   @map("report_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reportId])
+  @@map("report_upvotes")
+}
+
+model Policy {
+  id        String       @id @default(uuid()) @db.Uuid
+  authorId  String       @map("author_id") @db.Uuid
+  title     String       @db.VarChar
+  content   String       @db.Text
+  status    PolicyStatus @default(DRAFT)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  author   User      @relation(fields: [authorId], references: [id])
+  votes    Vote[]
+  posts    Post[]
+  comments Comment[]
+
+  @@map("policies")
+}
+
+model Vote {
+  id        String     @id @default(uuid()) @db.Uuid
+  userId    String     @map("user_id") @db.Uuid
+  policyId  String     @map("policy_id") @db.Uuid
+  choice    VoteChoice
+  createdAt DateTime   @default(now()) @map("created_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, policyId])
+  @@map("votes")
+}
+
+model Post {
+  id        String   @id @default(uuid()) @db.Uuid
+  authorId  String   @map("author_id") @db.Uuid
+  policyId  String?  @map("policy_id") @db.Uuid
+  title     String   @db.VarChar
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  policy        Policy?        @relation(fields: [policyId], references: [id], onDelete: SetNull)
+  comments      Comment[]
+  postUpvotes   PostUpvote[]
+  notifications Notification[]
+
+  @@map("posts")
+}
+
+model Comment {
+  id        String    @id @default(uuid()) @db.Uuid
+  authorId  String    @map("author_id") @db.Uuid
+  postId    String?   @map("post_id") @db.Uuid
+  policyId  String?   @map("policy_id") @db.Uuid
+  parentId  String?   @map("parent_id") @db.Uuid
+  content   String    @db.Text
+  createdAt DateTime  @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  author          User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  post            Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  policy          Policy?          @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  parent          Comment?         @relation("CommentToComment", fields: [parentId], references: [id], onDelete: Cascade)
+  replies         Comment[]        @relation("CommentToComment")
+  commentMentions CommentMention[]
+  commentUpvotes  CommentUpvote[]
+  notifications   Notification[]
+
+  @@map("comments")
+}
+
+model CommentMention {
+  id              String   @id @default(uuid()) @db.Uuid
+  commentId       String   @map("comment_id") @db.Uuid
+  mentionedUserId String   @map("mentioned_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  comment       Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  mentionedUser User    @relation(fields: [mentionedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, mentionedUserId])
+  @@map("comment_mentions")
+}
+
+model DonationCampaign {
+  id              String         @id @default(uuid()) @db.Uuid
+  title           String         @db.VarChar
+  description     String         @db.Text
+  targetAmount    BigInt         @map("target_amount")
+  collectedAmount BigInt         @default(0) @map("collected_amount")
+  status          CampaignStatus @default(ACTIVE)
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  transactions Transaction[]
+
+  @@map("donation_campaigns")
+}
+
+model Transaction {
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
+  campaignId    String        @map("campaign_id") @db.Uuid
+  orderId       String        @unique @map("order_id") @db.VarChar
+  amount        BigInt
+  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+  paymentUrl    String?       @map("payment_url") @db.VarChar
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  user     User             @relation(fields: [userId], references: [id])
+  campaign DonationCampaign @relation(fields: [campaignId], references: [id])
+
+  @@map("transactions")
+}
+
+model PostUpvote {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  postId    String   @map("post_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@map("post_upvotes")
+}
+
+model CommentUpvote {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  commentId String   @map("comment_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@map("comment_upvotes")
+}
+
+model Notification {
+  id          String           @id @default(uuid()) @db.Uuid
+  recipientId String           @map("recipient_id") @db.Uuid
+  actorId     String           @map("actor_id") @db.Uuid
+  type        NotificationType
+  postId      String?          @map("post_id") @db.Uuid
+  commentId   String?          @map("comment_id") @db.Uuid
+  reportId    String?          @map("report_id") @db.Uuid
+  isRead      Boolean          @default(false) @map("is_read")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  recipient User     @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor     User     @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  report    Report?  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
