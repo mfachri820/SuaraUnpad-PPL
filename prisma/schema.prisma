@@ -69,6 +69,7 @@ model User {
   passwordHash String   @map("password_hash") @db.VarChar
   role         Role
   isVerified   Boolean  @default(false) @map("is_verified")
+  avatarUrl    String?  @map("avatar_url") @db.VarChar
   createdAt    DateTime @default(now()) @map("created_at")
 
   // Relasi 1-to-1
@@ -251,6 +252,7 @@ model DonationCampaign {
   title           String         @db.VarChar
   description     String         @db.Text
   targetAmount    BigInt         @map("target_amount")
+  bannerUrl       String         @map("banner_url") @db.VarChar
   collectedAmount BigInt         @default(0) @map("collected_amount")
   status          CampaignStatus @default(ACTIVE)
   createdAt       DateTime       @default(now()) @map("created_at")

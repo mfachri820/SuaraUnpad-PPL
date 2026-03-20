@@ -19,8 +19,8 @@ export async function GET(request: Request) {
         email: true,
         role: true,
         isVerified: true,
+        avatarUrl: true, // 👉 TAMBAHKAN BARIS INI
         createdAt: true,
-        // Ambil profil yang sesuai (yang tidak ada akan bernilai null)
         studentProfile: true,
         lecturerProfile: true,
         adminProfile: true,

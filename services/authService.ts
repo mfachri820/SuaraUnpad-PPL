@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 
@@ -23,6 +24,7 @@ export interface UpdateProfilePayload {
   faculty?: string;
   major?: string;
   department?: string;
+  avatarUrl?: string; // 👉 TAMBAH INI
 }
 
 export const authService = {
@@ -89,37 +91,48 @@ export const authService = {
     };
   },
 
-  async updateProfile(userId: string, role: string, data: UpdateProfilePayload) {
-    // Kita pisahkan logika update berdasarkan role karena tabel profilnya beda-beda
-    if (role === 'STUDENT') {
-      return await prisma.studentProfile.update({
-        where: { userId },
-        data: {
-          fullName: data.fullName,
-          faculty: data.faculty,
-          major: data.major,
-          // studentId sengaja tidak dimasukkan agar NPM tidak bisa diubah sembarangan
-        }
-      });
-    } else if (role === 'LECTURER') {
-      return await prisma.lecturerProfile.update({
-        where: { userId },
-        data: {
-          fullName: data.fullName,
-          faculty: data.faculty,
-          // employeeId tidak bisa diubah
-        }
-      });
-    } else if (role === 'ADMIN') {
-      return await prisma.adminProfile.update({
-        where: { userId },
-        data: {
-          fullName: data.fullName,
-          department: data.department,
-        }
-      });
-    }
+ async updateProfile(userId: string, role: string, data: UpdateProfilePayload) {
+      // 1. Siapkan antrean query dengan tipe khusus dari Prisma agar tidak jadi 'any'
+      const queries: Prisma.PrismaPromise<unknown>[] = [];
 
-    throw new Error('Role tidak valid');
-  }
+      // 2. Jika ada update untuk tabel User (seperti ganti avatar)
+      if (data.avatarUrl !== undefined) {
+        queries.push(
+          prisma.user.update({
+            where: { id: userId },
+            data: { avatarUrl: data.avatarUrl },
+          })
+        );
+      }
+
+      // 3. Rakit data profil secara type-safe. 
+      // Teknik spread bersyarat ini hanya memasukkan properti jika nilainya BUKAN undefined.
+      const profileUpdateData = {
+        ...(data.fullName !== undefined && { fullName: data.fullName }),
+        ...(data.faculty !== undefined && { faculty: data.faculty }),
+        ...(data.major !== undefined && { major: data.major }),
+        ...(data.department !== undefined && { department: data.department }),
+      };
+
+      // 4. Jika ada atribut profil yang di-update, dorong ke antrean query
+      if (Object.keys(profileUpdateData).length > 0) {
+        if (role === 'STUDENT') {
+          queries.push(prisma.studentProfile.update({ where: { userId }, data: profileUpdateData }));
+        } else if (role === 'LECTURER') {
+          queries.push(prisma.lecturerProfile.update({ where: { userId }, data: profileUpdateData }));
+        } else if (role === 'ADMIN') {
+          queries.push(prisma.adminProfile.update({ where: { userId }, data: profileUpdateData }));
+        } else {
+          throw new Error('Role tidak valid');
+        }
+      }
+
+      // 5. Eksekusi semua query secara bersamaan (Atomic & Aman)
+      if (queries.length > 0) {
+        await prisma.$transaction(queries);
+      }
+
+      // 6. Return response
+      return { message: "Profil berhasil diperbarui" };
+    }
 };
