@@ -1,10 +1,11 @@
 import { prisma } from '@/lib/prisma';
 
+// Biasa, interface/payload supaya ga pke type "any"
 export interface CreateCommentPayload {
   content: string;
-  postId?: string;   // Opsional (Jika mengomentari postingan)
-  policyId?: string; // Opsional (Jika mengomentari kebijakan)
-  parentId?: string; // Opsional (Jika ini adalah balasan/reply)
+  postId?: string;   
+  policyId?: string; 
+  parentId?: string; 
 }
 
 export interface GetCommentsFilter {
@@ -16,12 +17,12 @@ export interface GetCommentsFilter {
 
 export const commentService = {
   async createComment(authorId: string, data: CreateCommentPayload) {
-    // BUSINESS LOGIC: Harus ada tujuannya (Minimal salah satu)
+    // Commentnya ada tujuan, ke post atau ke policy
     if (!data.postId && !data.policyId) {
       throw new Error('Komentar harus ditautkan ke sebuah Postingan atau Kebijakan');
     }
 
-    // BUSINESS LOGIC: Jika ini adalah balasan, pastikan komentar induknya benar-benar ada
+    // Kalo ada parent artinya reply an
     if (data.parentId) {
       const parent = await prisma.comment.findUnique({ where: { id: data.parentId } });
       if (!parent) throw new Error('Komentar yang ingin dibalas tidak ditemukan');
@@ -39,7 +40,7 @@ export const commentService = {
 
     try {
       if (data.parentId) {
-        // SKENARIO 1: INI ADALAH BALASAN (REPLY)
+        // Skenario ini reply an
         const parentComment = await prisma.comment.findUnique({ where: { id: data.parentId } });
         if (parentComment && parentComment.authorId !== authorId) {
           await prisma.notification.create({
@@ -52,7 +53,7 @@ export const commentService = {
           });
         }
       } else if (data.postId) {
-        // SKENARIO 2: INI ADALAH KOMENTAR UTAMA DI POSTINGAN
+        // Skenario kalo komen beneran
         const post = await prisma.post.findUnique({ where: { id: data.postId } });
         if (post && post.authorId !== authorId) {
           await prisma.notification.create({
@@ -73,7 +74,7 @@ export const commentService = {
     return newComment;
   },
 
-  // 3. FUNGSI GET ALL: Mengambil Daftar Komentar Induk + Balasannya
+  // Get all komen (komen induk)
   async getComments(filter: GetCommentsFilter) {
     if (!filter.postId && !filter.policyId) {
       throw new Error('Parameter postId atau policyId wajib diisi untuk melihat komentar');
@@ -87,14 +88,14 @@ export const commentService = {
       where: {
         ...(filter.postId && { postId: filter.postId }),
         ...(filter.policyId && { policyId: filter.policyId }),
-        // SANGAT PENTING: Hanya ambil komentar UTAMA (yang tidak punya parent)
+        // Pastiin gapunya parent
         parentId: null, 
       },
       skip: skip,
       take: limit,
       orderBy: { createdAt: 'desc' }, // Komentar utama urut dari yang paling baru
       include: {
-        // A. Ambil profil penulis komentar utama
+        // Ambil profil penulis komentar utama
         author: {
           select: {
             id: true,
@@ -104,14 +105,14 @@ export const commentService = {
             adminProfile: { select: { fullName: true } },
           }
         },
-        // B. Ambil jumlah like komentar
+        // Ambil jumlah like komentar
         _count: {
           select: { commentUpvotes: true }
         },
-        // C. AMBIL BALASANNYA (Nested Replies)
+        // Ambil reply nya
         replies: {
           include: {
-            author: { // Profil penulis balasan
+            author: { // Profil penulis reply
               select: {
                 id: true,
                 avatarUrl: true,
@@ -120,7 +121,7 @@ export const commentService = {
               }
             }
           },
-          orderBy: { createdAt: 'asc' } // Balasan urut dari yang paling lama ke terbaru (seperti WhatsApp)
+          orderBy: { createdAt: 'asc' } // Balasan urut dari yang paling lama ke terbaru (kayak WA)
         }
       }
     });
@@ -144,17 +145,17 @@ export const commentService = {
     };
   },
 
-  // 4. FUNGSI UPDATE (Mengedit Komentar)
+  // Fungsi update comment
   async updateComment(id: string, userId: string, content: string) {
     const existingComment = await prisma.comment.findUnique({ where: { id } });
     if (!existingComment) throw new Error('Komentar tidak ditemukan');
 
-    // BUSINESS LOGIC: Hanya penulis asli yang boleh mengedit
+    // Cuma yang nulis yang boleh edit
     if (existingComment.authorId !== userId) {
       throw new Error('Akses ditolak. Anda hanya dapat mengubah komentar Anda sendiri.');
     }
 
-    // BUSINESS LOGIC: Jangan izinkan edit kalau komentarnya sudah di-Soft Delete
+    // Gabisa di edit kalo udah di softdelete
     if (existingComment.content === '[Komentar ini telah dihapus]') {
       throw new Error('Komentar yang sudah dihapus tidak dapat diedit kembali.');
     }
@@ -167,17 +168,17 @@ export const commentService = {
     return updatedComment;
   },
 
-  // 5. FUNGSI SOFT DELETE (Hapus Halus Komentar)
+  // Delete (soft delete)
   async deleteComment(id: string, userId: string, userRole: string) {
     const existingComment = await prisma.comment.findUnique({ where: { id } });
     if (!existingComment) throw new Error('Komentar tidak ditemukan');
 
-    // BUSINESS LOGIC: Yang boleh hapus hanya Penulis asli ATAU Admin
+    // Cuman yang nulis yang boleh hapus
     if (userRole !== 'ADMIN' && existingComment.authorId !== userId) {
       throw new Error('Akses ditolak. Anda tidak berhak menghapus komentar ini.');
     }
 
-    // TEKNIK SOFT DELETE: Ubah teksnya, bukan hapus datanya
+    // Diubah jadi teks diapus
     await prisma.comment.update({
       where: { id: id },
       data: { content: '[Komentar ini telah dihapus]' }
@@ -186,11 +187,11 @@ export const commentService = {
     return { message: 'Komentar berhasil dihapus' };
   },
   async toggleUpvote(commentId: string, userId: string) {
-    // A. Cek keberadaan komentar
+    //  Cek keberadaan komentar
     const comment = await prisma.comment.findUnique({ where: { id: commentId } });
     if (!comment) throw new Error('Komentar tidak ditemukan');
 
-    // B. Cek apakah user INI sudah upvote komentar INI
+    // Cek apakah user INI sudah upvote komentar INI
     const existingUpvote = await prisma.commentUpvote.findUnique({
       where: {
         userId_commentId: { 
@@ -201,13 +202,13 @@ export const commentService = {
     });
 
     if (existingUpvote) {
-      // KONDISI 1: SUDAH UPVOTE -> Cabut Like-nya (Delete)
+      // Kalo udah upvote, di cabut
       await prisma.commentUpvote.delete({
         where: { id: existingUpvote.id }
       });
       return { action: 'unvoted', message: 'Upvote ditarik dari komentar' };
     } else {
-      // KONDISI 2: BELUM UPVOTE -> Berikan Like (Create)
+      // Kalo belom, create upvote
       await prisma.commentUpvote.create({
         data: { userId: userId, commentId: commentId }
       });
