@@ -59,6 +59,7 @@ enum NotificationType {
   UPVOTE_REPORT
   UPVOTE_POST
   UPVOTE_COMMENT
+  REPORT_STATUS_CHANGED
 }
 
 // --- MODELS ---

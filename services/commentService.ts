@@ -27,7 +27,7 @@ export const commentService = {
       if (!parent) throw new Error('Komentar yang ingin dibalas tidak ditemukan');
     }
 
-    const newComment = await prisma.comment.create({
+  const newComment = await prisma.comment.create({
       data: {
         authorId: authorId,
         content: data.content,
@@ -37,12 +37,44 @@ export const commentService = {
       },
     });
 
+    try {
+      if (data.parentId) {
+        // SKENARIO 1: INI ADALAH BALASAN (REPLY)
+        const parentComment = await prisma.comment.findUnique({ where: { id: data.parentId } });
+        if (parentComment && parentComment.authorId !== authorId) {
+          await prisma.notification.create({
+            data: {
+              recipientId: parentComment.authorId, // Kirim ke orang yang komentarnya dibalas
+              actorId: authorId,
+              type: 'REPLY_ON_COMMENT',
+              commentId: data.parentId, 
+            }
+          });
+        }
+      } else if (data.postId) {
+        // SKENARIO 2: INI ADALAH KOMENTAR UTAMA DI POSTINGAN
+        const post = await prisma.post.findUnique({ where: { id: data.postId } });
+        if (post && post.authorId !== authorId) {
+          await prisma.notification.create({
+            data: {
+              recipientId: post.authorId,
+              actorId: authorId,
+              type: 'COMMENT_ON_POST',
+              postId: data.postId,
+            }
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Gagal mengirim notifikasi komentar/reply:", error);
+    }
+    // ==========================================
+
     return newComment;
   },
 
   // 3. FUNGSI GET ALL: Mengambil Daftar Komentar Induk + Balasannya
   async getComments(filter: GetCommentsFilter) {
-    // Validasi: Frontend wajib mengirim postId ATAU policyId di URL
     if (!filter.postId && !filter.policyId) {
       throw new Error('Parameter postId atau policyId wajib diisi untuk melihat komentar');
     }
@@ -179,6 +211,18 @@ export const commentService = {
       await prisma.commentUpvote.create({
         data: { userId: userId, commentId: commentId }
       });
+
+      if (comment.authorId !== userId) {
+        await prisma.notification.create({
+          data: {
+            recipientId: comment.authorId,
+            actorId: userId,
+            type: 'UPVOTE_COMMENT',
+            commentId: commentId,
+          }
+        });
+      }
+      
       return { action: 'upvoted', message: 'Komentar berhasil di-upvote' };
     }
   }
