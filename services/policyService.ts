@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma';
 import { PolicyStatus } from '@prisma/client';
 import { VoteChoice } from '@prisma/client';
 
-// 1. INTERFACE: Cetakan Data Payload
+// Interface biar ga type any
 export interface CreatePolicyPayload {
   title: string;
   content: string;
@@ -10,7 +10,7 @@ export interface CreatePolicyPayload {
 }
 
 export const policyService = {
-  // 2. FUNGSI CREATE: Membuat Wacana Kebijakan Baru
+  // Membuat Wacana Kebijakan Baru
   async createPolicy(authorId: string, data: CreatePolicyPayload) {
     const newPolicy = await prisma.policy.create({
       data: {
@@ -24,7 +24,7 @@ export const policyService = {
     return newPolicy;
   },
 
-  // 3. FUNGSI GET ALL: Mengambil Daftar Kebijakan (Bisa difilter berdasarkan status)
+  // Mengambil Daftar Kebijakan (Bisa difilter berdasarkan status)
   async getPolicies(statusFilter?: PolicyStatus) {
     const policies = await prisma.policy.findMany({
       where: statusFilter ? { status: statusFilter } : undefined,
@@ -63,7 +63,7 @@ export const policyService = {
             lecturerProfile: { select: { fullName: true } },
           }
         },
-        // Kita hitung statistik VOTE (Berapa yang setuju, berapa yang tidak)
+        // Hitung statistik VOTE (Berapa yang setuju, berapa yang tidak)
         votes: {
           select: { choice: true }
         }
@@ -72,7 +72,7 @@ export const policyService = {
 
     if (!policy) throw new Error('Kebijakan tidak ditemukan');
 
-    // Menghitung statistik agree/disagree sebelum dikirim ke Frontend
+    // Hitung statistik agree/disagree sebelum dikirim ke Frontend
     const agreeCount = policy.votes.filter(v => v.choice === 'AGREE').length;
     const disagreeCount = policy.votes.filter(v => v.choice === 'DISAGREE').length;
 
@@ -89,7 +89,7 @@ export const policyService = {
     };
   },
 
-  // 5. FUNGSI UPDATE (Mengedit Judul, Konten, atau Mengubah Status jadi ACTIVE)
+  // Mengedit Judul, Konten, atau Mengubah Status jadi ACTIVE
   async updatePolicy(id: string, data: { title?: string; content?: string; status?: PolicyStatus }) {
     const existingPolicy = await prisma.policy.findUnique({ where: { id } });
     if (!existingPolicy) throw new Error('Kebijakan tidak ditemukan');
@@ -106,30 +106,27 @@ export const policyService = {
     return updatedPolicy;
   },
 
-  // 6. FUNGSI DELETE (Hapus Kebijakan)
+  // FUNGSI DELETE (Hapus Kebijakan)
   async deletePolicy(id: string) {
     const existingPolicy = await prisma.policy.findUnique({ where: { id } });
     if (!existingPolicy) throw new Error('Kebijakan tidak ditemukan');
 
-    // Berkat aturan SetNull di model Post dan Cascade di model Comment,
-    // menghapus Policy akan aman bagi data lain yang terhubung.
     await prisma.policy.delete({ where: { id } });
 
     return { message: 'Kebijakan berhasil dihapus' };
   },
 
   async submitVote(policyId: string, userId: string, choice: VoteChoice) {
-    // A. Cek keberadaan dan status kebijakan
+    // Cek keberadaan dan status kebijakan
     const policy = await prisma.policy.findUnique({ where: { id: policyId } });
     if (!policy) throw new Error('Kebijakan tidak ditemukan');
     
-    // BUSINESS LOGIC: Voting hanya sah jika status kebijakan ACTIVE
+    //Voting hanya sah jika status kebijakan ACTIVE
     if (policy.status !== 'ACTIVE') {
       throw new Error('Voting ditolak. Kebijakan ini sedang DRAFT atau sudah CLOSED.');
     }
 
-    // B. Teknik UPSERT (Update or Insert)
-    // Memanfaatkan konstrain @@unique([userId, policyId]) di schema.prisma
+    // (Update or Insert)
     const vote = await prisma.vote.upsert({
       where: {
         userId_policyId: {
@@ -148,7 +145,7 @@ export const policyService = {
     return vote;
   },
 
-  // 8. FUNGSI CABUT VOTE (Batal memilih / Golput)
+  // FUNGSI CABUT VOTE (Batal memilih / Golput)
   async removeVote(policyId: string, userId: string) {
     const existingVote = await prisma.vote.findUnique({
       where: {

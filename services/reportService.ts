@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { ReportCategory, ReportStatus } from '@prisma/client';
 
-// 1. INTERFACE: Cetakan Data
+// Interface biar ga type 'any'
 export interface CreateReportPayload {
   title: string;
   description: string;
@@ -18,7 +18,7 @@ export interface GetReportsFilter {
 }
 
 export const reportService = {
-  // 2. FUNGSI CREATE (Membuat Laporan Baru)
+  // FUNGSI CREATE (Membuat Laporan Baru)
   async createReport(authorId: string, data: CreateReportPayload) {
     const newReport = await prisma.report.create({
       data: {
@@ -35,14 +35,14 @@ export const reportService = {
     return newReport;
   },
 
-  // 3. FUNGSI GET ALL (Mengambil Banyak Laporan dengan Pagination & Filter)
+  // FUNGSI GET ALL (Mengambil Banyak Laporan dengan Pagination & Filter)
   async getReports(filter: GetReportsFilter) {
-    // A. Setup Pagination (Halaman)
+    // Setup Pagination (Halaman)
     const page = filter.page || 1; // Jika tidak dikirim, anggap halaman 1
     const limit = filter.limit || 10; // Jika tidak dikirim, tampilkan 10 data per halaman
     const skip = (page - 1) * limit; // Rumus melewati data
 
-    // B. Setup Query Database
+    // Setup Query Database
     const reports = await prisma.report.findMany({
       where: {
         ...(filter.category && { category: filter.category }),
@@ -65,7 +65,7 @@ export const reportService = {
       }
     });
 
-    // C. Hitung total data untuk info Pagination di Frontend
+    // Hitung total data untuk info Pagination di Frontend
     const totalItems = await prisma.report.count({
       where: {
         ...(filter.category && { category: filter.category }),
@@ -105,8 +105,7 @@ export const reportService = {
     return report;
   },
 
-  // 5. FUNGSI UPDATE STATUS (Khusus Admin: SUBMITTED -> VERIFIED -> dll)
-  // 5. FUNGSI UPDATE STATUS (Khusus Admin: SUBMITTED -> VERIFIED -> dll)
+  // FUNGSI UPDATE STATUS (Khusus Admin: SUBMITTED -> VERIFIED -> dll)
   async updateReportStatus(id: string, newStatus: ReportStatus) {
     const existingReport = await prisma.report.findUnique({ where: { id } });
     if (!existingReport) throw new Error('Laporan tidak ditemukan');
@@ -125,18 +124,17 @@ export const reportService = {
         reportId: id,
       }
     });
-    // ==========================================
 
     return updatedReport;
   },
 
-  // 6. FUNGSI DELETE (Hapus Laporan)
+  // FUNGSI DELETE (Hapus Laporan)
   async deleteReport(id: string, userId: string, userRole: string) {
     // Cari laporannya dulu untuk mengecek siapa pembuatnya
     const existingReport = await prisma.report.findUnique({ where: { id } });
     if (!existingReport) throw new Error('Laporan tidak ditemukan');
 
-    // PROTEKSI BISNIS LOGIC: Yang boleh hapus hanya Admin ATAU si pembuat laporan itu sendiri
+    // Yang boleh hapus hanya Admin ATAU si pembuat laporan itu sendiri
     if (userRole !== 'ADMIN' && existingReport.authorId !== userId) {
       throw new Error('Akses ditolak. Anda tidak berhak menghapus laporan ini.');
     }
@@ -152,11 +150,11 @@ export const reportService = {
   async toggleUpvote(reportId: string, userId: string) {
     // Kita menggunakan Interactive Transaction (tx) agar proses ini kebal dari bentrok
     return await prisma.$transaction(async (tx) => {
-      // A. Cek laporannya ada atau tidak
+      // Cek laporannya ada atau tidak
       const report = await tx.report.findUnique({ where: { id: reportId } });
       if (!report) throw new Error('Laporan tidak ditemukan');
 
-      // B. Cek apakah user INI sudah pernah upvote laporan INI
+      // Cek apakah user INI sudah pernah upvote laporan INI
       // userId_reportId adalah cara Prisma membaca aturan @@unique([userId, reportId]) di schema
       const existingUpvote = await tx.reportUpvote.findUnique({
         where: {
@@ -168,7 +166,7 @@ export const reportService = {
       });
 
       if (existingUpvote) {
-        // KONDISI 1: SUDAH UPVOTE -> Maka ini fungsinya menarik Upvote (Unlike)
+        // KALO UDAH UPVOTE -> Maka ini fungsinya menarik Upvote (Unlike)
         
         // Hapus jejaknya dari tabel report_upvotes
         await tx.reportUpvote.delete({
@@ -183,7 +181,7 @@ export const reportService = {
         
         return { action: 'unvoted', message: 'Upvote berhasil ditarik' };
       } else {
-        // KONDISI 2: BELUM UPVOTE -> Maka ini fungsinya memberi Upvote (Like)
+        // KALO BELUM UPVOTE -> Maka ini fungsinya memberi Upvote (Like)
         
         // Catat jejaknya di tabel report_upvotes
         await tx.reportUpvote.create({
