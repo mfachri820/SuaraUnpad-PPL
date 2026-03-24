@@ -9,7 +9,7 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_
 const publicPaths = [
   '/api/auth/login',
   '/api/auth/register',
-  '/api/donations/webhook' // Webhook midtrans tidak pakai JWT
+  '/api/webhooks/midtrans' // Webhook midtrans tidak pakai JWT
 ];
 
 export async function middleware(request: NextRequest) {
