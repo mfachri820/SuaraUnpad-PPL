@@ -6,19 +6,19 @@ export interface GetNotificationsFilter {
 }
 
 export const notificationService = {
-  // 1. FUNGSI GET: Mengambil daftar notifikasi milik user (sebagai penerima/recipient)
+  // Get user notification
   async getNotifications(userId: string, filter: GetNotificationsFilter) {
     const page = filter.page || 1;
     const limit = filter.limit || 10;
     const skip = (page - 1) * limit;
 
     const notifications = await prisma.notification.findMany({
-      where: { recipientId: userId }, // 👉 DIUBAH KE recipientId
+      where: { recipientId: userId }, 
       skip: skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: {
-        // Sekalian ambil profil si 'Pelaku' (actor) agar Frontend bisa nampilin nama/fotonya
+        // Sekalian ambil profil si actor biar Frontend bisa nampilin nama/fotonya
         actor: {
           select: {
             id: true,
@@ -32,11 +32,11 @@ export const notificationService = {
     });
 
     const totalItems = await prisma.notification.count({
-      where: { recipientId: userId } // 👉 DIUBAH KE recipientId
+      where: { recipientId: userId } 
     });
 
     const unreadCount = await prisma.notification.count({
-      where: { recipientId: userId, isRead: false } // 👉 DIUBAH KE recipientId
+      where: { recipientId: userId, isRead: false } 
     });
 
     return {
@@ -51,13 +51,13 @@ export const notificationService = {
     };
   },
 
-  // 2. FUNGSI BACA SATU
+  // FUNGSI BACA SATU
   async markAsRead(notificationId: string, userId: string) {
     const notification = await prisma.notification.findUnique({ where: { id: notificationId } });
     if (!notification) throw new Error('Notifikasi tidak ditemukan');
 
-    // BUSINESS LOGIC: Pastikan user hanya bisa membaca notif miliknya sendiri
-    if (notification.recipientId !== userId) { // 👉 DIUBAH KE recipientId
+    // Pastikan user hanya bisa membaca notif miliknya sendiri
+    if (notification.recipientId !== userId) { 
       throw new Error('Akses ditolak. Ini bukan notifikasi Anda.');
     }
 
@@ -69,11 +69,11 @@ export const notificationService = {
     return updatedNotification;
   },
 
-  // 3. FUNGSI BACA SEMUA
+  // FUNGSI BACA SEMUA
   async markAllAsRead(userId: string) {
     const result = await prisma.notification.updateMany({
       where: { 
-        recipientId: userId, // 👉 DIUBAH KE recipientId
+        recipientId: userId,
         isRead: false 
       },
       data: { isRead: true }
