@@ -19,7 +19,7 @@ export interface RegisterPayload {
   major?: string;
 }
 
-export interface UpdateProfilePayload {
+export interface UpdateProflilePayload {
   fullName?: string;
   faculty?: string;
   major?: string;

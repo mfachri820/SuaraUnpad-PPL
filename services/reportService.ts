@@ -106,8 +106,8 @@ export const reportService = {
   },
 
   // 5. FUNGSI UPDATE STATUS (Khusus Admin: SUBMITTED -> VERIFIED -> dll)
+  // 5. FUNGSI UPDATE STATUS (Khusus Admin: SUBMITTED -> VERIFIED -> dll)
   async updateReportStatus(id: string, newStatus: ReportStatus) {
-    // Pastikan laporannya ada dulu sebelum di-update
     const existingReport = await prisma.report.findUnique({ where: { id } });
     if (!existingReport) throw new Error('Laporan tidak ditemukan');
 
@@ -115,6 +115,17 @@ export const reportService = {
       where: { id: id },
       data: { status: newStatus }
     });
+
+
+    await prisma.notification.create({
+      data: {
+        recipientId: existingReport.authorId, // Kirim ke pembuat laporan
+        actorId: existingReport.authorId,     // Karena sistem/admin yang ubah, kita bisa pakai ID authornya sendiri atau ID Admin (opsional)
+        type: 'REPORT_STATUS_CHANGED',        // Pastikan nama Enum ini sesuai di schema.prisma Anda!
+        reportId: id,
+      }
+    });
+    // ==========================================
 
     return updatedReport;
   },
