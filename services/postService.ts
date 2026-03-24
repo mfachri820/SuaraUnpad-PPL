@@ -180,6 +180,18 @@ export const postService = {
       await prisma.postUpvote.create({
         data: { userId: userId, postId: postId }
       });
+
+      if (post.authorId !== userId) {
+        await prisma.notification.create({
+          data: {
+            recipientId: post.authorId, // Yang menerima notif adalah yang punya postingan
+            actorId: userId,            // Pelakunya adalah yang lagi login
+            type: 'UPVOTE_POST',        // Tipe enum notifikasinya
+            postId: postId,             // Kaitkan ke postingan ini
+          }
+        });
+      }
+      
       return { action: 'upvoted', message: 'Postingan berhasil di-upvote' };
     }
   }
