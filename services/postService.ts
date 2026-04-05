@@ -1,20 +1,20 @@
 import { prisma } from '@/lib/prisma';
 
-// 1. INTERFACE: Cetakan Data Payload
+// Interface supaya ga type any
 export interface CreatePostPayload {
   title: string;
   content: string;
-  policyId?: string; // Opsional (karena postingan tidak harus terikat kebijakan)
+  policyId?: string; 
 }
 
 export interface GetPostsFilter {
   page?: number;
   limit?: number;
-  policyId?: string; // Opsional (untuk memfilter postingan khusus 1 kebijakan)
+  policyId?: string;
 }
 
 export const postService = {
-  // 2. FUNGSI CREATE: Membuat Postingan Baru
+  // Membuat Postingan Baru
   async createPost(authorId: string, data: CreatePostPayload) {
     // Validasi opsional: Jika user mengirim policyId, pastikan kebijakan itu benar-benar ada
     if (data.policyId) {
@@ -34,7 +34,7 @@ export const postService = {
     return newPost;
   },
 
-  // 3. FUNGSI GET ALL: Mengambil Daftar Postingan (dengan Pagination)
+  // Mengambil Daftar Postingan dengan Pagination
   async getPosts(filter: GetPostsFilter) {
     const page = filter.page || 1;
     const limit = filter.limit || 10;
@@ -87,7 +87,7 @@ export const postService = {
     };
   },
 
-  // 4. FUNGSI GET BY ID (Melihat Detail 1 Postingan)
+  // FUNGSI GET BY ID (Melihat Detail 1 Postingan)
   async getPostById(id: string) {
     const post = await prisma.post.findUnique({
       where: { id: id },
@@ -116,12 +116,12 @@ export const postService = {
     return post;
   },
 
-  // 5. FUNGSI UPDATE (Mengedit Postingan)
+  // FUNGSI UPDATE (Mengedit Postingan)
   async updatePost(id: string, userId: string, data: { title?: string; content?: string }) {
     const existingPost = await prisma.post.findUnique({ where: { id } });
     if (!existingPost) throw new Error('Postingan tidak ditemukan');
 
-    // BUSINESS LOGIC: Hanya pembuat postingan yang boleh mengedit tulisannya sendiri
+    // Hanya pembuat postingan yang boleh mengedit tulisannya sendiri
     if (existingPost.authorId !== userId) {
       throw new Error('Akses ditolak. Anda hanya dapat mengubah postingan Anda sendiri.');
     }
@@ -137,12 +137,12 @@ export const postService = {
     return updatedPost;
   },
 
-  // 6. FUNGSI DELETE (Menghapus Postingan)
+  // FUNGSI DELETE (Menghapus Postingan)
   async deletePost(id: string, userId: string, userRole: string) {
     const existingPost = await prisma.post.findUnique({ where: { id } });
     if (!existingPost) throw new Error('Postingan tidak ditemukan');
 
-    // BUSINESS LOGIC: Yang boleh hapus hanya Author aslinya ATAU Admin (sebagai moderator)
+    // Yang boleh hapus hanya Author aslinya ATAU Admin (sebagai moderator)
     if (userRole !== 'ADMIN' && existingPost.authorId !== userId) {
       throw new Error('Akses ditolak. Anda tidak berhak menghapus postingan ini.');
     }
@@ -154,11 +154,11 @@ export const postService = {
   },
 
   async toggleUpvote(postId: string, userId: string) {
-    // A. Cek keberadaan postingan
+    // Cek keberadaan postingan
     const post = await prisma.post.findUnique({ where: { id: postId } });
     if (!post) throw new Error('Postingan tidak ditemukan');
 
-    // B. Cek apakah user INI sudah upvote postingan INI
+    // Cek apakah user INI sudah upvote postingan INI
     // Menggunakan kombinasi kunci unik (userId_postId)
     const existingUpvote = await prisma.postUpvote.findUnique({
       where: {
@@ -170,16 +170,28 @@ export const postService = {
     });
 
     if (existingUpvote) {
-      // KONDISI 1: SUDAH UPVOTE -> Cabut Like-nya (Delete)
+      // KALO SUDAH UPVOTE -> Cabut Like-nya (Delete)
       await prisma.postUpvote.delete({
         where: { id: existingUpvote.id }
       });
       return { action: 'unvoted', message: 'Upvote ditarik dari postingan' };
     } else {
-      // KONDISI 2: BELUM UPVOTE -> Berikan Like (Create)
+      // KALO BELUM UPVOTE -> Berikan Like (Create)
       await prisma.postUpvote.create({
         data: { userId: userId, postId: postId }
       });
+
+      if (post.authorId !== userId) {
+        await prisma.notification.create({
+          data: {
+            recipientId: post.authorId, // Yang menerima notif adalah yang punya postingan
+            actorId: userId,            // Pelakunya adalah yang lagi login
+            type: 'UPVOTE_POST',        // Tipe enum notifikasinya
+            postId: postId,             // Kaitkan ke postingan ini
+          }
+        });
+      }
+      
       return { action: 'upvoted', message: 'Postingan berhasil di-upvote' };
     }
   }
