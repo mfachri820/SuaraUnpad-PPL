@@ -67,7 +67,7 @@ enum NotificationType {
 model User {
   id           String   @id @default(uuid()) @db.Uuid
   email        String   @unique @db.VarChar
-  passwordHash String   @map("password_hash") @db.VarChar
+  passwordHash String?   @map("password_hash") @db.VarChar
   role         Role
   isVerified   Boolean  @default(false) @map("is_verified")
   avatarUrl    String?  @map("avatar_url") @db.VarChar

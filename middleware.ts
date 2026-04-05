@@ -9,6 +9,11 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_
 const publicPaths = [
   '/api/auth/login',
   '/api/auth/register',
+<<<<<<< HEAD
+  '/api/donations/webhook', // Webhook midtrans tidak pakai JWT
+  '/api/auth/google',
+=======
+>>>>>>> b1a6a9630d7bed88527b2c97b12e85012482d213
   '/api/webhooks/midtrans' // Webhook midtrans tidak pakai JWT
 ];
 

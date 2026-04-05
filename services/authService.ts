@@ -2,8 +2,10 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
+import { OAuth2Client } from 'google-auth-library';
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key');
+const googleClient = new OAuth2Client(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
 
 // Karena linter, butuh bikin interface buat replace 'any'
 export interface RegisterPayload {
@@ -74,6 +76,10 @@ export const authService = {
     if (!user) throw new Error('Email atau password salah');
 
     // Verifikasi password
+    if (!user.passwordHash) {
+      throw new Error('Akun ini terdaftar melalui Google. Silakan gunakan tombol "Login with Google".');
+    }
+    // Verifikasi password
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) throw new Error('Email atau password salah');
 
@@ -84,9 +90,60 @@ export const authService = {
       .setExpirationTime('7d') // Token berlaku 7 hari
       .sign(JWT_SECRET);
 
-    return {
+    return {  
       user: { id: user.id, email: user.email, role: user.role, isVerified: user.isVerified },
       token
+    };
+  },
+
+  async googleLogin(idToken: string) {
+    // 1. Verifikasi token ke server Google
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload || !payload.email) {
+      throw new Error('Token Google tidak valid');
+    }
+
+    // 2. Cek apakah user sudah terdaftar di database kita
+    const user = await prisma.user.findUnique({ 
+      where: { email: payload.email } 
+    });
+
+    // 3. SKENARIO A: User sudah ada -> Langsung Login!
+    if (user) {
+      const token = await new SignJWT({ userId: user.id, role: user.role })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('7d')
+        .sign(JWT_SECRET);
+
+      // Kalau avatar di DB masih kosong, kita update pakai foto profil Google
+      if (!user.avatarUrl && payload.picture) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { avatarUrl: payload.picture }
+        });
+      }
+
+      return {
+        isNewUser: false, // Beritahu Frontend ini login biasa
+        user: { id: user.id, email: user.email, role: user.role, isVerified: user.isVerified },
+        token
+      };
+    }
+
+    // 4. SKENARIO B: User belum ada -> Lempar data dasar ke Frontend untuk form "Lengkapi Profil"
+    return {
+      isNewUser: true, // Beritahu Frontend untuk pindah ke halaman Pendaftaran
+      googleData: {
+        email: payload.email,
+        fullName: payload.name,
+        avatarUrl: payload.picture
+      }
     };
   },
 
