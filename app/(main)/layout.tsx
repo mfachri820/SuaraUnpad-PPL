@@ -1,5 +1,7 @@
-// app/(main)/layout.tsx
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
+
+const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 export default function MainLayout({
   children,
 }: {
@@ -7,7 +9,12 @@ export default function MainLayout({
 }) {
   return (
     <div className="min-h-screen bg-slate-50">
+
+      <GoogleOAuthProvider clientId={googleClientId}>
       {children}
+    </GoogleOAuthProvider>
+
     </div>
+    
   );
 }
