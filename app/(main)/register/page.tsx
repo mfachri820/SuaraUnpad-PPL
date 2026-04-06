@@ -1,18 +1,25 @@
 "use client";
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useForm } from "react-hook-form";
 import { useRouter } from 'next/navigation';
 import { FiUser, FiMail, FiLock } from "react-icons/fi";
 import AuthInput from '@/components/AuthInput';
 import Cookies from 'js-cookie';
-import { useGoogleLogin } from '@react-oauth/google';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function RegisterPage() {
   const { register, handleSubmit, setValue } = useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleRegistration, setIsGoogleRegistration] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
 
-  // 1. FUNGSI LOGIC AUTH KE BACKEND
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // 1. FUNGSI LOGIC AUTH KE BACKEND UNTUK GOOGLE
   const handleGoogleAuth = async (idToken: string) => {
     setIsSubmitting(true);
     try {
@@ -26,14 +33,13 @@ export default function RegisterPage() {
 
       if (res.ok && result.status === "success") {
         if (result.data.isNewUser) {
-          // CASE: User baru - Auto-fill form
-          alert("Akun Google valid! Nama dan Email telah terisi otomatis.");
-          setValue("fullName", result.data.googleData.fullName);
-          setValue("email", result.data.googleData.email);
+          sessionStorage.setItem("googleData", JSON.stringify(result.data.googleData));
+          alert("Akun Google valid! Sedikit lagi, yuk lengkapi data akademikmu.");
+          router.push("/complete-profile"); 
         } else {
-          // CASE: User sudah terdaftar - Langsung login
+          // Jika ternyata user lama, langsung login
           Cookies.set('token', result.data.token, { expires: 7, path: '/' });
-          alert("Anda sudah terdaftar. Mengalihkan ke Beranda...");
+          alert("Selamat datang kembali!");
           router.push("/home");
         }
       } else {
@@ -44,24 +50,9 @@ export default function RegisterPage() {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }; // <--- Kurung penutup handleGoogleAuth yang tadi hilang ada di sini
 
-  // 2. HOOK GOOGLE LOGIN (SDK)
-  const loginWithGoogle = useGoogleLogin({
-    onSuccess: (tokenResponse) => {
-      // Catatan: Google SDK biasanya mengembalikan access_token. 
-      // Jika backend butuh credential (JWT/idToken), 
-      // pastikan integrasi di Google Cloud Console sudah sesuai.
-      console.log("Google Login Response:", tokenResponse);
-      
-      // Untuk testing sementara, kita panggil fungsi auth
-      // Di integrasi asli, tokenResponse.access_token dikirim atau idToken
-      handleGoogleAuth(tokenResponse.access_token); 
-    },
-    onError: () => alert("Login Google Gagal!"),
-  });
-
-  // 3. FUNGSI REGISTER MANUAL
+  // 2. FUNGSI REGISTER MANUAL (Submit Form)
   const onRegister = async (data: any) => {
     setIsSubmitting(true);
     try {
@@ -86,12 +77,14 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white font-sans">
-      <main className="flex w-full max-w-sm flex-col p-8 bg-white">
+      <main className="flex w-full max-w-sm flex-col p-8 bg-white border border-zinc-100 shadow-xl shadow-zinc-200/50 rounded-3xl">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-black">
             Buat <span className="text-[#2682F9]">Akun</span> <span className="text-[#E8A34D]">Baru</span>
           </h2>
-          <p className="text-zinc-500 text-sm mt-2 leading-relaxed">Silakan lengkapi data diri Anda untuk bergabung dalam SuaraUnpad</p>
+          <p className="text-zinc-500 text-sm mt-2 leading-relaxed">
+            Silakan lengkapi data diri Anda untuk bergabung dalam SuaraUnpad
+          </p>
         </div>
 
         <form onSubmit={handleSubmit(onRegister)} className="w-full space-y-2">
@@ -100,7 +93,16 @@ export default function RegisterPage() {
           <AuthInput label="NPM (Student ID)" placeholder="140810230041" register={register("studentId", { required: true })} />
           <AuthInput label="Fakultas" placeholder="FMIPA" register={register("faculty", { required: true })} />
           <AuthInput label="Program Studi" placeholder="Teknik Informatika" register={register("major", { required: true })} />
-          <AuthInput label="Kata Sandi" type="password" icon={FiLock} placeholder="password123" register={register("password", { required: true })} />
+          
+          {!isGoogleRegistration && (
+             <AuthInput 
+               label="Kata Sandi" 
+               type="password" 
+               icon={FiLock} 
+               placeholder="password123" 
+               register={register("password", { required: !isGoogleRegistration })} 
+             />
+          )}
 
           <button type="submit" disabled={isSubmitting}
             className="w-full bg-[#E8A34D] text-white font-bold py-4 rounded-xl shadow-[0px_10px_20px_rgba(232,163,77,0.3)] mt-6 transition-all disabled:opacity-50 active:scale-95"
@@ -109,21 +111,33 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <div className="relative my-8 w-full text-center">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-zinc-100"></div></div>
-          <span className="relative bg-white px-2 text-[10px] text-zinc-400 font-bold uppercase tracking-widest leading-none">Atau</span>
-        </div>
+        {!isGoogleRegistration && (
+          <>
+            <div className="relative my-8 w-full text-center">
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-zinc-100"></div></div>
+              <span className="relative bg-white px-2 text-[10px] text-zinc-400 font-bold uppercase tracking-widest leading-none">Atau</span>
+            </div>
 
-        {/* TOMBOL GOOGLE SDK */}
-        <button 
-          type="button" 
-          disabled={isSubmitting}
-          onClick={() => loginWithGoogle()}
-          className="w-full flex items-center justify-center gap-3 border border-zinc-200 py-3.5 rounded-xl hover:bg-zinc-50 transition font-bold text-zinc-600 disabled:opacity-50 active:scale-95"
-        >
-          <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
-          Daftar dengan Google
-        </button>
+            <div className="flex justify-center w-full min-h-[44px]">
+              {isMounted ? (
+                <GoogleLogin
+                  onSuccess={(credentialResponse) => {
+                    if (credentialResponse.credential) {
+                      handleGoogleAuth(credentialResponse.credential);
+                    }
+                  }}
+                  onError={() => alert("Login Google Gagal!")}
+                  shape="rectangular"
+                  text="signup_with"
+                  size="large"
+                  width="320px"
+                />
+              ) : (
+                <div className="w-full h-11 bg-zinc-100 rounded-md animate-pulse"></div>
+              )}
+            </div>
+          </>
+        )}
 
         <div className="mt-8 text-center text-sm text-zinc-500 font-medium w-full">
           Sudah memiliki akun? <a href="/login" className="text-[#2682F9] font-bold underline">Masuk di sini</a>
