@@ -1,12 +1,26 @@
+name: CI & Security Pipeline
+
+# Pipeline hanya berjalan ketika event dibawah
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
 jobs:
-  # 1. Tahap CI & Security
   integration-and-security:
+    name: Code Quality & Security Check
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Wajib 0 agar Gitleaks bisa mengecek seluruh history commit
+          fetch-depth: 0 
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -17,21 +31,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # --- CONTINUOUS SECURITY (CS) ---
+      # CS
       - name: Run Gitleaks (Secret Scanner)
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run NPM Security Audit
+      - name: 🛡️ Run NPM Security Audit
         run: npm audit --audit-level=high || true 
 
-      # --- CONTINUOUS INTEGRATION (CI) ---
-      - name: Validate Prisma Schema
+      # CI
+      - name: 🗄️ Validate Prisma Schema
         run: npx prisma validate
 
-      - name: Type Check (TypeScript)
+      - name: ʦ Type Check (TypeScript)
         run: npx tsc --noEmit
 
-      - name: Run Linter (ESLint)
+      - name: 🧹 Run Linter (ESLint)
         run: npm run lint
+
+      - name: Test Application Build
+        run: npm run build
+        env:
+          DATABASE_URL: "postgresql://dummy:dummy@localhost:5432/dummy"
+          JWT_SECRET: "dummy-secret-for-build"
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: "dummy-client-id"
