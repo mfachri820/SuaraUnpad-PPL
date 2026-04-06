@@ -50,7 +50,7 @@ export default function RegisterPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }; // <--- Kurung penutup handleGoogleAuth yang tadi hilang ada di sini
+  }; 
 
   // 2. FUNGSI REGISTER MANUAL (Submit Form)
   const onRegister = async (data: any) => {
@@ -77,7 +77,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white font-sans">
-      <main className="flex w-full max-w-sm flex-col p-8 bg-white border border-zinc-100 shadow-xl shadow-zinc-200/50 rounded-3xl">
+      <main className="flex w-full my-10 max-w-sm flex-col p-8 bg-white border border-zinc-100 shadow-xl shadow-zinc-200/50 rounded-3xl">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-black">
             Buat <span className="text-[#2682F9]">Akun</span> <span className="text-[#E8A34D]">Baru</span>
