@@ -75,7 +75,7 @@ export const authService = {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) throw new Error('Email atau password salah');
 
-    // Verifikasi password
+    // Verifikasi passwordHash
     if (!user.passwordHash) {
       throw new Error('Akun ini terdaftar melalui Google. Silakan gunakan tombol "Login with Google".');
     }
