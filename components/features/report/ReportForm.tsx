@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { FaCamera } from "react-icons/fa";
 import { IoMdInformationCircle } from "react-icons/io";
-// import imageCompression from "browser-image-compression";
 import Image from "next/image";
 
-// import fungsi helper
+// import fungsi helper dan data konstanta
 import {
-  fetchCategoriesApi,
+  REPORT_CATEGORIES,
   uploadImage,
   submitReport,
   ReportPayload
@@ -32,34 +31,14 @@ export default function ReportForm() {
     trigger
   } = useForm<ReportFormData>();
 
-  // States
+  // States 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [categories, setCategories] = useState<{ id: string; label: string }[]>(
-    []
-  );
-  const [isLoadingCategories, setIsLoadingCategories] = useState(true);
 
   // TOKEN SEMENTARA
   const TEMP_TOKEN =
     "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiJlNjYxMWE4Ny0zNTFmLTRjZGUtYWNmYi1mYzk0MjNkNTgzNGYiLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NzU0MTg1NDcsImV4cCI6MTc3NjAyMzM0N30.pJqQnDfRi192308iZCona_comCKNr98F03sa-6QHun8";
-
-  // Narik data categories
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const data = await fetchCategoriesApi(TEMP_TOKEN);
-        setCategories(data);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setIsLoadingCategories(false);
-      }
-    };
-
-    loadCategories();
-  }, []);
 
   // Image handler untuk Preview
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,15 +104,6 @@ export default function ReportForm() {
     setIsSubmitting(true);
 
     try {
-      //kompresigambar / experimental
-      // const options = {
-      //   maxSizeMB: 0.5, // Maksimal ukuran file 500KB
-      //   maxWidthOrHeight: 1280, // Resolusi maksimal
-      //   useWebWorker: true
-      // };
-
-    
-      //const compressedFile = await imageCompression(imageFile, options);
       const uploadJson = await uploadImage(imageFile, TEMP_TOKEN);
 
       const finalPayload: ReportPayload = {
@@ -182,7 +152,6 @@ export default function ReportForm() {
             className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
             {...register("image", { required: true })}
             onChange={(e) => {
-              // Trik menggabungkan react-hook-form dengan fungsi preview manual kita
               register("image").onChange(e);
               handleImageChange(e);
             }}
@@ -232,16 +201,14 @@ export default function ReportForm() {
             id="input-category"
             defaultValue=""
             {...register("category", { required: true })}
-            disabled={isLoadingCategories}
-            className={`w-full rounded-lg border p-3 text-sm focus:outline-none focus:ring-1 bg-white cursor-pointer disabled:bg-slate-100 disabled:cursor-not-allowed ${errors.category ? "border-red-400 focus:border-red-500 focus:ring-red-500 text-red-500" : "border-slate-300 focus:border-[#2682F9] focus:ring-[#2682F9] text-slate-700"}`}
+            className={`w-full rounded-lg border p-3 text-sm focus:outline-none focus:ring-1 bg-white cursor-pointer ${errors.category ? "border-red-400 focus:border-red-500 focus:ring-red-500 text-red-500" : "border-slate-300 focus:border-[#2682F9] focus:ring-[#2682F9] text-slate-700"}`}
           >
             <option value="" disabled>
-              {isLoadingCategories
-                ? "Menarik data dari server..."
-                : "Pilih Kategori Kerusakan Laporan"}
+              Pilih Kategori Kerusakan Laporan
             </option>
 
-            {categories.map((cat) => (
+            {/* Render data menggunakan konstanta */}
+            {REPORT_CATEGORIES.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.label}
               </option>
