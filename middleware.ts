@@ -11,59 +11,14 @@ const JWT_SECRET = new TextEncoder().encode(
 const publicPaths = [
   "/api/auth/login",
   "/api/auth/register",
-  "/api/donations/webhook",
+  "/api/donations/webhook", // Webhook midtrans tidak pakai JWT
   "/api/auth/google",
-  "/api/webhooks/midtrans" 
+  "/api/webhooks/midtrans" // Webhook midtrans tidak pakai JWT
 ];
-
-// ========================================================
-// --- TAMBAHAN DARI FRONTEND (MULAI) ---
-// Daftar halaman UI yang WAJIB login dan KHUSUS guest
-const protectedPageRoutes = ["/home", "/aktivitas", "/report", "/notifikasi", "/profil", "/"]; 
-const authPageRoutes = ["/login", "/register"];
-// --- TAMBAHAN DARI FRONTEND (SELESAI) ---
-// ========================================================
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ========================================================
-  // --- TAMBAHAN DARI FRONTEND (MULAI): LOGIKA REDIRECT UI ---
-  // Kita ambil token dari cookies karena browser otomatis ngirim cookie saat buka halaman
-  const tokenCookie = request.cookies.get("token")?.value;
-
-  const isProtectedPage = protectedPageRoutes.some(
-    (route) => pathname.startsWith(route) && pathname !== "/login"
-  );
-  const isAuthPage = authPageRoutes.some((route) => pathname.startsWith(route));
-
-  // 1. Jika user belum login tapi buka halaman terproteksi -> Tendang ke /login
-  // 1. Jika user belum login tapi buka halaman terproteksi -> Tendang ke /login
-  if (isProtectedPage && !tokenCookie) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    
-    // --- TAMBAHAN UNTUK ALERT ---
-    // Kita titipkan pesan error di URL (hasilnya jadi: /login?error=unauthorized)
-    loginUrl.searchParams.set("error", "unauthorized");
-    
-    return NextResponse.redirect(loginUrl);
-  }
-
-  // 2. Jika user SUDAH login tapi iseng buka halaman /login -> Tendang ke /home
-  if (isAuthPage && tokenCookie) {
-    const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = "/home";
-    return NextResponse.redirect(homeUrl);
-  }
-  // --- TAMBAHAN DARI FRONTEND (SELESAI) ---
-  // ========================================================
-
-
-  // ========================================================
-  // LOGIKA BACKEND ASLI (PROTEKSI ENDPOINT API)
-  // ========================================================
-  
   // 1. Abaikan pengecekan untuk endpoint publik
   if (publicPaths.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();
@@ -108,15 +63,7 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// ========================================================
-// --- TAMBAHAN DARI FRONTEND (MULAI): PERUBAHAN MATCHER ---
-// Konfigurasi ini diubah agar middleware tidak hanya jalan di /api/, 
-// tapi juga jalan saat user membuka halaman UI.
-// Kita kecualikan file statis (gambar, css, dll) agar performa tetap ringan.
+// Konfigurasi ini mengatur agar middleware hanya jalan di path /api/
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/api/:path*"]
 };
-// --- TAMBAHAN DARI FRONTEND (SELESAI) ---
-// ========================================================

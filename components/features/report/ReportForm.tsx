@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { FaCamera } from "react-icons/fa";
 import { IoMdInformationCircle } from "react-icons/io";
 import Image from "next/image";
+import Cookies from "js-cookie"; // Tambahkan import js-cookie
 
 // import fungsi helper dan data konstanta
 import {
@@ -35,10 +36,6 @@ export default function ReportForm() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // TOKEN SEMENTARA
-  const TEMP_TOKEN =
-    "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOiJlNjYxMWE4Ny0zNTFmLTRjZGUtYWNmYi1mYzk0MjNkNTgzNGYiLCJyb2xlIjoiQURNSU4iLCJpYXQiOjE3NzU0MTg1NDcsImV4cCI6MTc3NjAyMzM0N30.pJqQnDfRi192308iZCona_comCKNr98F03sa-6QHun8";
 
   // Image handler untuk Preview
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -104,7 +101,17 @@ export default function ReportForm() {
     setIsSubmitting(true);
 
     try {
-      const uploadJson = await uploadImage(imageFile, TEMP_TOKEN);
+      // Ambil token langsung dari cookies user yang sedang login
+      const token = Cookies.get("token");
+      
+      if (!token) {
+        alert("Sesi Anda tidak valid atau telah habis. Silakan login kembali.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Gunakan token dinamis untuk upload gambar
+      const uploadJson = await uploadImage(imageFile, token);
 
       const finalPayload: ReportPayload = {
         title: data.title,
@@ -114,7 +121,8 @@ export default function ReportForm() {
         imageUrl: uploadJson.data.url
       };
 
-      await submitReport(finalPayload, TEMP_TOKEN);
+      // Gunakan token dinamis untuk submit data laporan
+      await submitReport(finalPayload, token);
 
       alert("Laporan berhasil dikirim!");
       reset();
