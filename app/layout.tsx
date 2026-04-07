@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 //import { Geist, Geist_Mono } from "next/font/google";
 import Navbar from "@/components/ui/Navbar";
-import Footer from "@/components/ui/Footer"; 
+import Footer from "@/components/ui/Footer";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -25,11 +25,7 @@ export default function RootLayout({
         className={`${myFont.className} antialiased`}
         suppressHydrationWarning
       >
-        <Navbar></Navbar>
-
         <main>{children}</main>
-
-        <Footer></Footer>
       </body>
     </html>
   );

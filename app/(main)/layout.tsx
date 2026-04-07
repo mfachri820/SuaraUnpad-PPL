@@ -1,20 +1,16 @@
-import { GoogleOAuthProvider } from '@react-oauth/google';
+import Navbar from "@/components/ui/Navbar";
+import Footer from "@/components/ui/Footer";
 
-
-const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 export default function MainLayout({
-  children,
+  children
 }: {
   children: React.ReactNode;
 }) {
   return (
     <div className="min-h-screen bg-slate-50">
-
-      <GoogleOAuthProvider clientId={googleClientId}>
+      <Navbar></Navbar>
       {children}
-    </GoogleOAuthProvider>
-
+      <Footer></Footer>
     </div>
-    
   );
 }

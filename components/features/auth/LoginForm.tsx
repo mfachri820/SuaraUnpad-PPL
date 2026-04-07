@@ -3,17 +3,17 @@
 import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import AuthInput from "@/components/AuthInput";
+import AuthInput from "@/components/ui/AuthInput";
 import Cookies from "js-cookie";
 import { GoogleLogin } from "@react-oauth/google";
 
-export default function LoginPage() {
+// Import fungsi API dari AuthFetch.ts
+import { verifyGoogleAuth, loginManual } from "./AuthFetch";
+
+export default function LoginForm() {
   const { register, handleSubmit } = useForm();
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // State untuk mencegah Race Condition / Hydration Error di Next.js
   const [isMounted, setIsMounted] = useState(false);
-
   const router = useRouter();
 
   useEffect(() => {
@@ -24,16 +24,9 @@ export default function LoginPage() {
   const onLogin = async (data: any) => {
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      });
+      const result = await loginManual(data);
 
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.message || "Login gagal");
-
-      // SIMPAN KE COOKIE
+      // Simpan ke cookie
       Cookies.set("token", result.data.token, { expires: 7, path: "/" });
 
       alert(result.message);
@@ -45,60 +38,45 @@ export default function LoginPage() {
     }
   };
 
-  // 2. FUNGSI GOOGLE AUTH (Sama dengan Register untuk konsistensi)
+  // 2. FUNGSI GOOGLE AUTH
   const handleGoogleAuth = async (idToken: string) => {
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/auth/google", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ idToken })
-      });
+      const result = await verifyGoogleAuth(idToken);
 
-      const result = await res.json();
-
-      if (res.ok && result.status === "success") {
+      if (result.status === "success") {
         if (result.data.isNewUser) {
-          // 1. Simpan data Google ke sessionStorage supaya bisa dibaca di halaman tujuan
           sessionStorage.setItem(
             "googleData",
             JSON.stringify(result.data.googleData)
           );
-
           alert(
             "Akun Google valid! Sedikit lagi, yuk lengkapi data akademikmu."
           );
-
-          // 2. JANGAN ke /register lagi, tapi ke halaman khusus lengkapi profil
           router.push("/complete-profile");
         } else {
-          // ✅ INI YANG KURANG
           Cookies.set("token", result.data.token, { expires: 7, path: "/" });
-
           alert("Login berhasil! Mengalihkan ke Beranda...");
-
           router.push("/home");
         }
-      } else {
-        alert(result.message || "Gagal Login Google");
       }
-    } catch (error) {
-      alert("Gagal koneksi ke server");
+    } catch (error: any) {
+      alert(error.message || "Gagal koneksi ke server");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white font-sans">
+    <div className="flex min-h-screen items-center justify-center ">
       <main className="flex w-full my-10 max-w-sm flex-col p-8 bg-white border border-zinc-100 shadow-xl shadow-zinc-200/50 rounded-3xl">
         <div className="mb-10 w-full text-left">
-          <button
+          {/* <button
             onClick={() => router.back()}
             className="text-[#E8A34D] font-bold text-sm flex items-center gap-2 mb-12"
           >
             <span className="text-xl">‹</span> Masuk
-          </button>
+          </button> */}
           <h1 className="text-4xl font-bold mb-6">
             <span className="text-[#2682F9]">Suara</span>
             <span className="text-[#E8A34D]">Unpad</span>
@@ -136,9 +114,9 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-[#E8A34D] text-white font-bold py-4 rounded-xl shadow-[0px_10px_20px_rgba(232,163,77,0.3)] transition-all disabled:opacity-50 active:scale-95"
+            className="w-full bg-[#ffb656] hover:bg-[#F99D26] hover:cursor-pointer  text-white font-bold py-4 rounded-xl transition-all disabled:opacity-50 active:scale-95"
           >
-            {isSubmitting ? "MEMPROSES..." : "Masuk"}
+            {isSubmitting ? "Memproses..." : "Masuk"}
           </button>
         </form>
 
@@ -151,7 +129,6 @@ export default function LoginPage() {
           </span>
         </div>
 
-        {/* GOOGLE LOGIN COMPONENT DENGAN HYDRATION FIX */}
         <div className="flex justify-center w-full min-h-[44px]">
           {isMounted ? (
             <GoogleLogin
@@ -164,7 +141,7 @@ export default function LoginPage() {
               shape="rectangular"
               text="signin_with"
               size="large"
-              width="320px" // Disesuaikan dengan lebar form agar rapi
+              width="320px"
             />
           ) : (
             <div className="w-full h-11 bg-zinc-100 rounded-md animate-pulse"></div>

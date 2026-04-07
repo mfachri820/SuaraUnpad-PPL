@@ -7,24 +7,60 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "fallback_secret_key"
 );
 
-// Daftar endpoint yang bisa diakses tanpa login
-const publicPaths = [
+// Daftar endpoint API yang bisa diakses tanpa login (Kodingan BE Asli)
+const publicApiPaths = [
   "/api/auth/login",
   "/api/auth/register",
-  "/api/donations/webhook", // Webhook midtrans tidak pakai JWT
+  "/api/donations/webhook",
   "/api/auth/google",
-  "/api/webhooks/midtrans" // Webhook midtrans tidak pakai JWT
+  "/api/webhooks/midtrans" 
+];
+
+// Daftar halaman UI/Frontend yang boleh diakses TANPA login
+const publicUIPaths = [
+  "/login",
+  "/register"
 ];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Abaikan pengecekan untuk endpoint publik
-  if (publicPaths.some((path) => pathname.startsWith(path))) {
+  // ========================================================
+  // 1. LOGIKA FRONTEND (UI ROUTING & REDIRECT)
+  // ========================================================
+  // Kita cek token dari cookies browser
+  const tokenCookie = request.cookies.get("token")?.value;
+
+  // Pastikan logika redirect ini HANYA jalan untuk halaman UI, BUKAN untuk /api/
+  if (!pathname.startsWith("/api/")) {
+    const isPublicUI = publicUIPaths.some((path) => pathname.startsWith(path));
+
+    // Jika user belum login & mencoba akses halaman SELAIN /login atau /register
+    if (!tokenCookie && !isPublicUI) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("error", "unauthorized");
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Jika user SUDAH login tapi mencoba akses /login atau /register lagi
+    if (tokenCookie && isPublicUI) {
+      const homeUrl = request.nextUrl.clone();
+      homeUrl.pathname = "/home"; 
+      return NextResponse.redirect(homeUrl);
+    }
+  }
+
+  // ========================================================
+  // 2. LOGIKA BACKEND (API PROTECTION) - TIDAK DIOTAK-ATIK
+  // ========================================================
+  
+  // Abaikan pengecekan untuk endpoint publik
+  if (publicApiPaths.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();
   }
 
-  // 2. Terapkan proteksi hanya untuk rute /api/
+  // Terapkan proteksi hanya untuk rute /api/
   if (pathname.startsWith("/api/")) {
     const authHeader = request.headers.get("authorization");
 
@@ -39,10 +75,10 @@ export async function middleware(request: NextRequest) {
     const token = authHeader.split(" ")[1];
 
     try {
-      // 3. Verifikasi token menggunakan library jose
+      // Verifikasi token menggunakan library jose
       const { payload } = await jwtVerify(token, JWT_SECRET);
 
-      // 4. Sisipkan data user ke dalam header agar bisa dibaca oleh file route.ts nanti
+      // Sisipkan data user ke dalam header agar bisa dibaca oleh file route.ts nanti
       const requestHeaders = new Headers(request.headers);
       requestHeaders.set("x-user-id", payload.userId as string);
       requestHeaders.set("x-user-role", payload.role as string);
@@ -63,7 +99,13 @@ export async function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Konfigurasi ini mengatur agar middleware hanya jalan di path /api/
+// ========================================================
+// 3. KONFIGURASI MATCHER (WAJIB DIUBAH)
+// ========================================================
+// Middleware sekarang berjalan di SEMUA path (termasuk UI), 
+// KECUALI file statis bawaan Next.js agar performa aplikasi tetap ngebut.
 export const config = {
-  matcher: ["/api/:path*"]
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico).*)",
+  ],
 };
