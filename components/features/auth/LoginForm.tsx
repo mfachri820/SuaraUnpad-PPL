@@ -1,17 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import AuthInput from "@/components/ui/AuthInput";
 import Cookies from "js-cookie";
 import { GoogleLogin } from "@react-oauth/google";
 
-// Import fungsi API dari AuthFetch.ts
-import { verifyGoogleAuth, loginManual } from "./AuthFetch";
+// Import fungsi dan interface dari AuthFetch.ts
+import { verifyGoogleAuth, loginManual, LoginPayload } from "./AuthFetch";
 
 export default function LoginForm() {
-  const { register, handleSubmit } = useForm();
+  // Berikan tipe pada useForm
+  const { register, handleSubmit } = useForm<LoginPayload>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
@@ -20,8 +21,8 @@ export default function LoginForm() {
     setIsMounted(true);
   }, []);
 
-  // 1. FUNGSI LOGIN MANUAL
-  const onLogin = async (data: any) => {
+  // 1. FUNGSI LOGIN MANUAL (Tanpa any)
+  const onLogin: SubmitHandler<LoginPayload> = async (data) => {
     setIsSubmitting(true);
     try {
       const result = await loginManual(data);
@@ -31,8 +32,9 @@ export default function LoginForm() {
 
       alert(result.message);
       router.push("/home");
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan";
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -60,8 +62,9 @@ export default function LoginForm() {
           router.push("/home");
         }
       }
-    } catch (error: any) {
-      alert(error.message || "Gagal koneksi ke server");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Gagal koneksi ke server";
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -71,12 +74,6 @@ export default function LoginForm() {
     <div className="flex min-h-screen items-center justify-center ">
       <main className="flex w-full my-10 max-w-sm flex-col p-8 bg-white border border-zinc-100 shadow-xl shadow-zinc-200/50 rounded-3xl">
         <div className="mb-10 w-full text-left">
-          {/* <button
-            onClick={() => router.back()}
-            className="text-[#E8A34D] font-bold text-sm flex items-center gap-2 mb-12"
-          >
-            <span className="text-xl">‹</span> Masuk
-          </button> */}
           <h1 className="text-4xl font-bold mb-6">
             <span className="text-[#2682F9]">Suara</span>
             <span className="text-[#E8A34D]">Unpad</span>

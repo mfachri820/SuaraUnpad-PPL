@@ -5,8 +5,20 @@ import Cookies from 'js-cookie';
 import { FiChevronLeft, FiLoader, FiMapPin, FiCalendar, FiInbox } from "react-icons/fi";
 import { useRouter } from 'next/navigation';
 
+// 1. Definisikan Interface Report
+interface Report {
+  id: string;
+  authorId: string;
+  title: string;
+  description: string;
+  location: string;
+  imageUrl?: string;
+  status: 'SUBMITTED' | 'DONE';
+  createdAt: string;
+}
+
 export default function MyReportPage() {
-  const [reports, setReports] = useState<any[]>([]);
+  const [reports, setReports] = useState<Report[]>([]); // Ganti any[]
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -15,27 +27,25 @@ export default function MyReportPage() {
       try {
         const token = Cookies.get('token');
         
-        // 1. Ambil data user dulu buat tau ID kita
         const userRes = await fetch("/api/auth/me", {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const userResult = await userRes.json();
 
-        // 2. Ambil semua laporan
         const reportRes = await fetch("/api/reports", {
           headers: { "Authorization": `Bearer ${token}` }
         });
         const reportResult = await reportRes.json();
         
         if (userRes.ok && reportRes.ok) {
-          // Filter: Hanya ambil laporan yang authorId-nya sama dengan ID kita
+          // r dipastikan bertipe Report sesuai data dari backend
           const myData = reportResult.data.data.filter(
-            (r: any) => r.authorId === userResult.data.id
+            (r: Report) => r.authorId === userResult.data.id
           );
           setReports(myData);
         }
       } catch (error) {
-        console.error("Gagal mengambil data laporan dari database");
+        console.error("Gagal mengambil data laporan");
       } finally {
         setIsLoading(false);
       }
@@ -67,7 +77,6 @@ export default function MyReportPage() {
             <p className="text-sm text-zinc-400 font-medium tracking-wide">Menghubungkan ke database...</p>
           </div>
         ) : reports.length === 0 ? (
-          /* Tampilan kalau beneran kosong */
           <div className="bg-white py-16 px-6 rounded-[40px] border border-zinc-50 shadow-sm flex flex-col items-center text-center">
             <div className="w-20 h-20 bg-zinc-50 rounded-full flex items-center justify-center mb-6">
               <FiInbox size={40} className="text-zinc-200" />
@@ -84,14 +93,12 @@ export default function MyReportPage() {
             </button>
           </div>
         ) : (
-          /* List Laporan dari Database */
           <div className="space-y-4">
-            {reports.map((report: any) => (
+            {reports.map((report) => (
               <div 
                 key={report.id} 
                 className="bg-white p-5 rounded-[32px] border border-zinc-50 shadow-sm flex gap-5 hover:border-[#E8A34D]/20 transition-all group"
               >
-                {/* Image Section */}
                 <div className="w-20 h-20 bg-zinc-100 rounded-[22px] flex-shrink-0 overflow-hidden border border-zinc-50">
                   {report.imageUrl ? (
                     <img 
@@ -106,7 +113,6 @@ export default function MyReportPage() {
                   )}
                 </div>
 
-                {/* Content Section */}
                 <div className="flex-grow flex flex-col justify-center">
                   <div className="flex justify-between items-start mb-1.5">
                     <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-lg uppercase tracking-wider ${

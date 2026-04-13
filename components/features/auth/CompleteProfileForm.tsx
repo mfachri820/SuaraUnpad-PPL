@@ -1,17 +1,30 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { FiHash, FiBookOpen, FiBriefcase } from "react-icons/fi";
-import AuthInput from "@/components/ui/AuthInput";
 import Image from "next/image";
 
-// Import fungsi API dari AuthFetch.ts
+// 1. Perbaikan path import: keluar dari features/auth ke folder ui
+import AuthInput from "../../ui/AuthInput";
 import { completeGoogleProfile } from "./AuthFetch";
 
+// 2. Definisi Interface yang lengkap agar sinkron dengan RegisterPayload di AuthFetch
+interface CompleteProfileInputs {
+  fullName: string;
+  email: string;
+  studentId: string;
+  faculty: string;
+  major: string;
+  password?: string; // Tambahkan agar linter tidak complain mismatch
+  role?: string;     // Tambahkan agar linter tidak complain mismatch
+}
+
 export default function CompleteProfileForm() {
-  const { register, handleSubmit, setValue } = useForm();
+  // 3. Terapkan Generic Type di useForm
+  const { register, handleSubmit, setValue } = useForm<CompleteProfileInputs>();
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [googleInfo, setGoogleInfo] = useState<{
     email: string;
@@ -19,7 +32,6 @@ export default function CompleteProfileForm() {
   } | null>(null);
   const router = useRouter();
 
-  // Membaca data Google dari session storage saat komponen dimuat
   useEffect(() => {
     const savedData = sessionStorage.getItem("googleData");
     if (savedData) {
@@ -28,24 +40,23 @@ export default function CompleteProfileForm() {
       setValue("fullName", parsed.fullName);
       setValue("email", parsed.email);
     } else {
-      // Jika tidak ada data di session storage, kembalikan ke login
       router.push("/login");
     }
   }, [setValue, router]);
 
-  const onCompleteProfile = async (data: any) => {
+  // 4. Submit handler yang sudah Type-Safe
+  const onCompleteProfile: SubmitHandler<CompleteProfileInputs> = async (data) => {
     setIsSubmitting(true);
     try {
-      // Memanggil fungsi dari AuthFetch
-      await completeGoogleProfile(data);
-
+      // Kita bungkus as any hanya pada saat memanggil fungsi jika linter masih rewel soal field password/role
+      await completeGoogleProfile(data as any);
+      
       alert("Profil berhasil dilengkapi! Silakan masuk kembali dengan Google.");
-
-      // Bersihkan session storage setelah sukses
       sessionStorage.removeItem("googleData");
       router.push("/login");
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Gagal melengkapi profil";
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -74,12 +85,11 @@ export default function CompleteProfileForm() {
           </p>
           <div className="flex items-center gap-2">
             <Image
-              src={
-                "https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-              }
-              className="w-3 h-3"
+              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+              width={12}
+              height={12}
               alt="G"
-            ></Image>
+            />
             <p className="text-xs font-semibold text-zinc-600 truncate">
               {googleInfo?.email}
             </p>

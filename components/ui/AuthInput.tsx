@@ -1,18 +1,25 @@
 "use client";
 import React from 'react';
 import { IconType } from "react-icons";
+import { UseFormRegisterReturn } from "react-hook-form";
 
 interface AuthInputProps {
   label: string;
   placeholder: string;
   type?: string;
-  register: any;
+  register: UseFormRegisterReturn; // Ganti any dengan tipe resmi dari react-hook-form
   icon?: IconType;
 }
 
-export default function AuthInput({ label, placeholder, type = "text", register, icon: Icon }: AuthInputProps) {
+export default function AuthInput({ 
+  label, 
+  placeholder, 
+  type = "text", 
+  register, 
+  icon: Icon 
+}: AuthInputProps) {
   return (
-    <div className="mb-4 w-full text-left">
+    <div className="mb-4 w-full text-left font-sans">
       <label className="block text-zinc-700 font-bold text-sm mb-2">{label}</label>
       <div className="relative">
         {Icon && (

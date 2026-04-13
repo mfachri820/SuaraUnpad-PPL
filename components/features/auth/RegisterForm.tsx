@@ -1,21 +1,21 @@
-// components/features/auth/RegisterForm.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { FiUser, FiMail, FiLock } from "react-icons/fi";
 import AuthInput from "@/components/ui/AuthInput";
 import Cookies from "js-cookie";
 import { GoogleLogin } from "@react-oauth/google";
 
-// Import fungsi dari file terpisah yang baru kita buat
-import { verifyGoogleAuth, registerManual } from "./AuthFetch";
+// Cukup satu baris import dari AuthFetch.ts
+import { verifyGoogleAuth, registerManual, RegisterPayload } from "./AuthFetch";
 
 export default function RegisterForm() {
-  const { register, handleSubmit, setValue } = useForm();
+  // Berikan tipe pada useForm agar zero-any
+  const { register, handleSubmit } = useForm<RegisterPayload>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGoogleRegistration, setIsGoogleRegistration] = useState(false);
+  const [isGoogleRegistration] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
 
@@ -35,33 +35,38 @@ export default function RegisterForm() {
             "googleData",
             JSON.stringify(result.data.googleData)
           );
-          alert(
-            "Akun Google valid! Sedikit lagi, yuk lengkapi data akademikmu."
-          );
+          alert("Akun Google valid! Sedikit lagi, yuk lengkapi data akademikmu.");
           router.push("/complete-profile");
         } else {
-          // Jika ternyata user lama, langsung login
           Cookies.set("token", result.data.token, { expires: 7, path: "/" });
           alert("Selamat datang kembali!");
           router.push("/home");
         }
       }
-    } catch (error: any) {
-      alert(error.message || "Gagal koneksi ke server");
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan";
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // 2. Logic Register Manual
-  const onRegister = async (data: any) => {
+  // 2. Logic Register Manual (Tanpa any & Lolos Prisma)
+  const onRegister: SubmitHandler<RegisterPayload> = async (data) => {
     setIsSubmitting(true);
     try {
-      const result = await registerManual(data);
-      alert(result.message);
+      // Pastikan payload bersih sesuai interface
+      const finalData: RegisterPayload = {
+        ...data,
+        role: "STUDENT", // Paksa role sesuai dokumentasi API
+      };
+
+      await registerManual(finalData);
+      alert("Registrasi Berhasil! 🎉");
       router.push("/login");
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Registrasi gagal";
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

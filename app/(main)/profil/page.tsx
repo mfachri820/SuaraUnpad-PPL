@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useForm } from "react-hook-form";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import { 
@@ -11,67 +11,96 @@ import {
   FiLoader, 
   FiLogOut, 
   FiChevronRight, 
-  FiInbox,
-  FiShield 
+  FiInbox
 } from "react-icons/fi";
 
+// 1. Definisi Interface untuk Type Safety
+interface StudentProfile {
+  fullName: string;
+  faculty: string;
+  major?: string;
+}
+
+interface User {
+  id: string;
+  email: string;
+  avatarUrl?: string;
+  isVerified: boolean;
+  studentProfile?: StudentProfile;
+}
+
+interface Report {
+  id: string;
+  authorId: string;
+  title: string;
+  imageUrl?: string;
+  status: 'SUBMITTED' | 'DONE';
+  createdAt: string;
+}
+
+interface Policy {
+  id: string;
+  title: string;
+}
+
+interface ProfileFormInputs {
+  fullName: string;
+  faculty: string;
+}
+
 export default function ProfilePage() {
-  const [userData, setUserData] = useState<any>(null);
-  const [myReports, setMyReports] = useState<any[]>([]);
-  const [policies, setPolicies] = useState<any[]>([]); 
+  const [userData, setUserData] = useState<User | null>(null);
+  const [myReports, setMyReports] = useState<Report[]>([]);
+  const [policies, setPolicies] = useState<Policy[]>([]); 
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   
   const router = useRouter();
-  const { register, handleSubmit, setValue } = useForm();
+  const { register, handleSubmit, setValue } = useForm<ProfileFormInputs>();
+
+  // Fungsi untuk fetch data (dipisah agar bisa dipanggil ulang setelah update)
+  const fetchData = async () => {
+    try {
+      const token = Cookies.get('token');
+      
+      const [userRes, reportRes, policyRes] = await Promise.all([
+        fetch("/api/auth/me", { headers: { "Authorization": `Bearer ${token}` } }),
+        fetch("/api/reports", { headers: { "Authorization": `Bearer ${token}` } }),
+        fetch("/api/policies", { headers: { "Authorization": `Bearer ${token}` } })
+      ]);
+
+      const [userResult, reportResult, policyResult] = await Promise.all([
+        userRes.json(), reportRes.json(), policyRes.json()
+      ]);
+
+      if (userRes.ok && reportRes.ok && policyRes.ok) {
+        setUserData(userResult.data);
+        
+        const filteredReports = reportResult.data.data.filter(
+          (r: Report) => r.authorId === userResult.data.id
+        );
+        setMyReports(filteredReports);
+        setPolicies(policyResult.data.data || []);
+
+        if (userResult.data.studentProfile) {
+          setValue("fullName", userResult.data.studentProfile.fullName);
+          setValue("faculty", userResult.data.studentProfile.faculty);
+        }
+      }
+    } catch (error) {
+      console.error("Gagal sinkronisasi data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = Cookies.get('token');
-        
-        // 1. Fetch Data Diri
-        const userRes = await fetch("/api/auth/me", {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const userResult = await userRes.json();
-        
-        // 2. Fetch Semua Laporan
-        const reportRes = await fetch("/api/reports", {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const reportResult = await reportRes.json();
-
-        // 3. Fetch Kebijakan
-        const policyRes = await fetch("/api/policies", {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const policyResult = await policyRes.json();
-
-        if (userRes.ok && reportRes.ok && policyRes.ok) {
-          setUserData(userResult.data);
-          
-          const filteredReports = reportResult.data.data.filter(
-            (r: any) => r.authorId === userResult.data.id
-          );
-          setMyReports(filteredReports);
-          setPolicies(policyResult.data.data || []);
-
-          // Set form defaults sesuai struktur API: studentProfile.fullName
-          setValue("fullName", userResult.data.studentProfile?.fullName);
-          setValue("faculty", userResult.data.studentProfile?.faculty);
-        }
-      } catch (error) {
-        console.error("Gagal sinkronisasi API");
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchData();
   }, [setValue]);
 
-const onUpdateProfile = async (data: any) => {
+  // 2. Handler Update Profil (Tanpa 'any' & Re-fetch Data)
+  const onUpdateProfile: SubmitHandler<ProfileFormInputs> = async (data) => {
     setIsUpdating(true);
     try {
       const token = Cookies.get('token');
@@ -90,26 +119,17 @@ const onUpdateProfile = async (data: any) => {
       const result = await res.json();
 
       if (!res.ok) {
-        // Biar kita tahu error aslinya apa dari backend
         throw new Error(result.message || "Gagal update profil");
       }
       
-      // Update state lokal: Karena response PATCH kamu memberikan data profil terbaru
-      // kita tempelkan ke studentProfile di state userData
-      setUserData((prev: any) => ({
-        ...prev,
-        studentProfile: {
-          ...prev.studentProfile,
-          fullName: result.data.fullName,
-          faculty: result.data.faculty
-        }
-      }));
+      // RE-FETCH DATA: Menjamin data di UI sinkron 100% dengan Database
+      await fetchData();
 
       setIsEditing(false);
       alert("Profil berhasil diperbarui!");
-    } catch (error: any) {
-      // Menampilkan pesan error spesifik dari backend (misal: "Nama terlalu pendek")
-      alert(error.message);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Terjadi kesalahan";
+      alert(message);
     } finally {
       setIsUpdating(false);
     }
@@ -144,7 +164,6 @@ const onUpdateProfile = async (data: any) => {
             )}
           </div>
 
-          {/* MENAMPILKAN NAMA USER DI SINI */}
           <h2 className="text-2xl font-bold text-zinc-900 mb-1">
             {userData?.studentProfile?.fullName || "Mahasiswa Unpad"}
           </h2>
@@ -186,7 +205,6 @@ const onUpdateProfile = async (data: any) => {
           </button>
         </div>
 
-        {/* List Laporan - Maksimal 3 */}
         <div className="space-y-4 mb-10">
           {myReports.length > 0 ? (
             myReports.slice(0, 3).map((report) => (
@@ -200,7 +218,7 @@ const onUpdateProfile = async (data: any) => {
                     <img src={report.imageUrl} className="w-full h-full object-cover" alt="Report" />
                   ) : (
                     <div className="w-full h-full bg-[#E8A34D]/5 flex items-center justify-center text-[#E8A34D]">
-                       <FiInbox size={24} />
+                        <FiInbox size={24} />
                     </div>
                   )}
                 </div>
@@ -209,8 +227,8 @@ const onUpdateProfile = async (data: any) => {
                     <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg uppercase ${report.status === 'SUBMITTED' ? 'bg-orange-50 text-[#E8A34D]' : 'bg-green-50 text-green-600'}`}>
                       {report.status === 'SUBMITTED' ? 'Terkirim' : 'Selesai'}
                     </span>
-                    <span className="text-[10px] text-zinc-400">
-                       {new Date(report.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                    <span className="text-[10px] text-zinc-400 font-medium">
+                        {new Date(report.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>
                   <h4 className="font-bold text-base text-zinc-800 leading-tight group-hover:text-[#2682F9] transition-colors line-clamp-1">
@@ -221,7 +239,7 @@ const onUpdateProfile = async (data: any) => {
               </div>
             ))
           ) : (
-            <div className="bg-white py-10 rounded-[32px] border border-zinc-50 text-center">
+            <div className="bg-white py-10 rounded-[32px] border border-zinc-50 text-center shadow-sm">
               <p className="text-zinc-400 text-sm italic">Belum ada riwayat laporan</p>
             </div>
           )}
@@ -233,18 +251,18 @@ const onUpdateProfile = async (data: any) => {
             <div className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl border border-zinc-100">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-black">Ubah Profil</h3>
-                <button onClick={() => setIsEditing(false)} className="text-zinc-400"><FiX size={24}/></button>
+                <button onClick={() => setIsEditing(false)} className="text-zinc-400 hover:text-black transition-colors"><FiX size={24}/></button>
               </div>
               <form onSubmit={handleSubmit(onUpdateProfile)} className="space-y-4">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Nama Lengkap</label>
-                  <input {...register("fullName")} className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:border-[#E8A34D] outline-none text-sm text-black" />
+                  <input {...register("fullName")} className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:border-[#E8A34D] focus:bg-white outline-none text-sm text-black transition-all" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Fakultas</label>
-                  <input {...register("faculty")} className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:border-[#E8A34D] outline-none text-sm text-black" />
+                  <input {...register("faculty")} className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:border-[#E8A34D] focus:bg-white outline-none text-sm text-black transition-all" />
                 </div>
-                <button disabled={isUpdating} className="w-full py-4 bg-[#E8A34D] text-white rounded-xl font-bold shadow-lg shadow-orange-200 mt-4 active:scale-95 transition-all">
+                <button disabled={isUpdating} className="w-full py-4 bg-[#E8A34D] text-white rounded-xl font-bold shadow-lg shadow-orange-200 mt-4 active:scale-95 transition-all disabled:opacity-50">
                   {isUpdating ? <FiLoader className="animate-spin mx-auto"/> : "Simpan Perubahan"}
                 </button>
               </form>
