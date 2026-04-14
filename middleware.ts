@@ -19,7 +19,8 @@ const publicApiPaths = [
 // Daftar halaman UI/Frontend yang boleh diakses TANPA login
 const publicUIPaths = [
   "/login",
-  "/register"
+  "/register",
+  "/complete-profile",
 ];
 
 export async function middleware(request: NextRequest) {

@@ -9,6 +9,12 @@ export interface Author {
   adminProfile: { fullName: string } | null;
 }
 
+// Tambahkan interface untuk data upvote dari backend
+export interface ReportUpvote {
+  userId: string;
+  reportId: string;
+}
+
 export interface Report {
   id: string;
   authorId: string;
@@ -22,11 +28,19 @@ export interface Report {
   createdAt: string;
   updatedAt: string;
   author: Author;
+  reportUpvotes?: ReportUpvote[]; // Tambahkan ini sesuai struktur DB
   hasUpvoted?: boolean;
 }
 
+// Interface untuk standard response API
+export interface ApiResponse<T> {
+  status: string;
+  message: string;
+  data: T | { data: T };
+}
+
 // FUNGSI HELPER: Membongkar token
-export const getUserIdFromToken = (token: string | undefined) => {
+export const getUserIdFromToken = (token: string | undefined): string | null => {
   if (!token) return null;
   try {
     const payload = token.split(".")[1];
@@ -42,7 +56,7 @@ export const getUserIdFromToken = (token: string | undefined) => {
 export const fetchHomeReports = async (
   token: string | undefined,
   currentUserId: string | null
-) => {
+): Promise<Report[]> => {
   const res = await fetch("/api/reports", {
     method: "GET",
     headers: {
@@ -54,14 +68,15 @@ export const fetchHomeReports = async (
   if (!res.ok) throw new Error("Gagal mengambil data API");
 
   const json = await res.json();
-  const rawReports = json?.data?.data || json?.data || json;
+  
+  // Normalisasi data dari berbagai kemungkinan struktur backend
+  const rawReports: Report[] = json?.data?.data || json?.data || json;
 
   if (Array.isArray(rawReports)) {
-    // Looping pengecekan upvote dipindah ke sini agar UI component bersih
-    return rawReports.map((report: any) => {
+    return rawReports.map((report: Report) => {
       const hasUserVoted =
         report.reportUpvotes?.some(
-          (vote: any) => vote.userId === currentUserId
+          (vote: ReportUpvote) => vote.userId === currentUserId
         ) || false;
 
       return {
@@ -77,7 +92,7 @@ export const fetchHomeReports = async (
 export const toggleUpvoteApi = async (
   reportId: string,
   token: string | undefined
-) => {
+): Promise<any> => {
   const res = await fetch(`/api/reports/${reportId}/upvote`, {
     method: "POST",
     headers: {
