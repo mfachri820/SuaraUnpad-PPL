@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useForm } from "react-hook-form";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import { 
@@ -11,67 +11,94 @@ import {
   FiLoader, 
   FiLogOut, 
   FiChevronRight, 
-  FiInbox,
-  FiShield 
+  FiInbox 
 } from "react-icons/fi";
 
+// --- 1. DEFINISI INTERFACES (LINTER FRIENDLY) ---
+interface StudentProfile {
+  fullName: string;
+  faculty: string;
+}
+
+interface UserData {
+  id: string;
+  avatarUrl?: string;
+  isVerified?: boolean;
+  studentProfile: StudentProfile;
+}
+
+interface Report {
+  id: string;
+  authorId: string;
+  title: string;
+  status: 'SUBMITTED' | 'RESOLVED' | string;
+  imageUrl?: string;
+  createdAt: string;
+}
+
+interface Policy {
+  id: string;
+}
+
+interface EditProfileInputs {
+  fullName: string;
+  faculty: string;
+}
+
 export default function ProfilePage() {
-  const [userData, setUserData] = useState<any>(null);
-  const [myReports, setMyReports] = useState<any[]>([]);
-  const [policies, setPolicies] = useState<any[]>([]); 
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [myReports, setMyReports] = useState<Report[]>([]);
+  const [policies, setPolicies] = useState<Policy[]>([]); 
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   
   const router = useRouter();
-  const { register, handleSubmit, setValue } = useForm();
+  const { register, handleSubmit, setValue } = useForm<EditProfileInputs>();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = Cookies.get('token');
+        if (!token) return router.push('/login');
         
-        // 1. Fetch Data Diri
-        const userRes = await fetch("/api/auth/me", {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const userResult = await userRes.json();
-        
-        // 2. Fetch Semua Laporan
-        const reportRes = await fetch("/api/reports", {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
-        const reportResult = await reportRes.json();
+        // Parallel fetch biar cepet
+        const [userRes, reportRes, policyRes] = await Promise.all([
+          fetch("/api/auth/me", { headers: { "Authorization": `Bearer ${token}` } }),
+          fetch("/api/reports", { headers: { "Authorization": `Bearer ${token}` } }),
+          fetch("/api/policies", { headers: { "Authorization": `Bearer ${token}` } })
+        ]);
 
-        // 3. Fetch Kebijakan
-        const policyRes = await fetch("/api/policies", {
-          headers: { "Authorization": `Bearer ${token}` }
-        });
+        const userResult = await userRes.json();
+        const reportResult = await reportRes.json();
         const policyResult = await policyRes.json();
 
         if (userRes.ok && reportRes.ok && policyRes.ok) {
-          setUserData(userResult.data);
+          const user = userResult.data as UserData;
+          setUserData(user);
           
-          const filteredReports = reportResult.data.data.filter(
-            (r: any) => r.authorId === userResult.data.id
-          );
-          setMyReports(filteredReports);
+          // Filter laporan milik sendiri
+          const allReports = reportResult.data.data as Report[];
+          const filtered = allReports.filter(r => r.authorId === user.id);
+          
+          setMyReports(filtered);
           setPolicies(policyResult.data.data || []);
 
-          // Set form defaults sesuai struktur API: studentProfile.fullName
-          setValue("fullName", userResult.data.studentProfile?.fullName);
-          setValue("faculty", userResult.data.studentProfile?.faculty);
+          // Set form defaults
+          setValue("fullName", user.studentProfile?.fullName || "");
+          setValue("faculty", user.studentProfile?.faculty || "");
         }
       } catch (error) {
-        console.error("Gagal sinkronisasi API");
+        console.error("Sync error");
       } finally {
         setIsLoading(false);
       }
     };
     fetchData();
-  }, [setValue]);
+  }, [router, setValue]);
 
-const onUpdateProfile = async (data: any) => {
+  // 2. FUNGSI UPDATE TANPA ANY
+  const onUpdateProfile: SubmitHandler<EditProfileInputs> = async (data) => {
     setIsUpdating(true);
     try {
       const token = Cookies.get('token');
@@ -81,35 +108,30 @@ const onUpdateProfile = async (data: any) => {
           "Content-Type": "application/json", 
           "Authorization": `Bearer ${token}` 
         },
-        body: JSON.stringify({
-          fullName: data.fullName,
-          faculty: data.faculty
-        }),
+        body: JSON.stringify(data),
       });
 
       const result = await res.json();
-
-      if (!res.ok) {
-        // Biar kita tahu error aslinya apa dari backend
-        throw new Error(result.message || "Gagal update profil");
-      }
+      if (!res.ok) throw new Error(result.message || "Gagal update profil");
       
-      // Update state lokal: Karena response PATCH kamu memberikan data profil terbaru
-      // kita tempelkan ke studentProfile di state userData
-      setUserData((prev: any) => ({
-        ...prev,
-        studentProfile: {
-          ...prev.studentProfile,
-          fullName: result.data.fullName,
-          faculty: result.data.faculty
-        }
-      }));
+      // UPDATE STATE LOKAL AGAR LANGSUNG BERUBAH
+      setUserData((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          studentProfile: {
+            ...prev.studentProfile,
+            fullName: data.fullName,
+            faculty: data.faculty
+          }
+        };
+      });
 
       setIsEditing(false);
       alert("Profil berhasil diperbarui!");
-    } catch (error: any) {
-      // Menampilkan pesan error spesifik dari backend (misal: "Nama terlalu pendek")
-      alert(error.message);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
+      alert(msg);
     } finally {
       setIsUpdating(false);
     }
@@ -126,7 +148,7 @@ const onUpdateProfile = async (data: any) => {
       <main className="max-w-xl mx-auto w-full px-6 py-10">
         
         {/* Header Profil */}
-        <div className="flex flex-col items-center mb-10">
+        <div className="flex flex-col items-center mb-10 text-center">
           <div className="relative mb-6">
             <div className="w-28 h-28 rounded-full border-4 border-white shadow-lg overflow-hidden bg-zinc-100 flex items-center justify-center">
               {userData?.avatarUrl ? (
@@ -144,16 +166,15 @@ const onUpdateProfile = async (data: any) => {
             )}
           </div>
 
-          {/* MENAMPILKAN NAMA USER DI SINI */}
           <h2 className="text-2xl font-bold text-zinc-900 mb-1">
             {userData?.studentProfile?.fullName || "Mahasiswa Unpad"}
           </h2>
 
-          <div className="px-4 py-1.5 bg-[#FFF8F0] rounded-full border border-[#E8A34D]/10 mb-8">
+          <div className="px-4 py-1.5 bg-[#FFF8F0] rounded-full border border-[#E8A34D]/10 mb-8 inline-block">
             <p className="text-[#E8A34D] text-[10px] font-extrabold uppercase tracking-widest">Mahasiswa Terverifikasi</p>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex gap-3 justify-center">
             <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-6 py-3 bg-white rounded-full shadow-sm border border-zinc-100 text-sm font-bold text-zinc-700 active:scale-95 transition-all">
               <FiEdit2 size={16} className="text-[#E8A34D]" /> Edit Profil
             </button>
@@ -175,33 +196,21 @@ const onUpdateProfile = async (data: any) => {
           </div>
         </div>
 
-        {/* Laporanku Section Header */}
         <div className="flex justify-between items-center mb-6 px-1">
           <h3 className="text-xl font-bold text-zinc-900">Laporanku</h3>
-          <button 
-            onClick={() => router.push('/profil/my-report')} 
-            className="text-[#E8A34D] text-xs font-bold uppercase tracking-wider"
-          >
-            Lihat Semua
-          </button>
+          <button onClick={() => router.push('/profil/my-report')} className="text-[#E8A34D] text-xs font-bold uppercase tracking-wider">Lihat Semua</button>
         </div>
 
-        {/* List Laporan - Maksimal 3 */}
+        {/* List Laporan */}
         <div className="space-y-4 mb-10">
           {myReports.length > 0 ? (
             myReports.slice(0, 3).map((report) => (
-              <div 
-                key={report.id}
-                onClick={() => router.push('/profil/my-report')}
-                className="bg-white p-5 rounded-[28px] border border-zinc-50 shadow-sm flex items-center gap-5 hover:border-[#E8A34D]/20 cursor-pointer group transition-all"
-              >
+              <div key={report.id} onClick={() => router.push('/profil/my-report')} className="bg-white p-5 rounded-[28px] border border-zinc-50 shadow-sm flex items-center gap-5 hover:border-[#E8A34D]/20 cursor-pointer group transition-all">
                 <div className="w-16 h-16 bg-zinc-50 rounded-2xl flex-shrink-0 overflow-hidden">
                   {report.imageUrl ? (
                     <img src={report.imageUrl} className="w-full h-full object-cover" alt="Report" />
                   ) : (
-                    <div className="w-full h-full bg-[#E8A34D]/5 flex items-center justify-center text-[#E8A34D]">
-                       <FiInbox size={24} />
-                    </div>
+                    <div className="w-full h-full bg-[#E8A34D]/5 flex items-center justify-center text-[#E8A34D]"><FiInbox size={24} /></div>
                   )}
                 </div>
                 <div className="flex-grow">
@@ -209,42 +218,36 @@ const onUpdateProfile = async (data: any) => {
                     <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg uppercase ${report.status === 'SUBMITTED' ? 'bg-orange-50 text-[#E8A34D]' : 'bg-green-50 text-green-600'}`}>
                       {report.status === 'SUBMITTED' ? 'Terkirim' : 'Selesai'}
                     </span>
-                    <span className="text-[10px] text-zinc-400">
-                       {new Date(report.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
-                    </span>
+                    <span className="text-[10px] text-zinc-400">{new Date(report.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
                   </div>
-                  <h4 className="font-bold text-base text-zinc-800 leading-tight group-hover:text-[#2682F9] transition-colors line-clamp-1">
-                    {report.title}
-                  </h4>
+                  <h4 className="font-bold text-base text-zinc-800 line-clamp-1">{report.title}</h4>
                 </div>
                 <FiChevronRight className="text-zinc-300 group-hover:text-[#E8A34D]" size={20} />
               </div>
             ))
           ) : (
-            <div className="bg-white py-10 rounded-[32px] border border-zinc-50 text-center">
-              <p className="text-zinc-400 text-sm italic">Belum ada riwayat laporan</p>
-            </div>
+            <div className="bg-white py-10 rounded-[32px] border border-zinc-50 text-center text-zinc-400 text-sm italic">Belum ada riwayat laporan</div>
           )}
         </div>
 
         {/* Modal Edit Profile */}
         {isEditing && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6">
-            <div className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl border border-zinc-100">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-6 text-black">
+            <div className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl">
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-black">Ubah Profil</h3>
+                <h3 className="text-xl font-bold">Ubah Profil</h3>
                 <button onClick={() => setIsEditing(false)} className="text-zinc-400"><FiX size={24}/></button>
               </div>
-              <form onSubmit={handleSubmit(onUpdateProfile)} className="space-y-4">
+              <form onSubmit={handleSubmit(onUpdateProfile)} className="space-y-4 text-black">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Nama Lengkap</label>
-                  <input {...register("fullName")} className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:border-[#E8A34D] outline-none text-sm text-black" />
+                  <label className="text-xs font-bold text-zinc-400 uppercase">Nama Lengkap</label>
+                  <input {...register("fullName", { required: true })} className="w-full px-4 py-3 bg-zinc-50 border rounded-xl outline-none focus:border-[#E8A34D]" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-zinc-400 uppercase ml-1">Fakultas</label>
-                  <input {...register("faculty")} className="w-full px-4 py-3 bg-zinc-50 border border-zinc-100 rounded-xl focus:border-[#E8A34D] outline-none text-sm text-black" />
+                  <label className="text-xs font-bold text-zinc-400 uppercase">Fakultas</label>
+                  <input {...register("faculty", { required: true })} className="w-full px-4 py-3 bg-zinc-50 border rounded-xl outline-none focus:border-[#E8A34D]" />
                 </div>
-                <button disabled={isUpdating} className="w-full py-4 bg-[#E8A34D] text-white rounded-xl font-bold shadow-lg shadow-orange-200 mt-4 active:scale-95 transition-all">
+                <button disabled={isUpdating} className="w-full py-4 bg-[#E8A34D] text-white rounded-xl font-bold shadow-lg mt-4 active:scale-95 transition-all">
                   {isUpdating ? <FiLoader className="animate-spin mx-auto"/> : "Simpan Perubahan"}
                 </button>
               </form>

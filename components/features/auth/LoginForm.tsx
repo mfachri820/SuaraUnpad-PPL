@@ -1,17 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import AuthInput from "@/components/ui/AuthInput";
 import Cookies from "js-cookie";
 import { GoogleLogin } from "@react-oauth/google";
 
-// Import fungsi API dari AuthFetch.ts
-import { verifyGoogleAuth, loginManual } from "./AuthFetch";
+// Import interface dan fungsi API
+import { verifyGoogleAuth, loginManual, LoginPayload } from "./AuthFetch";
 
 export default function LoginForm() {
-  const { register, handleSubmit } = useForm();
+  // Tambahkan generic <LoginPayload> pada useForm
+  const { register, handleSubmit } = useForm<LoginPayload>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
@@ -20,63 +21,75 @@ export default function LoginForm() {
     setIsMounted(true);
   }, []);
 
-  // 1. FUNGSI LOGIN MANUAL
-  const onLogin = async (data: any) => {
+  // 1. FUNGSI LOGIN MANUAL (Tanpa any)
+  const onLogin: SubmitHandler<LoginPayload> = async (data) => {
     setIsSubmitting(true);
     try {
       const result = await loginManual(data);
 
-      // Simpan ke cookie
-      Cookies.set("token", result.data.token, { expires: 7, path: "/" });
-
-      alert(result.message);
-      router.push("/home");
-    } catch (error: any) {
-      alert(error.message);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  // 2. FUNGSI GOOGLE AUTH
-  const handleGoogleAuth = async (idToken: string) => {
-    setIsSubmitting(true);
-    try {
-      const result = await verifyGoogleAuth(idToken);
-
       if (result.status === "success") {
-        if (result.data.isNewUser) {
-          sessionStorage.setItem(
-            "googleData",
-            JSON.stringify(result.data.googleData)
-          );
-          alert(
-            "Akun Google valid! Sedikit lagi, yuk lengkapi data akademikmu."
-          );
-          router.push("/complete-profile");
-        } else {
-          Cookies.set("token", result.data.token, { expires: 7, path: "/" });
-          alert("Login berhasil! Mengalihkan ke Beranda...");
-          router.push("/home");
+        // Gunakan optional chaining untuk safety
+        const token = result.data?.token || result.token;
+        if (token) {
+          Cookies.set("token", token, { expires: 7, path: "/" });
         }
+
+        alert(result.message || "Login Berhasil!");
+        router.push("/home");
       }
-    } catch (error: any) {
-      alert(error.message || "Gagal koneksi ke server");
+    } catch (error: unknown) {
+      // Handle error tanpa any
+      const errorMessage = error instanceof Error ? error.message : "Gagal login manual";
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  // 2. FUNGSI GOOGLE AUTH (Tanpa any)
+const handleGoogleAuth = async (idToken: string) => {
+  setIsSubmitting(true);
+  try {
+    const result = await verifyGoogleAuth(idToken);
+
+    if (result.status === "success") {
+      // 1. CEK APAKAH USER BARU
+      if (result.data.isNewUser) {
+        // Simpan data dari Google ke sessionStorage buat dipake di halaman Complete Profile
+        sessionStorage.setItem(
+          "googleData",
+          JSON.stringify(result.data.googleData)
+        );
+        
+        alert("Akun Google valid! Yuk, lengkapi data akademikmu dulu.");
+        
+        // HARUS KE SINI, jangan ke /login
+        router.push("/complete-profile"); 
+      } 
+      // 2. JIKA USER LAMA (SUDAH PERNAH COMPLETE PROFILE)
+      else {
+        const token = result.data?.token || result.token;
+        if (token) {
+          Cookies.set("token", token, { expires: 7, path: "/" });
+        }
+        alert("Selamat datang kembali!");
+        router.push("/home");
+      }
+    }
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Gagal Google Auth";
+    alert(msg);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+  if (!isMounted) return null;
 
   return (
     <div className="flex min-h-screen items-center justify-center ">
       <main className="flex w-full my-10 max-w-sm flex-col p-8 bg-white border border-zinc-100 shadow-xl shadow-zinc-200/50 rounded-3xl">
         <div className="mb-10 w-full text-left">
-          {/* <button
-            onClick={() => router.back()}
-            className="text-[#E8A34D] font-bold text-sm flex items-center gap-2 mb-12"
-          >
-            <span className="text-xl">‹</span> Masuk
-          </button> */}
           <h1 className="text-4xl font-bold mb-6">
             <span className="text-[#2682F9]">Suara</span>
             <span className="text-[#E8A34D]">Unpad</span>
@@ -114,7 +127,7 @@ export default function LoginForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-[#ffb656] hover:bg-[#F99D26] hover:cursor-pointer  text-white font-bold py-4 rounded-xl transition-all disabled:opacity-50 active:scale-95"
+            className="w-full bg-[#ffb656] hover:bg-[#F99D26] hover:cursor-pointer text-white font-bold py-4 rounded-xl transition-all disabled:opacity-50 active:scale-95"
           >
             {isSubmitting ? "Memproses..." : "Masuk"}
           </button>
@@ -130,22 +143,18 @@ export default function LoginForm() {
         </div>
 
         <div className="flex justify-center w-full min-h-[44px]">
-          {isMounted ? (
-            <GoogleLogin
-              onSuccess={(credentialResponse) => {
-                if (credentialResponse.credential) {
-                  handleGoogleAuth(credentialResponse.credential);
-                }
-              }}
-              onError={() => alert("Login Google Gagal!")}
-              shape="rectangular"
-              text="signin_with"
-              size="large"
-              width="320px"
-            />
-          ) : (
-            <div className="w-full h-11 bg-zinc-100 rounded-md animate-pulse"></div>
-          )}
+          <GoogleLogin
+            onSuccess={(credentialResponse) => {
+              if (credentialResponse.credential) {
+                handleGoogleAuth(credentialResponse.credential);
+              }
+            }}
+            onError={() => alert("Login Google Gagal!")}
+            shape="rectangular"
+            text="signin_with"
+            size="large"
+            width="320px"
+          />
         </div>
 
         <div className="mt-12 text-center text-sm text-zinc-500 font-medium">
