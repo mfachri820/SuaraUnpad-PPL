@@ -11,6 +11,7 @@ const JWT_SECRET = new TextEncoder().encode(
 const publicApiPaths = [
   "/api/auth/login",
   "/api/auth/register",
+  "/api/auth/verify",
   "/api/donations/webhook",
   "/api/auth/google",
   "/api/webhooks/midtrans" 

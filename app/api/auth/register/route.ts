@@ -3,18 +3,24 @@ import { successResponse, errorResponse } from '@/lib/apiResponse';
 
 export async function POST(request: Request) {
   try {
-    // Casting tipe request JSON ke interface kita
     const body = (await request.json()) as RegisterPayload;
     
-    // Validasi basic
-    if (!body.email || !body.password || !body.role || !body.fullName) {
-      return errorResponse('Data tidak lengkap (email, password, role, fullName wajib diisi)', 400);
+    // Password wajib JIKA bukan pendaftaran dari Google
+    if (!body.email || !body.role || !body.fullName) {
+      return errorResponse('Data tidak lengkap (email, role, fullName wajib diisi)', 400);
+    }
+    if (!body.isGoogleAuth && !body.password) {
+      return errorResponse('Password wajib diisi untuk pendaftaran manual', 400);
     }
 
     const newUser = await authService.register(body);
-    return successResponse(newUser, 'Registrasi berhasil', 201);
+    
+    const msg = body.isGoogleAuth 
+      ? 'Registrasi Google berhasil' 
+      : 'Registrasi berhasil. Silakan cek email Anda untuk verifikasi.';
+      
+    return successResponse(newUser, msg, 201);
   } catch (error: unknown) {
-    // Ganti 'any' dengan 'unknown' dan pastikan itu Error object
     const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan pada server';
     return errorResponse(errorMessage, 400);
   }

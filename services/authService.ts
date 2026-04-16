@@ -3,14 +3,25 @@ import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 import { OAuth2Client } from 'google-auth-library';
+import nodemailer from 'nodemailer';
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key');
 const googleClient = new OAuth2Client(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
 
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
 // Karena linter, butuh bikin interface buat replace 'any'
 export interface RegisterPayload {
   email: string;
-  password: string;
+  password: string; // Buat opsional karena user Google tidak punya password
   role: 'STUDENT' | 'LECTURER' | 'ADMIN';
   fullName: string;
   studentId?: string;
@@ -18,6 +29,7 @@ export interface RegisterPayload {
   department?: string;
   faculty?: string;
   major?: string;
+  isGoogleAuth?: boolean; // Penanda apakah dari Google
 }
 
 export interface UpdateProfilePayload {
@@ -31,8 +43,7 @@ export interface UpdateProfilePayload {
 export const authService = {
   // Ganti tipe data 'any' jadi 'RegisterPayload'
   async register(data: RegisterPayload) {
-    const { email, password, role, fullName, studentId, employeeId, department, faculty, major } = data;
-
+  const { email, password, role, fullName, studentId, employeeId, department, faculty, major, isGoogleAuth } = data;
     // Cek email apakah sudah dipakai
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) throw new Error('Email sudah terdaftar');
@@ -66,6 +77,33 @@ export const authService = {
         createdAt: true
       }
     });
+    // --- LOGIKA PENGIRIMAN EMAIL VERIFIKASI (HANYA UNTUK MANUAL REGISTER) ---
+    if (!isGoogleAuth) {
+      // 1. Buat Token Verifikasi khusus (berlaku 1 jam)
+      const verifyToken = await new SignJWT({ userId: newUser.id, action: 'verify_email' })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('1h')
+        .sign(JWT_SECRET);
+
+      // 2. Buat URL Verifikasi
+      const verificationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/verify?token=${verifyToken}`;
+
+      // 3. Kirim Email
+      await transporter.sendMail({
+        from: `"SuaraUnpad" <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: "Verifikasi Email Akun SuaraUnpad",
+        html: `
+          <div style="font-family: sans-serif; padding: 20px;">
+            <h2>Selamat datang, ${fullName}!</h2>
+            <p>Terima kasih telah mendaftar di SuaraUnpad. Tinggal satu langkah lagi untuk mengaktifkan akun Anda.</p>
+            <a href="${verificationUrl}" style="background-color: #2682F9; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin-top: 10px;">Verifikasi Email Saya</a>
+            <p style="margin-top: 20px; font-size: 12px; color: gray;">Link ini hanya berlaku selama 1 jam.</p>
+          </div>
+        `,
+      });
+    }
 
     return newUser;
   },
