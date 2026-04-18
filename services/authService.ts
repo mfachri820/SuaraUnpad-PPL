@@ -122,7 +122,7 @@ export const authService = {
     if (!isMatch) throw new Error('Email atau password salah');
 
     // Buat JWT Token (menggunakan jose)
-    const token = await new SignJWT({ userId: user.id, role: user.role })
+    const token = await new SignJWT({ userId: user.id, role: user.role, isVerified: user.isVerified })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
       .setExpirationTime('7d') // Token berlaku 7 hari
@@ -153,7 +153,21 @@ export const authService = {
 
     // 3. SKENARIO A: User sudah ada -> Langsung Login!
     if (user) {
-      const token = await new SignJWT({ userId: user.id, role: user.role })
+      // Pastikan isVerified jadi true karena dia berhasil login via Google
+      if (!user.isVerified) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { isVerified: true }
+        });
+        user.isVerified = true; // Sinkronisasi objek lokal
+      }
+
+      // BUAT TOKEN DENGAN MENYERTAKAN isVerified
+      const token = await new SignJWT({ 
+          userId: user.id, 
+          role: user.role, 
+          isVerified: user.isVerified // <-- WAJIB MASUK KE SINI
+        })  
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('7d')
