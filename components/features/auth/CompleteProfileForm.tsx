@@ -1,3 +1,4 @@
+// components/features/auth/CompleteProfileForm.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -31,6 +32,14 @@ export default function CompleteProfileForm() {
       // Set value form secara manual dari data session
       setValue("fullName", parsed.fullName);
       setValue("email", parsed.email);
+
+      // 🌟 DETEKSI DOMAIN GOOGLE 🌟
+      const domain = parsed.email.split("@")[1];
+      if (domain === "unpad.ac.id") {
+        setUserRole("LECTURER");
+      } else {
+        setUserRole("STUDENT");
+      }
     } else {
       router.push("/login");
     }
@@ -53,6 +62,8 @@ export default function CompleteProfileForm() {
       setIsSubmitting(false);
     }
   };
+
+  if (!userRole) return null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white font-sans p-4 text-black">
@@ -92,24 +103,37 @@ export default function CompleteProfileForm() {
           onSubmit={handleSubmit(onCompleteProfile)}
           className="w-full space-y-2"
         >
-          <AuthInput
-            label="NPM (Nomor Pokok Mahasiswa)"
-            icon={FiHash}
-            placeholder="140810230041"
-            register={register("studentId", { required: true })}
-          />
+          {userRole === "LECTURER" ? (
+            <AuthInput
+              label="NIP / NIDN"
+              icon={FiHash}
+              placeholder="198001012005011001"
+              register={register("employeeId", { required: true })}
+            />
+          ) : (
+            <AuthInput
+              label="NPM (Nomor Pokok Mahasiswa)"
+              icon={FiHash}
+              placeholder="140810230041"
+              register={register("studentId", { required: true })}
+            />
+          )}
+
           <AuthInput
             label="Fakultas"
             icon={FiBriefcase}
             placeholder="FMIPA"
             register={register("faculty", { required: true })}
           />
-          <AuthInput
-            label="Program Studi"
-            icon={FiBookOpen}
-            placeholder="Teknik Informatika"
-            register={register("major", { required: true })}
-          />
+
+          {userRole === "STUDENT" && (
+            <AuthInput
+              label="Program Studi"
+              icon={FiBookOpen}
+              placeholder="Teknik Informatika"
+              register={register("major", { required: true })}
+            />
+          )}
 
           <button
             type="submit"

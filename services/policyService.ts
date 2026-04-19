@@ -1,6 +1,6 @@
-import { prisma } from '@/lib/prisma';
-import { PolicyStatus } from '@prisma/client';
-import { VoteChoice } from '@prisma/client';
+import { prisma } from "@/lib/prisma";
+import { PolicyStatus } from "@prisma/client";
+import { VoteChoice } from "@prisma/client";
 
 // Interface biar ga type any
 export interface CreatePolicyPayload {
@@ -16,41 +16,80 @@ export const policyService = {
       data: {
         authorId: authorId,
         title: data.title,
-        content: data.content,
+        content: data.content
         // status otomatis DRAFT berkat skema Prisma
-      },
+      }
     });
 
     return newPolicy;
   },
 
   // Mengambil Daftar Kebijakan (Bisa difilter berdasarkan status)
-  async getPolicies(statusFilter?: PolicyStatus) {
+  // Mengambil Daftar Kebijakan (Bisa difilter berdasarkan status & Role)
+  async getPolicies(
+    statusFilter?: PolicyStatus,
+    currentUserId?: string | null,
+    currentUserRole?: string | null
+  ) {
+    // 🌟 LOGIKA FILTER ROLE:
+    // Jika bukan Dosen/Admin, paksa agar hanya bisa melihat ACTIVE atau CLOSED
+    const whereClause: any = statusFilter ? { status: statusFilter } : {};
+
+    if (currentUserRole !== "ADMIN" && currentUserRole !== "LECTURER") {
+      whereClause.status =
+        statusFilter && statusFilter !== "DRAFT"
+          ? statusFilter
+          : { in: ["ACTIVE", "CLOSED"] };
+    }
+
     const policies = await prisma.policy.findMany({
-      where: statusFilter ? { status: statusFilter } : undefined,
-      orderBy: { createdAt: 'desc' }, // Yang terbaru di atas
+      where: whereClause,
+      orderBy: { createdAt: "desc" }, // Yang terbaru di atas
       include: {
-        // Ambil data pembuat kebijakan (Admin/Dosen)
         author: {
           select: {
             id: true,
             email: true,
             avatarUrl: true,
             adminProfile: { select: { fullName: true } },
-            lecturerProfile: { select: { fullName: true } },
+            lecturerProfile: { select: { fullName: true } }
           }
         },
-        // Ambil total jumlah partisipasi vote (opsional tapi bagus untuk UI)
-        _count: {
-          select: { votes: true }
+        // 🌟 AMBIL DATA VOTE UNTUK DIHITUNG
+        votes: {
+          select: { userId: true, choice: true }
         }
       }
     });
 
-    return policies;
+    // FORMAT DATA UNTUK FRONTEND (Agar angka tidak reset)
+    return policies.map((policy) => {
+      const agreeCount = policy.votes.filter(
+        (v) => v.choice === "AGREE"
+      ).length;
+      const disagreeCount = policy.votes.filter(
+        (v) => v.choice === "DISAGREE"
+      ).length;
+      const userVoteObj = currentUserId
+        ? policy.votes.find((v) => v.userId === currentUserId)
+        : null;
+
+      const { votes, ...policyData } = policy;
+
+      return {
+        ...policyData,
+        agreeCount,
+        disagreeCount,
+        userVote: userVoteObj ? userVoteObj.choice : null
+      };
+    });
   },
 
-  async getPolicyById(id: string) {
+  async getPolicyById(
+    id: string,
+    currentUserId?: string | null,
+    currentUserRole?: string | null
+  ) {
     const policy = await prisma.policy.findUnique({
       where: { id: id },
       include: {
@@ -60,23 +99,36 @@ export const policyService = {
             email: true,
             avatarUrl: true,
             adminProfile: { select: { fullName: true } },
-            lecturerProfile: { select: { fullName: true } },
+            lecturerProfile: { select: { fullName: true } }
           }
         },
-        // Hitung statistik VOTE (Berapa yang setuju, berapa yang tidak)
         votes: {
-          select: { choice: true }
+          select: { userId: true, choice: true }
         }
       }
     });
 
-    if (!policy) throw new Error('Kebijakan tidak ditemukan');
+    if (!policy) throw new Error("Kebijakan tidak ditemukan");
 
-    // Hitung statistik agree/disagree sebelum dikirim ke Frontend
-    const agreeCount = policy.votes.filter(v => v.choice === 'AGREE').length;
-    const disagreeCount = policy.votes.filter(v => v.choice === 'DISAGREE').length;
+    // 🌟 PROTEKSI DETAIL: Mahasiswa dilarang buka URL detail jika statusnya DRAFT
+    if (
+      policy.status === "DRAFT" &&
+      currentUserRole !== "ADMIN" &&
+      currentUserRole !== "LECTURER"
+    ) {
+      throw new Error(
+        "Akses ditolak. Kebijakan ini masih dalam tahap rancangan."
+      );
+    }
 
-    // Hapus array votes asli agar response JSON tidak terlalu berat
+    const agreeCount = policy.votes.filter((v) => v.choice === "AGREE").length;
+    const disagreeCount = policy.votes.filter(
+      (v) => v.choice === "DISAGREE"
+    ).length;
+    const userVoteObj = currentUserId
+      ? policy.votes.find((v) => v.userId === currentUserId)
+      : null;
+
     const { votes, ...policyData } = policy;
 
     return {
@@ -85,21 +137,28 @@ export const policyService = {
         agree: agreeCount,
         disagree: disagreeCount,
         total: agreeCount + disagreeCount
-      }
+      },
+      // Taruh juga di luar agar komponen PolicyCard gampang bacanya
+      agreeCount,
+      disagreeCount,
+      userVote: userVoteObj ? userVoteObj.choice : null
     };
   },
 
   // Mengedit Judul, Konten, atau Mengubah Status jadi ACTIVE
-  async updatePolicy(id: string, data: { title?: string; content?: string; status?: PolicyStatus }) {
+  async updatePolicy(
+    id: string,
+    data: { title?: string; content?: string; status?: PolicyStatus }
+  ) {
     const existingPolicy = await prisma.policy.findUnique({ where: { id } });
-    if (!existingPolicy) throw new Error('Kebijakan tidak ditemukan');
+    if (!existingPolicy) throw new Error("Kebijakan tidak ditemukan");
 
     const updatedPolicy = await prisma.policy.update({
       where: { id },
       data: {
         ...(data.title && { title: data.title }),
         ...(data.content && { content: data.content }),
-        ...(data.status && { status: data.status }),
+        ...(data.status && { status: data.status })
       }
     });
 
@@ -109,21 +168,23 @@ export const policyService = {
   // FUNGSI DELETE (Hapus Kebijakan)
   async deletePolicy(id: string) {
     const existingPolicy = await prisma.policy.findUnique({ where: { id } });
-    if (!existingPolicy) throw new Error('Kebijakan tidak ditemukan');
+    if (!existingPolicy) throw new Error("Kebijakan tidak ditemukan");
 
     await prisma.policy.delete({ where: { id } });
 
-    return { message: 'Kebijakan berhasil dihapus' };
+    return { message: "Kebijakan berhasil dihapus" };
   },
 
   async submitVote(policyId: string, userId: string, choice: VoteChoice) {
     // Cek keberadaan dan status kebijakan
     const policy = await prisma.policy.findUnique({ where: { id: policyId } });
-    if (!policy) throw new Error('Kebijakan tidak ditemukan');
-    
+    if (!policy) throw new Error("Kebijakan tidak ditemukan");
+
     //Voting hanya sah jika status kebijakan ACTIVE
-    if (policy.status !== 'ACTIVE') {
-      throw new Error('Voting ditolak. Kebijakan ini sedang DRAFT atau sudah CLOSED.');
+    if (policy.status !== "ACTIVE") {
+      throw new Error(
+        "Voting ditolak. Kebijakan ini sedang DRAFT atau sudah CLOSED."
+      );
     }
 
     // (Update or Insert)
@@ -135,7 +196,8 @@ export const policyService = {
         }
       },
       update: { choice: choice }, // Jika sudah pernah vote, cukup update pilihannya
-      create: { // Jika belum pernah vote, buat baris data baru
+      create: {
+        // Jika belum pernah vote, buat baris data baru
         userId: userId,
         policyId: policyId,
         choice: choice
@@ -153,12 +215,13 @@ export const policyService = {
       }
     });
 
-    if (!existingVote) throw new Error('Anda belum memberikan vote pada kebijakan ini.');
+    if (!existingVote)
+      throw new Error("Anda belum memberikan vote pada kebijakan ini.");
 
     await prisma.vote.delete({
       where: { id: existingVote.id }
     });
 
-    return { message: 'Vote Anda berhasil dicabut' };
+    return { message: "Vote Anda berhasil dicabut" };
   }
 };
