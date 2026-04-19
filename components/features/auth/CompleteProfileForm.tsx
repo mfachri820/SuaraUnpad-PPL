@@ -55,7 +55,7 @@ export default function CompleteProfileForm() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white font-sans p-4 text-black">
+    <div className="flex min-h-screen items-center justify-center font-sans p-4 text-black">
       <main className="flex w-full max-w-sm flex-col p-8 bg-white border border-zinc-100 shadow-xl shadow-zinc-200/50 rounded-3xl">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-black leading-tight">
@@ -67,7 +67,7 @@ export default function CompleteProfileForm() {
             <span className="font-bold text-black">
               {googleInfo?.fullName?.split(" ")[0]}
             </span>
-            ! 👋 Sedikit lagi untuk bergabung di SuaraUnpad.
+            ! Sedikit lagi untuk bergabung di SuaraUnpad.
           </p>
         </div>
 
@@ -114,7 +114,7 @@ export default function CompleteProfileForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-[#E8A34D] text-white font-bold py-4 rounded-xl shadow-[0px_10px_20px_rgba(232,163,77,0.3)] mt-6 transition-all disabled:opacity-50 active:scale-95"
+            className="w-full bg-[#E8A34D] text-white font-bold py-4 rounded-xl hover:cursor-pointer hover:bg-[#e08c24] mt-6 transition-all disabled:opacity-50 active:scale-95"
           >
             {isSubmitting ? "MEMPROSES..." : "Simpan & Mulai Sekarang"}
           </button>

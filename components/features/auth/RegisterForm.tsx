@@ -24,58 +24,56 @@ export default function RegisterForm() {
   }, []);
 
   // 2. Logic Auth Google (Tanpa any)
-const handleGoogleAuth = async (idToken: string) => {
-  setIsSubmitting(true);
-  try {
-    const result = await verifyGoogleAuth(idToken);
+  const handleGoogleAuth = async (idToken: string) => {
+    setIsSubmitting(true);
+    try {
+      const result = await verifyGoogleAuth(idToken);
 
-    if (result.status === "success") {
-      // 1. CEK APAKAH USER BARU
-      if (result.data.isNewUser) {
-        // Simpan data dari Google ke sessionStorage buat dipake di halaman Complete Profile
-        sessionStorage.setItem(
-          "googleData",
-          JSON.stringify(result.data.googleData)
-        );
-        
-        alert("Akun Google valid! Yuk, lengkapi data akademikmu dulu.");
-        
-        // HARUS KE SINI, jangan ke /login
-        router.push("/complete-profile"); 
-      } 
-      // 2. JIKA USER LAMA (SUDAH PERNAH COMPLETE PROFILE)
-      else {
-        const token = result.data?.token || result.token;
-        if (token) {
-          Cookies.set("token", token, { expires: 7, path: "/" });
+      if (result.status === "success") {
+        // 1. CEK APAKAH USER BARU
+        if (result.data?.isNewUser) {
+          // Simpan data dari Google ke sessionStorage buat dipake di halaman Complete Profile
+          sessionStorage.setItem(
+            "googleData",
+            JSON.stringify(result.data?.googleData)
+          );
+
+          alert("Akun Google valid! Yuk, lengkapi data akademikmu dulu.");
+
+          // HARUS KE SINI, jangan ke /login
+          router.push("/complete-profile");
         }
-        alert("Selamat datang kembali!");
-        router.push("/home");
+        // 2. JIKA USER LAMA (SUDAH PERNAH COMPLETE PROFILE)
+        else {
+          const token = result.data?.token || result.token;
+          if (token) {
+            Cookies.set("token", token, { expires: 7, path: "/" });
+          }
+          alert("Selamat datang kembali!");
+          router.push("/home");
+        }
       }
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Gagal Google Auth";
+      alert(msg);
+    } finally {
+      setIsSubmitting(false);
     }
-  } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : "Gagal Google Auth";
-    alert(msg);
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+  };
 
   // 3. Logic Register Manual menggunakan SubmitHandler (Tanpa any)
   const onRegister: SubmitHandler<RegisterPayload> = async (data) => {
     setIsSubmitting(true);
     try {
-      // Kita pastikan role dikirim sebagai STUDENT sesuai spek backend
-      const payload = {
-        ...data,
-        role: "STUDENT"
-      };
-      
-      const result = await registerManual(payload as any);
-      alert(result.message || "Registrasi Berhasil!");
+      // Tidak perlu lagi ...data, role: "STUDENT" di sini. Langsung oper 'data'.
+      await registerManual(data);
+
+      // 🌟 PESAN BARU UNTUK CEK EMAIL
+      alert("Registrasi Berhasil! Silakan cek email Anda untuk verifikasi.");
       router.push("/login");
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Registrasi Gagal";
+      const errorMessage =
+        error instanceof Error ? error.message : "Registrasi Gagal";
       alert(errorMessage);
     } finally {
       setIsSubmitting(false);
