@@ -1,5 +1,7 @@
-import { authService, RegisterPayload } from '@/services/authService';
-import { successResponse, errorResponse } from '@/lib/apiResponse';
+// app/api/auth/register/route.ts
+
+import { authService, RegisterPayload } from "@/services/authService";
+import { successResponse, errorResponse } from "@/lib/apiResponse";
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +15,10 @@ export async function POST(request: Request) {
       return errorResponse('Password wajib diisi untuk pendaftaran manual', 400);
     }
 
+    // Timpa role dari frontend untuk keamanan mutlak
+    body.role = detectedRole;
+
+    // Lanjutkan ke service
     const newUser = await authService.register(body);
     
     const msg = body.isGoogleAuth 

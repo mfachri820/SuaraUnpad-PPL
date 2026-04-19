@@ -3,7 +3,14 @@
 import React, { useState, useEffect } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { FiUser, FiMail, FiLock } from "react-icons/fi";
+import {
+  FiUser,
+  FiMail,
+  FiLock,
+  FiHash,
+  FiBookOpen,
+  FiBriefcase
+} from "react-icons/fi";
 import AuthInput from "@/components/ui/AuthInput";
 import Cookies from "js-cookie";
 import { GoogleLogin } from "@react-oauth/google";
@@ -17,7 +24,14 @@ export default function RegisterForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleRegistration] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+
+  // State untuk role dinamis
+  const [userRole, setUserRole] = useState<"STUDENT" | "LECTURER">("STUDENT");
+
   const router = useRouter();
+
+  // Pantau apa yang diketik user di kolom email
+  const emailValue = watch("email");
 
   useEffect(() => {
     setIsMounted(true);
@@ -86,7 +100,9 @@ export default function RegisterForm() {
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-black">
             Buat <span className="text-[#2682F9]">Akun</span>{" "}
-            <span className="text-[#E8A34D]">Baru</span>
+            <span className="text-[#E8A34D]">
+              {userRole === "LECTURER" ? "Dosen" : "Baru"}
+            </span>
           </h2>
           <p className="text-zinc-500 text-sm mt-2 leading-relaxed">
             Silakan lengkapi data diri Anda untuk bergabung dalam SuaraUnpad
@@ -97,30 +113,49 @@ export default function RegisterForm() {
           <AuthInput
             label="Nama Lengkap"
             icon={FiUser}
-            placeholder="Mikel"
+            placeholder="John Doe"
             register={register("fullName", { required: true })}
           />
+
           <AuthInput
             label="Email Unpad"
             icon={FiMail}
-            placeholder="mahasiswa1@unpad.ac.id"
+            placeholder="mhs@mail.unpad.ac.id"
             register={register("email", { required: true })}
           />
-          <AuthInput
-            label="NPM (Student ID)"
-            placeholder="140810230041"
-            register={register("studentId", { required: true })}
-          />
+
+          {/* RENDER KONDISIONAL BERDASARKAN ROLE */}
+          {userRole === "LECTURER" ? (
+            <AuthInput
+              label="NIP / NIDN"
+              icon={FiHash}
+              placeholder="198001012005011001"
+              register={register("employeeId", { required: true })}
+            />
+          ) : (
+            <AuthInput
+              label="NPM (Student ID)"
+              icon={FiHash}
+              placeholder="140810230041"
+              register={register("studentId", { required: true })}
+            />
+          )}
+
           <AuthInput
             label="Fakultas"
+            icon={FiBriefcase}
             placeholder="FMIPA"
             register={register("faculty", { required: true })}
           />
-          <AuthInput
-            label="Program Studi"
-            placeholder="Teknik Informatika"
-            register={register("major", { required: true })}
-          />
+
+          {userRole === "STUDENT" && (
+            <AuthInput
+              label="Program Studi"
+              icon={FiBookOpen}
+              placeholder="Teknik Informatika"
+              register={register("major", { required: true })}
+            />
+          )}
 
           {!isGoogleRegistration && (
             <AuthInput

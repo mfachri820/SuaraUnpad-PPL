@@ -6,8 +6,9 @@ import Link from "next/link";
 import Cookies from "js-cookie";
 import { FiMapPin, FiClock, FiX } from "react-icons/fi";
 import { ImArrowUp } from "react-icons/im";
+import { Policy } from "@/components/features/policies/types";
 
-// Import tipe data dan fungsi API dari HomeFetch
+// Import tipe data dan fungsi API Laporan dari HomeFetch
 import {
   Report,
   Author,
@@ -16,30 +17,41 @@ import {
   toggleUpvoteApi
 } from "./HomeFetch";
 
+// Import fungsi API dan Card Kebijakan
+import PolicyCard from "@/components/features/policies/PolicyCard";
+import { fetchPolicies } from "@/components/features/policies/PolicyFetch";
+
 export default function HomeFeed() {
   const [reports, setReports] = useState<Report[]>([]);
+  const [policies, setPolicies] = useState<Policy[]>([]); // State untuk Kebijakan
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("newest");
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
 
   useEffect(() => {
-    const loadReports = async () => {
+    const loadData = async () => {
       try {
         const token = Cookies.get("token");
         const currentUserId = getUserIdFromToken(token);
 
-        // Panggil fungsi API yang sudah diekstrak
-        const data = await fetchHomeReports(token, currentUserId);
-        setReports(data);
+        // Fetching Paralel: Ambil Laporan & Kebijakan secara bersamaan biar ngebut!
+        const [reportsData, policiesData] = await Promise.all([
+          fetchHomeReports(token, currentUserId),
+          fetchPolicies() // Ambil data kebijakan
+        ]);
+
+        setReports(reportsData);
+        setPolicies(policiesData.slice(0, 5)); // Ambil maksimal 5 kebijakan teratas
       } catch (error) {
-        console.error("Error fetching reports:", error);
+        console.error("Error fetching data:", error);
         setReports([]);
+        setPolicies([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadReports();
+    loadData();
   }, []);
 
   const getFilteredReports = () => {
@@ -170,11 +182,42 @@ export default function HomeFeed() {
 
   return (
     <div className="w-full">
-      {/* FIX RESPONSIVE: Ubah flex-row jadi flex-col di mobile, flex-row di layar sm (tablet/PC) */}
+      {/* 🌟 SECTION 1: WACANA KEBIJAKAN 🌟 */}
+      <div className="mb-10">
+        <h2 className="text-xl font-black text-slate-800 mb-4">
+          Wacana Kebijakan Terkini
+        </h2>
+        <div className="space-y-4">
+          {isLoading ? (
+            <p className="text-center text-slate-500 text-sm py-10">
+              Memuat kebijakan...
+            </p>
+          ) : policies.length === 0 ? (
+            <p className="text-center text-slate-500 text-sm py-10">
+              Belum ada wacana kebijakan saat ini.
+            </p>
+          ) : (
+            policies.map((policy) => (
+              <PolicyCard key={policy.id} policy={policy} />
+            ))
+          )}
+        </div>
+        {!isLoading && policies.length > 5 && (
+          <Link
+            href="/policies"
+            className="mt-6 block w-full text-center bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold py-3 rounded-xl transition text-sm"
+          >
+            Lihat Semua Kebijakan
+          </Link>
+        )}
+      </div>
+
+      <hr className="border-slate-200 mb-8" />
+
+      {/* 🌟 SECTION 2: LAPORAN TERKINI 🌟 */}
       <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 className="text-xl font-black text-slate-800">Laporan Terkini</h2>
 
-        {/* FIX RESPONSIVE: Perbaikan class border select & w-full di mobile */}
         <select
           value={activeFilter}
           onChange={(e) => setActiveFilter(e.target.value)}
@@ -287,10 +330,10 @@ export default function HomeFeed() {
         </Link>
       )}
 
+      {/* MODAL POPUP DETAIL LAPORAN */}
       {selectedReport && (
-        // FIX z-index: Gunakan z-[100] karena Tailwind bawaan mentok di z-50
         <div
-          className="fixed inset-0 z-[100] overflow-y-auto bg-slate-900/60 backdrop-blur-sm"
+          className="fixed inset-0 z-100 overflow-y-auto bg-slate-900/60 backdrop-blur-sm"
           onClick={() => setSelectedReport(null)}
         >
           <div className="flex min-h-full items-center justify-center p-4 sm:p-6">

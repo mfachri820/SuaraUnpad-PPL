@@ -71,9 +71,8 @@ export const registerManual = async (
   const res = await fetch("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(data) // Langsung kirim data apa adanya
   });
-
   const result = await res.json();
   if (!res.ok) throw new Error(result.message || "Gagal daftar akun");
   return result;
@@ -105,13 +104,11 @@ export const completeGoogleProfile = async (
     role: "STUDENT",
     isGoogleAuth: true
   };
-
   const res = await fetch("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
-
   const result = await res.json();
   if (!res.ok) throw new Error(result.message || "Gagal melengkapi profil");
   return result;
