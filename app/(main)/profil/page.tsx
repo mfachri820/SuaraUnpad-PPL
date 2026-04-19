@@ -36,10 +36,6 @@ interface Report {
   createdAt: string;
 }
 
-interface Policy {
-  id: string;
-}
-
 interface EditProfileInputs {
   fullName: string;
   faculty: string;
@@ -48,7 +44,7 @@ interface EditProfileInputs {
 export default function ProfilePage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [myReports, setMyReports] = useState<Report[]>([]);
-  const [policies, setPolicies] = useState<Policy[]>([]); 
+  const [postsCount, setPostsCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -63,17 +59,15 @@ export default function ProfilePage() {
         if (!token) return router.push('/login');
         
         // Parallel fetch biar cepet
-        const [userRes, reportRes, policyRes] = await Promise.all([
+        const [userRes, reportRes] = await Promise.all([
           fetch("/api/auth/me", { headers: { "Authorization": `Bearer ${token}` } }),
-          fetch("/api/reports", { headers: { "Authorization": `Bearer ${token}` } }),
-          fetch("/api/policies", { headers: { "Authorization": `Bearer ${token}` } })
+          fetch("/api/reports", { headers: { "Authorization": `Bearer ${token}` } })
         ]);
 
         const userResult = await userRes.json();
         const reportResult = await reportRes.json();
-        const policyResult = await policyRes.json();
 
-        if (userRes.ok && reportRes.ok && policyRes.ok) {
+        if (userRes.ok && reportRes.ok) {
           const user = userResult.data as UserData;
           setUserData(user);
           
@@ -82,13 +76,21 @@ export default function ProfilePage() {
           const filtered = allReports.filter(r => r.authorId === user.id);
           
           setMyReports(filtered);
-          setPolicies(policyResult.data.data || []);
+
+          // Hitung total postingan user
+          const postsRes = await fetch(`/api/posts?authorId=${user.id}&limit=1`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          const postsResult = await postsRes.json();
+          if (postsRes.ok) {
+            setPostsCount(postsResult.data?.meta?.totalItems ?? 0);
+          }
 
           // Set form defaults
           setValue("fullName", user.studentProfile?.fullName || "");
           setValue("faculty", user.studentProfile?.faculty || "");
         }
-      } catch (error) {
+      } catch {
         console.error("Sync error");
       } finally {
         setIsLoading(false);
@@ -152,6 +154,7 @@ export default function ProfilePage() {
           <div className="relative mb-6">
             <div className="w-28 h-28 rounded-full border-4 border-white shadow-lg overflow-hidden bg-zinc-100 flex items-center justify-center">
               {userData?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={userData.avatarUrl} className="w-full h-full object-cover" alt="Profile" />
               ) : (
                 <span className="text-3xl font-bold text-[#E8A34D] uppercase">
@@ -191,12 +194,12 @@ export default function ProfilePage() {
             <p className="text-zinc-400 text-[10px] font-extrabold tracking-widest mt-2 uppercase">Laporan</p>
           </div>
           <div className="bg-white p-7 rounded-[32px] border border-zinc-50 shadow-sm text-center">
-            <p className="text-4xl font-bold text-[#E8A34D]">{policies.length}</p>
-            <p className="text-zinc-400 text-[10px] font-extrabold tracking-widest mt-2 uppercase">Kebijakan</p>
+            <p className="text-4xl font-bold text-[#2682F9]">{postsCount}</p>
+            <p className="text-zinc-400 text-[10px] font-extrabold tracking-widest mt-2 uppercase">Postingan</p>
           </div>
         </div>
 
-        <div className="flex justify-between items-center mb-6 px-1">
+        <div className="justify-between items-center mb-6 px-1">
           <h3 className="text-xl font-bold text-zinc-900">Laporanku</h3>
           <button onClick={() => router.push('/profil/my-report')} className="text-[#E8A34D] text-xs font-bold uppercase tracking-wider">Lihat Semua</button>
         </div>
@@ -208,6 +211,7 @@ export default function ProfilePage() {
               <div key={report.id} onClick={() => router.push('/profil/my-report')} className="bg-white p-5 rounded-[28px] border border-zinc-50 shadow-sm flex items-center gap-5 hover:border-[#E8A34D]/20 cursor-pointer group transition-all">
                 <div className="w-16 h-16 bg-zinc-50 rounded-2xl flex-shrink-0 overflow-hidden">
                   {report.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={report.imageUrl} className="w-full h-full object-cover" alt="Report" />
                   ) : (
                     <div className="w-full h-full bg-[#E8A34D]/5 flex items-center justify-center text-[#E8A34D]"><FiInbox size={24} /></div>

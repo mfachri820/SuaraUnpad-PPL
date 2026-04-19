@@ -210,7 +210,17 @@ const CommentItem = ({
   );
 };
 
-export default function CommentSection({ policyId }: { policyId: string }) {
+export default function CommentSection({
+  postId,
+  policyId,
+  title = "Diskusi Terbuka",
+  placeholder = "Bagaimana pendapatmu tentang wacana ini?"
+}: {
+  postId?: string;
+  policyId?: string;
+  title?: string;
+  placeholder?: string;
+}) {
   const [comments, setComments] = useState<CommentData[]>([]);
   const [newCommentText, setNewCommentText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -219,7 +229,7 @@ export default function CommentSection({ policyId }: { policyId: string }) {
 
   const loadData = useCallback(async () => {
     try {
-      const data = await fetchComments(policyId);
+      const data = await fetchComments(postId, policyId);
       setComments(data);
       const token = Cookies.get("token");
       if (token) {
@@ -231,7 +241,7 @@ export default function CommentSection({ policyId }: { policyId: string }) {
     } finally {
       setIsLoading(false);
     }
-  }, [policyId]);
+  }, [postId, policyId]);
 
   useEffect(() => {
     loadData();
@@ -253,7 +263,7 @@ export default function CommentSection({ policyId }: { policyId: string }) {
   const handleMainSubmit = async () => {
     if (!newCommentText.trim()) return;
     try {
-      await createComment(newCommentText, policyId);
+      await createComment(newCommentText, postId, policyId);
       setNewCommentText("");
       loadData();
     } catch (error) {
@@ -263,7 +273,7 @@ export default function CommentSection({ policyId }: { policyId: string }) {
 
   const handleReply = async (parentId: string, content: string) => {
     try {
-      await createComment(content, policyId, parentId);
+      await createComment(content, postId, policyId, parentId);
       loadData();
     } catch (error) {
       if (error instanceof Error) alert(error.message);
@@ -332,7 +342,7 @@ export default function CommentSection({ policyId }: { policyId: string }) {
   return (
     <div className="mt-6 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm">
       <h3 className="text-lg font-black text-slate-800 mb-6">
-        Diskusi Terbuka ({comments.length})
+        {title} ({comments.length})
       </h3>
       <div className="flex gap-3 mb-8">
         <div className="w-10 h-10 rounded-full bg-slate-100 shrink-0"></div>
@@ -344,7 +354,7 @@ export default function CommentSection({ policyId }: { policyId: string }) {
               setActiveAction(null);
             }}
             rows={2}
-            placeholder="Bagaimana pendapatmu tentang wacana ini?"
+            placeholder={placeholder}
             className="w-full bg-slate-50 border text-black border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#2682F9] focus:outline-none resize-none"
           />
           <button

@@ -13,6 +13,7 @@ export async function GET(request: Request) {
       page: pageParam ? parseInt(pageParam) : undefined,
       limit: limitParam ? parseInt(limitParam) : undefined,
       policyId: searchParams.get('policyId') || undefined,
+      authorId: searchParams.get('authorId') || undefined,
     };
 
     const result = await postService.getPosts(filter);

@@ -15,8 +15,10 @@ export async function POST(request: Request) {
       return errorResponse('Password wajib diisi untuk pendaftaran manual', 400);
     }
 
-    // Timpa role dari frontend untuk keamanan mutlak
-    body.role = detectedRole;
+    const validRoles = ['STUDENT', 'LECTURER', 'ADMIN'] as const;
+    if (!validRoles.includes(body.role)) {
+      return errorResponse('Role tidak valid', 400);
+    }
 
     // Lanjutkan ke service
     const newUser = await authService.register(body);
