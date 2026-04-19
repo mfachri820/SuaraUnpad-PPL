@@ -1,3 +1,4 @@
+// components/features/auth/CompleteProfileForm.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -6,8 +7,6 @@ import { useRouter } from "next/navigation";
 import { FiHash, FiBookOpen, FiBriefcase } from "react-icons/fi";
 import AuthInput from "@/components/ui/AuthInput";
 import Image from "next/image";
-
-// Import fungsi API dari AuthFetch.ts
 import { completeGoogleProfile } from "./AuthFetch";
 
 export default function CompleteProfileForm() {
@@ -17,9 +16,11 @@ export default function CompleteProfileForm() {
     email: string;
     fullName: string;
   } | null>(null);
+
+  // State role
+  const [userRole, setUserRole] = useState<"STUDENT" | "LECTURER" | null>(null);
   const router = useRouter();
 
-  // Membaca data Google dari session storage saat komponen dimuat
   useEffect(() => {
     const savedData = sessionStorage.getItem("googleData");
     if (savedData) {
@@ -27,8 +28,15 @@ export default function CompleteProfileForm() {
       setGoogleInfo(parsed);
       setValue("fullName", parsed.fullName);
       setValue("email", parsed.email);
+
+      // 🌟 DETEKSI DOMAIN GOOGLE 🌟
+      const domain = parsed.email.split("@")[1];
+      if (domain === "unpad.ac.id") {
+        setUserRole("LECTURER");
+      } else {
+        setUserRole("STUDENT");
+      }
     } else {
-      // Jika tidak ada data di session storage, kembalikan ke login
       router.push("/login");
     }
   }, [setValue, router]);
@@ -36,12 +44,9 @@ export default function CompleteProfileForm() {
   const onCompleteProfile = async (data: any) => {
     setIsSubmitting(true);
     try {
-      // Memanggil fungsi dari AuthFetch
-      await completeGoogleProfile(data);
-
+      const payload = { ...data, role: userRole }; // Masukkan role ke payload
+      await completeGoogleProfile(payload);
       alert("Profil berhasil dilengkapi! Silakan masuk kembali dengan Google.");
-
-      // Bersihkan session storage setelah sukses
       sessionStorage.removeItem("googleData");
       router.push("/login");
     } catch (error: any) {
@@ -50,6 +55,8 @@ export default function CompleteProfileForm() {
       setIsSubmitting(false);
     }
   };
+
+  if (!userRole) return null;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-white font-sans p-4">
@@ -90,24 +97,37 @@ export default function CompleteProfileForm() {
           onSubmit={handleSubmit(onCompleteProfile)}
           className="w-full space-y-2"
         >
-          <AuthInput
-            label="NPM (Nomor Pokok Mahasiswa)"
-            icon={FiHash}
-            placeholder="140810230041"
-            register={register("studentId", { required: true })}
-          />
+          {userRole === "LECTURER" ? (
+            <AuthInput
+              label="NIP / NIDN"
+              icon={FiHash}
+              placeholder="198001012005011001"
+              register={register("employeeId", { required: true })}
+            />
+          ) : (
+            <AuthInput
+              label="NPM (Nomor Pokok Mahasiswa)"
+              icon={FiHash}
+              placeholder="140810230041"
+              register={register("studentId", { required: true })}
+            />
+          )}
+
           <AuthInput
             label="Fakultas"
             icon={FiBriefcase}
             placeholder="FMIPA"
             register={register("faculty", { required: true })}
           />
-          <AuthInput
-            label="Program Studi"
-            icon={FiBookOpen}
-            placeholder="Teknik Informatika"
-            register={register("major", { required: true })}
-          />
+
+          {userRole === "STUDENT" && (
+            <AuthInput
+              label="Program Studi"
+              icon={FiBookOpen}
+              placeholder="Teknik Informatika"
+              register={register("major", { required: true })}
+            />
+          )}
 
           <button
             type="submit"

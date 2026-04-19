@@ -17,20 +17,14 @@ export const verifyGoogleAuth = async (idToken: string) => {
 };
 
 export const registerManual = async (data: any) => {
-  const payload = { ...data, role: "STUDENT" };
-
+  // HAPUS baris ini: const payload = { ...data, role: "STUDENT" };
   const res = await fetch("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(data) // Langsung kirim data apa adanya
   });
-
   const result = await res.json();
-
-  if (!res.ok) {
-    throw new Error(result.message || "Gagal daftar akun");
-  }
-
+  if (!res.ok) throw new Error(result.message || "Gagal daftar akun");
   return result;
 };
 
@@ -50,21 +44,15 @@ export const loginManual = async (data: any) => {
 export const completeGoogleProfile = async (data: any) => {
   const payload = {
     ...data,
-    password: "GOOGLE_AUTH_USER", // Password khusus penanda akun Google
-    role: "STUDENT"
+    password: "GOOGLE_AUTH_USER"
+    // HAPUS role: "STUDENT" di sini
   };
-
   const res = await fetch("/api/auth/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload)
   });
-
   const result = await res.json();
-
-  if (!res.ok) {
-    throw new Error(result.message || "Gagal melengkapi profil");
-  }
-
+  if (!res.ok) throw new Error(result.message || "Gagal melengkapi profil");
   return result;
 };
