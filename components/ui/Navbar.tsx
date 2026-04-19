@@ -39,6 +39,8 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Beranda", href: "/home" },
+    { name: "Aktivitas", href: "/activity" },
+    { name: "Aspirasi", href: "/aspirasi" },
     { name: "Lapor", href: "/report" },
     { name: "Notifikasi", href: "/notif" }
   ];

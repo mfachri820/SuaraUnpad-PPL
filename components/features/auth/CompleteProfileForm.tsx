@@ -2,30 +2,34 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { FiHash, FiBookOpen, FiBriefcase } from "react-icons/fi";
 import AuthInput from "@/components/ui/AuthInput";
 import Image from "next/image";
-import { completeGoogleProfile } from "./AuthFetch";
+
+// Import fungsi API dan Interface dari AuthFetch.ts
+import { completeGoogleProfile, RegisterPayload } from "./AuthFetch";
+
+interface GoogleUserInfo {
+  email: string;
+  fullName: string;
+}
 
 export default function CompleteProfileForm() {
-  const { register, handleSubmit, setValue } = useForm();
+  // 1. Gunakan RegisterPayload sebagai generic di useForm
+  const { register, handleSubmit, setValue } = useForm<RegisterPayload>();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [googleInfo, setGoogleInfo] = useState<{
-    email: string;
-    fullName: string;
-  } | null>(null);
-
-  // State role
-  const [userRole, setUserRole] = useState<"STUDENT" | "LECTURER" | null>(null);
+  const [googleInfo, setGoogleInfo] = useState<GoogleUserInfo | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     const savedData = sessionStorage.getItem("googleData");
     if (savedData) {
-      const parsed = JSON.parse(savedData);
+      const parsed: GoogleUserInfo = JSON.parse(savedData);
       setGoogleInfo(parsed);
+      
+      // Set value form secara manual dari data session
       setValue("fullName", parsed.fullName);
       setValue("email", parsed.email);
 
@@ -41,16 +45,19 @@ export default function CompleteProfileForm() {
     }
   }, [setValue, router]);
 
-  const onCompleteProfile = async (data: any) => {
+  // 2. Gunakan SubmitHandler tanpa any
+  const onCompleteProfile: SubmitHandler<RegisterPayload> = async (data) => {
     setIsSubmitting(true);
     try {
-      const payload = { ...data, role: userRole }; // Masukkan role ke payload
-      await completeGoogleProfile(payload);
+      await completeGoogleProfile(data);
+
       alert("Profil berhasil dilengkapi! Silakan masuk kembali dengan Google.");
+
       sessionStorage.removeItem("googleData");
       router.push("/login");
-    } catch (error: any) {
-      alert(error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Gagal melengkapi profil";
+      alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -59,7 +66,7 @@ export default function CompleteProfileForm() {
   if (!userRole) return null;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white font-sans p-4">
+    <div className="flex min-h-screen items-center justify-center bg-white font-sans p-4 text-black">
       <main className="flex w-full max-w-sm flex-col p-8 bg-white border border-zinc-100 shadow-xl shadow-zinc-200/50 rounded-3xl">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-black leading-tight">
@@ -81,12 +88,11 @@ export default function CompleteProfileForm() {
           </p>
           <div className="flex items-center gap-2">
             <Image
-              src={
-                "https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-              }
-              className="w-3 h-3"
+              src={"https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"}
+              width={12}
+              height={12}
               alt="G"
-            ></Image>
+            />
             <p className="text-xs font-semibold text-zinc-600 truncate">
               {googleInfo?.email}
             </p>

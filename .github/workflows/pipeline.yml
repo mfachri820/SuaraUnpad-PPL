@@ -1,6 +1,5 @@
-name: CI & Security Pipeline
+name: CI and Security Pipeline
 
-# Pipeline hanya berjalan ketika event dibawah
 on:
   push:
     branches:
@@ -13,7 +12,7 @@ on:
 
 jobs:
   integration-and-security:
-    name: Code Quality & Security Check
+    name: Code Quality and Security Check
     runs-on: ubuntu-latest
     
     steps:
@@ -25,29 +24,30 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '24'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      # CS
-      - name: Run Gitleaks (Secret Scanner)
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🛡️ Run NPM Security Audit
+      - name: Run NPM Security Audit
         run: npm audit --audit-level=high || true 
 
-      # CI
-      - name: 🗄️ Validate Prisma Schema
+      - name: Validate Prisma Schema
         run: npx prisma validate
 
-      - name: ʦ Type Check (TypeScript)
+      - name: Type Check
         run: npx tsc --noEmit
 
-      - name: 🧹 Run Linter (ESLint)
+      - name: Run Linter
         run: npm run lint
 
       - name: Test Application Build
