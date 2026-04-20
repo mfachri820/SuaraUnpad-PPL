@@ -21,6 +21,7 @@ export default function CompleteProfileForm() {
   const { register, handleSubmit, setValue } = useForm<RegisterPayload>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [googleInfo, setGoogleInfo] = useState<GoogleUserInfo | null>(null);
+  const [userRole, setUserRole] = useState<"STUDENT" | "LECTURER" | null>(null);
   const router = useRouter();
 
   useEffect(() => {
