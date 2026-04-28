@@ -71,6 +71,7 @@ export async function middleware(request: NextRequest) {
           return NextResponse.redirect(homeUrl);
         }
 
+
       } catch (error) {
         // Jika token kedaluwarsa atau diotak-atik: Hapus cookie & tendang ke login
         const loginUrl = request.nextUrl.clone();
