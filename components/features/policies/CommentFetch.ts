@@ -8,8 +8,20 @@ const getAuthHeaders = () => {
   };
 };
 
-export const fetchComments = async (policyId: string) => {
-  const res = await fetch(`/api/comments?policyId=${policyId}&limit=50`, {
+export const fetchComments = async (
+  postId?: string,
+  policyId?: string
+) => {
+  if (!postId && !policyId) {
+    throw new Error("postId atau policyId wajib diisi untuk mengambil komentar");
+  }
+
+  const params = new URLSearchParams();
+  if (postId) params.append("postId", postId);
+  if (policyId) params.append("policyId", policyId);
+  params.append("limit", "50");
+
+  const res = await fetch(`/api/comments?${params.toString()}`, {
     headers: getAuthHeaders(),
     cache: "no-store"
   });
@@ -20,10 +32,11 @@ export const fetchComments = async (policyId: string) => {
 
 export const createComment = async (
   content: string,
-  policyId: string,
+  postId?: string,
+  policyId?: string,
   parentId?: string
 ) => {
-  const payload = { content, policyId, parentId };
+  const payload = { content, postId, policyId, parentId };
   const res = await fetch("/api/comments", {
     method: "POST",
     headers: getAuthHeaders(),
