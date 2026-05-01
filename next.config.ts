@@ -8,6 +8,12 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com'
+      },
+      // dibawah ini aing add soalnya gatau kenapa gabisa delete row di db nya
+      //hapus aja klo sudah ke fix fachri
+      {
+        protocol: 'https',
+        hostname: 'example.com'
       }
     ]
   }
