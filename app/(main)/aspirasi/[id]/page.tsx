@@ -1,104 +1,173 @@
+"use client";
+
+import React, { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Cookies from 'js-cookie';
+import { FiArrowLeft, FiMessageCircle, FiArrowUp, FiMoreHorizontal, FiLoader } from "react-icons/fi";
 import CommentSection from "@/components/features/policies/CommentSection";
-import { postService } from "@/services/postService";
-import { FiArrowLeft, FiMessageSquare } from "react-icons/fi";
 
-interface AuthorProfile {
-  fullName: string;
-}
+export default function AspirasiDetailPage() {
+  const { id } = useParams();
+  const [post, setPost] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
-interface PostDetail {
-  id: string;
-  title: string;
-  content: string;
-  createdAt: Date;
-  authorId: string;
-  author: {
-    studentProfile?: AuthorProfile | null;
-    lecturerProfile?: AuthorProfile | null;
-    adminProfile?: AuthorProfile | null;
+  // --- FUNGSI AMBIL DATA ---
+  const fetchDetail = async () => {
+    try {
+      const token = Cookies.get('token');
+      const res = await fetch(`/api/posts/${id}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setPost(result.data);
+      }
+    } catch (err) { 
+      console.error("Gagal mengambil detail:", err); 
+    } finally { 
+      setIsLoading(false); 
+    }
   };
-  _count: {
-    postUpvotes: number;
+
+  useEffect(() => { 
+    if (id) fetchDetail(); 
+  }, [id]);
+
+  // --- LOGIC UPVOTE (DIBENERIN BIAR JALAN) ---
+  const handleUpvote = async () => {
+    try {
+      const token = Cookies.get('token');
+      const res = await fetch(`/api/posts/${id}/upvote`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        // Langsung refresh data detail biar angka upvote-nya update otomatis
+        fetchDetail();
+      }
+    } catch (err) { 
+      console.error("Upvote gagal:", err); 
+    }
   };
-}
 
-export default async function AspirasiDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  let post: PostDetail | null = null;
-  const { id } = await params;
+  // --- PARSER FOTO ---
+  const renderDetailContent = (content: string) => {
+    const imageRegex = /!\[image\]\((.*?)\)/;
+    const match = content.match(imageRegex);
 
-  try {
-    post = await postService.getPostById(id);
-  } catch (error) {
-    console.error("Failed to fetch aspirasi detail:", error);
-  }
+    if (match) {
+      const textContent = content.replace(imageRegex, '').trim();
+      const extractedUrl = match[1];
 
-  if (!post) {
-    return (
-      <div className="min-h-screen bg-slate-50 pb-20">
-        <div className="max-w-3xl mx-auto px-4 py-8">
-          <div className="rounded-3xl border border-slate-200 bg-white/90 p-8 text-center shadow-sm">
-            <h1 className="text-2xl font-black text-slate-900 mb-2">Postingan tidak ditemukan</h1>
-            <p className="text-sm text-slate-500">Pastikan kembali tautannya atau kembali ke halaman aspirasi.</p>
-            <a
-              href="/aspirasi"
-              className="mt-6 inline-flex items-center rounded-full bg-[#2682F9] px-5 py-2.5 text-sm font-bold text-white hover:bg-blue-600 transition"
-            >
-              Kembali ke Aspirasi
-            </a>
+      return (
+        <>
+          {textContent && (
+            <p className="text-[21px] leading-snug text-slate-900 mb-6 whitespace-pre-line font-medium">
+              {textContent}
+            </p>
+          )}
+          <div className="mb-8 rounded-[24px] overflow-hidden border border-slate-50 shadow-sm bg-slate-50">
+            <img 
+              src={extractedUrl} 
+              alt="Bukti Aspirasi" 
+              className="w-full h-auto object-cover max-h-[700px]"
+            />
           </div>
-        </div>
-      </div>
+        </>
+      );
+    }
+    return (
+      <p className="text-[21px] leading-snug text-slate-900 mb-6 whitespace-pre-line font-medium">
+        {content}
+      </p>
     );
-  }
+  };
 
-  const authorName =
-    post.author.studentProfile?.fullName ||
-    post.author.lecturerProfile?.fullName ||
-    post.author.adminProfile?.fullName ||
-    "Pengguna";
+  if (isLoading) return (
+    <div className="h-screen flex items-center justify-center bg-white">
+      <FiLoader className="animate-spin text-[#F99D26]" size={32} />
+    </div>
+  );
+
+  if (!post) return (
+    <div className="h-screen flex flex-col items-center justify-center bg-white">
+      <h1 className="text-xl font-bold text-slate-400">Aspirasi tidak ditemukan</h1>
+      <button onClick={() => router.push('/aspirasi')} className="mt-4 text-[#F99D26] font-bold hover:underline">
+        Kembali ke Beranda
+      </button>
+    </div>
+  );
+
+  const authorName = post.author?.studentProfile?.fullName || "Pengguna";
+  const username = authorName.toLowerCase().replace(/\s/g, '');
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <a
-          href="/aspirasi"
-          className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-[#2682F9] mb-6 transition"
-        >
-          <FiArrowLeft /> Kembali ke Aspirasi
-        </a>
+    <div className="min-h-screen bg-white font-sans text-slate-900">
+      <main className="max-w-[600px] mx-auto w-full border-x border-slate-50 min-h-screen flex flex-col">
+        
+        {/* HEADER */}
+        <div className="sticky top-0 bg-white/80 backdrop-blur-md z-10 px-4 py-3 border-b border-slate-50 flex items-center gap-8">
+          <button onClick={() => router.back()} className="p-2 hover:bg-slate-50 rounded-full transition">
+            <FiArrowLeft size={22} className="text-slate-900" />
+          </button>
+          <h1 className="text-xl font-black text-slate-900 tracking-tight">Postingan</h1>
+        </div>
 
-        <article className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm mb-6">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-[#F99D26] font-bold text-lg uppercase">
-              {authorName.charAt(0)}
-            </div>
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-2 text-sm text-slate-500">
-                <span className="font-bold text-slate-700">{authorName}</span>
-                <span>·</span>
-                <span>{new Date(post.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}</span>
+        <article className="p-4">
+          {/* USER HEADER */}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-orange-50 flex items-center justify-center text-[#F99D26] font-bold text-xl uppercase">
+                {authorName.charAt(0)}
               </div>
-              <h1 className="text-2xl font-black text-slate-900 mb-3">{post.title}</h1>
-              <p className="text-slate-700 leading-relaxed whitespace-pre-line">{post.content}</p>
+              <div>
+                <p className="font-bold text-lg leading-tight text-slate-900">{authorName}</p>
+                <p className="text-slate-400 text-[15px]">@{username}</p>
+              </div>
             </div>
+            <FiMoreHorizontal className="text-slate-300 cursor-pointer" />
           </div>
 
-          <div className="mt-6 flex items-center gap-4 text-slate-500">
-            <FiMessageSquare className="text-lg" />
-            <span className="text-sm font-bold">{post._count.postUpvotes} upvote</span>
+          {post.title && post.title.trim() !== "" && (
+            <h1 className="text-2xl font-black text-slate-900 mb-3 tracking-tight leading-tight">
+              {post.title}
+            </h1>
+          )}
+          
+          {/* KONTEN & GAMBAR */}
+          {renderDetailContent(post.content)}
+
+          {/* METADATA */}
+          <div className="py-4 border-y border-slate-50 text-slate-400 text-[15px] flex gap-2 font-medium">
+            <span>{new Date(post.createdAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+            <span>·</span>
+            <span>{new Date(post.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </div>
+
+          <div className="flex justify-start gap-12 py-2 border-b border-slate-50 text-slate-300">
+             <button className="flex items-center gap-2 hover:text-blue-400 transition-all p-2">
+               <FiMessageCircle size={24} />
+             </button>
+             <button 
+               onClick={handleUpvote}
+               className="flex items-center gap-2 hover:text-[#F99D26] transition-all p-2"
+             >
+               <FiArrowUp size={24} />
+               <span className="font-bold text-slate-600">{post._count?.postUpvotes || 0}</span>
+             </button>
           </div>
         </article>
-
-        <CommentSection
-          postId={post.id}
-          title="Diskusi Aspirasi"
-          placeholder="Bagikan pendapatmu mengenai aspirasi ini..."
-        />
-      </div>
+        
+        {/* KOMENTAR */}
+        <div className="bg-white">
+          <CommentSection 
+            postId={post.id} 
+            title="Balasan" 
+            placeholder="Tulis balasanmu..." 
+          />
+        </div>
+      </main>
     </div>
   );
 }
