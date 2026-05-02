@@ -7,6 +7,7 @@ import Cookies from "js-cookie";
 import { FiMapPin, FiClock, FiX } from "react-icons/fi";
 import { ImArrowUp } from "react-icons/im";
 import { Policy } from "@/components/features/policies/types";
+import CampaignCarousel from "@/components/features/donations/CampaignCarousel";
 
 // Import tipe data dan fungsi API Laporan dari HomeFetch
 import {
@@ -182,6 +183,10 @@ export default function HomeFeed() {
 
   return (
     <div className="w-full">
+      {/* TODO BIKKIN HERO SECITON TELEKKK JON */}
+      <div className="mb-6">
+        <CampaignCarousel />
+      </div>
       {/* 🌟 SECTION 1: WACANA KEBIJAKAN 🌟 */}
       <div className="mb-10">
         <h2 className="text-xl font-black text-slate-800 mb-4">
@@ -416,7 +421,7 @@ export default function HomeFeed() {
                   onClick={(e) => handleUpvote(e, selectedReport.id)}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition ${
                     selectedReport.hasUpvoted
-                      ? "bg-[#F99D26] text-white shadow-md hover:cursor-pointer"
+                      ? "bg-[#ffb656] hover:bg-[#F99D26] text-white  hover:cursor-pointer"
                       : "bg-slate-100 text-slate-700 hover:bg-slate-200 hover:cursor-pointer"
                   }`}
                 >
