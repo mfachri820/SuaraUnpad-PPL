@@ -8,17 +8,51 @@ import {
   FiUser, FiImage, FiX, FiAlertCircle, FiMapPin, FiTrash2 
 } from "react-icons/fi";
 
+interface UserData {
+  id: string;
+  studentProfile?: {
+    fullName?: string;
+  } | null;
+}
+
+interface PostItem {
+  id: string;
+  authorId: string;
+  content: string;
+  author: {
+    studentProfile?: {
+      fullName?: string;
+    };
+  };
+  _count?: {
+    postUpvotes?: number;
+  };
+}
+
+interface ReportItem {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  location: string;
+  imageUrl?: string;
+  status: string;
+  upvoteCount: number;
+  createdAt: string;
+  isUpvoted?: boolean;
+}
+
 export default function AspirasiPage() {
-  const [userData, setUserData] = useState<any>(null);
-  const [posts, setPosts] = useState<any[]>([]);
-  const [trendingReports, setTrendingReports] = useState<any[]>([]);
+  const [userData, setUserData] = useState<UserData | null>(null);
+  const [posts, setPosts] = useState<PostItem[]>([]);
+  const [trendingReports, setTrendingReports] = useState<ReportItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [postContent, setPostContent] = useState("");
   const [postTitle, setPostTitle] = useState("");
   const [imageUrl, setImageUrl] = useState(""); 
   const [isUploading, setIsUploading] = useState(false);
   const [isPosting, setIsPosting] = useState(false); // State biar tombol posting ada loadingnya
-  const [selectedReport, setSelectedReport] = useState<any>(null);
+  const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUpvotingReport, setIsUpvotingReport] = useState(false);
   
@@ -141,11 +175,15 @@ export default function AspirasiPage() {
       if (res.ok) {
         await fetchTrending();
         if (selectedReport?.id === reportId) {
-          setSelectedReport((prev: any) => ({
-            ...prev,
-            upvoteCount: result.data.action === "upvoted" ? prev.upvoteCount + 1 : prev.upvoteCount - 1,
-            isUpvoted: result.data.action === "upvoted"
-          }));
+          setSelectedReport((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  upvoteCount: result.data.action === "upvoted" ? prev.upvoteCount + 1 : prev.upvoteCount - 1,
+                  isUpvoted: result.data.action === "upvoted"
+                }
+              : null
+          );
         }
       }
     } catch (e) { console.error(e); } finally { setIsUpvotingReport(false); }
@@ -157,7 +195,18 @@ export default function AspirasiPage() {
     const res = await fetch(`/api/posts/${postId}/upvote`, { method: "POST", headers: { "Authorization": `Bearer ${token}` } });
     const result = await res.json();
     if (res.ok) {
-      setPosts(prev => prev.map(p => p.id === postId ? { ...p, _count: { ...p._count, postUpvotes: result.data.action === "upvoted" ? p._count.postUpvotes + 1 : p._count.postUpvotes - 1 } } : p));
+      setPosts(prev => prev.map(p => {
+        if (p.id !== postId) return p;
+        const currentUpvotes = p._count?.postUpvotes ?? 0;
+        const newUpvotes = result.data.action === "upvoted" ? currentUpvotes + 1 : currentUpvotes - 1;
+        return {
+          ...p,
+          _count: {
+            ...p._count,
+            postUpvotes: newUpvotes
+          }
+        };
+      }));
     }
   };
 

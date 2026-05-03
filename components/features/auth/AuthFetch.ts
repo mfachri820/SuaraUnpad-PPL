@@ -14,7 +14,8 @@ export interface RegisterPayload {
   faculty: string;
   major: string;
   password?: string;
-  role?: "STUDENT" | "ADMIN";
+  employeeId?: string;
+  role?: "STUDENT" | "ADMIN" | "LECTURER"; // 🌟 Tambahkan buat CICD
   isGoogleAuth?: boolean; // 🌟 TAMBAHKAN INI SESUAI PERMINTAAN BE
 }
 

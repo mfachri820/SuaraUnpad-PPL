@@ -1,12 +1,13 @@
 "use client";
 import React from 'react';
 import { IconType } from "react-icons";
+import type { UseFormRegisterReturn } from "react-hook-form";
 
 interface AuthInputProps {
   label: string;
   placeholder: string;
   type?: string;
-  register: any;
+  register: UseFormRegisterReturn;
   icon?: IconType;
 }
 
