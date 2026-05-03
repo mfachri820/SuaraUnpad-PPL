@@ -89,10 +89,18 @@ export const fetchHomeReports = async (
 };
 
 // FUNGSI API: Toggle upvote
+export interface ToggleUpvoteResponse {
+  status: string;
+  message: string;
+  data: {
+    action: "upvoted" | "unvoted" | string;
+  };
+}
+
 export const toggleUpvoteApi = async (
   reportId: string,
   token: string | undefined
-): Promise<any> => {
+): Promise<ToggleUpvoteResponse> => {
   const res = await fetch(`/api/reports/${reportId}/upvote`, {
     method: "POST",
     headers: {

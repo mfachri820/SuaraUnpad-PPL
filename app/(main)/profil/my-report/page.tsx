@@ -5,8 +5,18 @@ import Cookies from 'js-cookie';
 import { FiChevronLeft, FiLoader, FiMapPin, FiCalendar, FiInbox } from "react-icons/fi";
 import { useRouter } from 'next/navigation';
 
+interface MyReportItem {
+  id: string;
+  authorId: string;
+  title: string;
+  location?: string;
+  imageUrl?: string;
+  status: string;
+  createdAt: string;
+}
+
 export default function MyReportPage() {
-  const [reports, setReports] = useState<any[]>([]);
+  const [reports, setReports] = useState<MyReportItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -30,7 +40,7 @@ export default function MyReportPage() {
         if (userRes.ok && reportRes.ok) {
           // Filter: Hanya ambil laporan yang authorId-nya sama dengan ID kita
           const myData = reportResult.data.data.filter(
-            (r: any) => r.authorId === userResult.data.id
+            (r: MyReportItem) => r.authorId === userResult.data.id
           );
           setReports(myData);
         }
@@ -86,7 +96,7 @@ export default function MyReportPage() {
         ) : (
           /* List Laporan dari Database */
           <div className="space-y-4">
-            {reports.map((report: any) => (
+            {reports.map((report: MyReportItem) => (
               <div 
                 key={report.id} 
                 className="bg-white p-5 rounded-[32px] border border-zinc-50 shadow-sm flex gap-5 hover:border-[#E8A34D]/20 transition-all group"

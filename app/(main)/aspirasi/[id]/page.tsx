@@ -6,9 +6,24 @@ import Cookies from 'js-cookie';
 import { FiArrowLeft, FiMessageCircle, FiArrowUp, FiMoreHorizontal, FiLoader } from "react-icons/fi";
 import CommentSection from "@/components/features/policies/CommentSection";
 
+interface PostDetail {
+  id: string;
+  title?: string;
+  content: string;
+  createdAt: string;
+  _count?: {
+    postUpvotes?: number;
+  };
+  author?: {
+    studentProfile?: {
+      fullName?: string;
+    };
+  };
+}
+
 export default function AspirasiDetailPage() {
   const { id } = useParams();
-  const [post, setPost] = useState<any>(null);
+  const [post, setPost] = useState<PostDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 

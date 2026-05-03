@@ -1,8 +1,16 @@
+import type { ReactNode, MouseEventHandler } from "react";
+
+interface AuthButtonProps {
+  children: ReactNode;
+  variant?: "primary" | "secondary";
+  onClick?: MouseEventHandler<HTMLButtonElement>;
+}
+
 export default function AuthButton({
   children,
   variant = "primary",
   onClick
-}: any) {
+}: AuthButtonProps) {
   return (
     <button
       onClick={onClick}

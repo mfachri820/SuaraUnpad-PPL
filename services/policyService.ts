@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import { PolicyStatus } from "@prisma/client";
-import { VoteChoice } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
+import { PolicyStatus, VoteChoice } from "@prisma/client";
 
 // Interface biar ga type any
 export interface CreatePolicyPayload {
@@ -33,7 +33,7 @@ export const policyService = {
   ) {
     // 🌟 LOGIKA FILTER ROLE:
     // Jika bukan Dosen/Admin, paksa agar hanya bisa melihat ACTIVE atau CLOSED
-    const whereClause: any = statusFilter ? { status: statusFilter } : {};
+    const whereClause: Prisma.PolicyWhereInput = statusFilter ? { status: statusFilter } : {};
 
     if (currentUserRole !== "ADMIN" && currentUserRole !== "LECTURER") {
       whereClause.status =
