@@ -7,7 +7,7 @@ on:
       - fix-cicd
 
 env:
-  IMAGE_NAME: ghcr.io/${{ github.repository }}/suaraunpad-web
+  IMAGE_NAME: ghcr.io/mfachri820/suaraunpad-ppl/suaraunpad-web
   CONTAINER_NAME: suaraunpad-app
 
 jobs:
