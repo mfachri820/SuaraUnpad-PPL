@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import { userService } from '@/services/userService';
 import { successResponse, errorResponse } from '@/lib/apiResponse';
 
@@ -6,8 +7,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Proteksi: Pastikan yang akses sudah login (ada userId dari middleware)
     const { id } = await params;
+    
     const currentUserId = request.headers.get('x-user-id');
     if (!currentUserId) {
       return errorResponse('Akses ditolak. Silakan login terlebih dahulu.', 401);

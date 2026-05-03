@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 import { userService } from '@/services/userService';
 import { successResponse, errorResponse } from '@/lib/apiResponse';
 
@@ -6,7 +7,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const {id} = await params;
+    const { id } = await params;
+    
     // Proteksi: Hanya Admin
     const userRole = request.headers.get('x-user-role');
     if (userRole !== 'ADMIN') {
