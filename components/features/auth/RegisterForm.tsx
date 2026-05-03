@@ -30,12 +30,21 @@ export default function RegisterForm() {
 
   const router = useRouter();
 
-  // Pantau apa yang diketik user di kolom email
+  // Sekarang watch("email") sudah aman digunakan
   const emailValue = watch("email");
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Otomatis deteksi role dari domain email (Opsional, biar makin pro)
+  useEffect(() => {
+    if (emailValue?.endsWith("@unpad.ac.id")) {
+      setUserRole("LECTURER");
+    } else {
+      setUserRole("STUDENT");
+    }
+  }, [emailValue]);
 
   // 2. Logic Auth Google (Tanpa any)
   const handleGoogleAuth = async (idToken: string) => {
@@ -44,21 +53,14 @@ export default function RegisterForm() {
       const result = await verifyGoogleAuth(idToken);
 
       if (result.status === "success") {
-        // 1. CEK APAKAH USER BARU
         if (result.data?.isNewUser) {
-          // Simpan data dari Google ke sessionStorage buat dipake di halaman Complete Profile
           sessionStorage.setItem(
             "googleData",
             JSON.stringify(result.data?.googleData)
           );
-
           alert("Akun Google valid! Yuk, lengkapi data akademikmu dulu.");
-
-          // HARUS KE SINI, jangan ke /login
           router.push("/complete-profile");
-        }
-        // 2. JIKA USER LAMA (SUDAH PERNAH COMPLETE PROFILE)
-        else {
+        } else {
           const token = result.data?.token || result.token;
           if (token) {
             Cookies.set("token", token, { expires: 7, path: "/" });
@@ -75,27 +77,33 @@ export default function RegisterForm() {
     }
   };
 
-  // 3. Logic Register Manual menggunakan SubmitHandler (Tanpa any)
+  // 3. Logic Register Manual menggunakan SubmitHandler
   const onRegister: SubmitHandler<RegisterPayload> = async (data) => {
     setIsSubmitting(true);
     try {
-      // Tidak perlu lagi ...data, role: "STUDENT" di sini. Langsung oper 'data'.
-      await registerManual(data);
+      
+      const finalData = { 
+        ...data, 
+        role: userRole,         
+        detectedRole: userRole  
+      };
+      
+      await registerManual(finalData);
 
-      // 🌟 PESAN BARU UNTUK CEK EMAIL
       alert("Registrasi Berhasil! Silakan cek email Anda untuk verifikasi.");
       router.push("/login");
     } catch (error: unknown) {
-      const errorMessage =
-        error instanceof Error ? error.message : "Registrasi Gagal";
+      const errorMessage = error instanceof Error ? error.message : "Registrasi Gagal";
       alert(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (!isMounted) return null;
+
   return (
-    <div className="flex min-h-screen items-center justify-center">
+    <div className="flex min-h-screen items-center justify-center font-sans">
       <main className="flex w-full my-10 max-w-sm flex-col p-8 bg-white border border-zinc-100 shadow-xl shadow-zinc-200/50 rounded-3xl">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-black">
@@ -120,11 +128,10 @@ export default function RegisterForm() {
           <AuthInput
             label="Email Unpad"
             icon={FiMail}
-            placeholder="mhs@mail.unpad.ac.id"
+            placeholder="mhs@mail.unpad.ac.id atau dosen@unpad.ac.id"
             register={register("email", { required: true })}
           />
 
-          {/* RENDER KONDISIONAL BERDASARKAN ROLE */}
           {userRole === "LECTURER" ? (
             <AuthInput
               label="NIP / NIDN"
@@ -172,7 +179,7 @@ export default function RegisterForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full bg-[#ffb656] hover:bg-[#F99D26] hover:cursor-pointer text-white font-bold py-4 rounded-xl mt-6 transition-all disabled:opacity-50 active:scale-95"
+            className="w-full bg-[#ffb656] hover:bg-[#F99D26] text-white font-bold py-4 rounded-xl mt-6 transition-all disabled:opacity-50 active:scale-95 shadow-lg shadow-orange-100"
           >
             {isSubmitting ? "Memproses..." : "Daftar Sekarang"}
           </button>
@@ -190,22 +197,18 @@ export default function RegisterForm() {
             </div>
 
             <div className="flex justify-center w-full min-h-11">
-              {isMounted ? (
-                <GoogleLogin
-                  onSuccess={(credentialResponse) => {
-                    if (credentialResponse.credential) {
-                      handleGoogleAuth(credentialResponse.credential);
-                    }
-                  }}
-                  onError={() => alert("Login Google Gagal!")}
-                  shape="rectangular"
-                  text="signup_with"
-                  size="large"
-                  width="320px"
-                />
-              ) : (
-                <div className="w-full h-11 bg-zinc-100 rounded-md animate-pulse"></div>
-              )}
+              <GoogleLogin
+                onSuccess={(credentialResponse) => {
+                  if (credentialResponse.credential) {
+                    handleGoogleAuth(credentialResponse.credential);
+                  }
+                }}
+                onError={() => alert("Login Google Gagal!")}
+                shape="rectangular"
+                text="signup_with"
+                size="large"
+                width="320px"
+              />
             </div>
           </>
         )}
