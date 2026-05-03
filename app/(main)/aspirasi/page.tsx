@@ -195,7 +195,18 @@ export default function AspirasiPage() {
     const res = await fetch(`/api/posts/${postId}/upvote`, { method: "POST", headers: { "Authorization": `Bearer ${token}` } });
     const result = await res.json();
     if (res.ok) {
-      setPosts(prev => prev.map(p => p.id === postId ? { ...p, _count: { ...p._count, postUpvotes: result.data.action === "upvoted" ? p._count.postUpvotes + 1 : p._count.postUpvotes - 1 } } : p));
+      setPosts(prev => prev.map(p => {
+        if (p.id !== postId) return p;
+        const currentUpvotes = p._count?.postUpvotes ?? 0;
+        const newUpvotes = result.data.action === "upvoted" ? currentUpvotes + 1 : currentUpvotes - 1;
+        return {
+          ...p,
+          _count: {
+            ...p._count,
+            postUpvotes: newUpvotes
+          }
+        };
+      }));
     }
   };
 
