@@ -34,6 +34,23 @@ export default function AdminPage() {
   const [policyStatus, setPolicyStatus] = useState<'DRAFT' | 'ACTIVE' | 'CLOSED'>('ACTIVE');
   const [policyUpdateLoading, setPolicyUpdateLoading] = useState(false);
   const [policyUpdateMessage, setPolicyUpdateMessage] = useState<string | null>(null);
+
+  const [campaignTitle, setCampaignTitle] = useState('');
+  const [campaignDescription, setCampaignDescription] = useState('');
+  const [campaignTargetAmount, setCampaignTargetAmount] = useState('');
+  const [campaignBannerFile, setCampaignBannerFile] = useState<File | null>(null);
+  const [campaignBannerPreview, setCampaignBannerPreview] = useState<string | null>(null);
+  const [campaignLoading, setCampaignLoading] = useState(false);
+  const [campaignMessage, setCampaignMessage] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (campaignBannerPreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(campaignBannerPreview);
+      }
+    };
+  }, [campaignBannerPreview]);
+
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -188,6 +205,83 @@ export default function AdminPage() {
     }
   };
 
+  const handleCreateCampaign = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setCampaignLoading(true);
+    setCampaignMessage(null);
+
+    const token = Cookies.get('token');
+    if (!token) {
+      setCampaignMessage('Token tidak ditemukan. Silakan login ulang.');
+      setCampaignLoading(false);
+      return;
+    }
+
+    if (!campaignTitle || !campaignDescription || !campaignTargetAmount || !campaignBannerFile) {
+      setCampaignMessage('Semua field kampanye wajib diisi.');
+      setCampaignLoading(false);
+      return;
+    }
+
+    const targetAmountValue = Number(campaignTargetAmount);
+    if (Number.isNaN(targetAmountValue) || targetAmountValue <= 0) {
+      setCampaignMessage('Target amount harus angka lebih besar dari 0.');
+      setCampaignLoading(false);
+      return;
+    }
+
+    try {
+      let bannerUrl = '';
+      const uploadData = new FormData();
+      uploadData.append('file', campaignBannerFile);
+      uploadData.append('folder', 'campaigns');
+
+      const uploadRes = await fetch('/api/uploads', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: uploadData,
+      });
+      const uploadResult = await uploadRes.json();
+      if (!uploadRes.ok) {
+        throw new Error(uploadResult.message || 'Gagal mengunggah banner kampanye');
+      }
+      bannerUrl = uploadResult.data?.url;
+
+      const res = await fetch('/api/campaigns', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          title: campaignTitle,
+          description: campaignDescription,
+          targetAmount: targetAmountValue,
+          bannerUrl,
+        }),
+      });
+
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.message || 'Gagal membuat kampanye donasi');
+      }
+
+      setCampaignMessage('Kampanye donasi berhasil dibuat.');
+      setCampaignTitle('');
+      setCampaignDescription('');
+      setCampaignTargetAmount('');
+      setCampaignBannerFile(null);
+      setCampaignBannerPreview(null);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan saat membuat kampanye';
+      setCampaignMessage(errorMessage);
+    } finally {
+      setCampaignLoading(false);
+    }
+  };
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white font-sans p-4 text-center">
       <h1 className="text-4xl font-bold text-[#2682F9] mb-2">Halaman Admin</h1>
@@ -257,6 +351,83 @@ export default function AdminPage() {
             className="w-full bg-[#2682F9] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50"
           >
             {updateLoading ? 'Memproses...' : 'Perbarui Status'}
+          </button>
+        </form>
+      </div>
+
+      <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm mb-8 text-left">
+        <h2 className="text-2xl font-bold text-[#4F9A4E] mb-4">Buat Kampanye Donasi Baru</h2>
+        <form onSubmit={handleCreateCampaign} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-zinc-700 mb-2">Judul Kampanye</label>
+            <input
+              value={campaignTitle}
+              onChange={(event) => setCampaignTitle(event.target.value)}
+              type="text"
+              placeholder="Bantuan Pengobatan Bapak Slamet (Satpam Fakultas)"
+              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#4F9A4E]"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-zinc-700 mb-2">Deskripsi</label>
+            <textarea
+              value={campaignDescription}
+              onChange={(event) => setCampaignDescription(event.target.value)}
+              rows={4}
+              placeholder="Mari bantu ringankan biaya operasi beliau."
+              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#4F9A4E] resize-none"
+              required
+            />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 mb-2">Target Donasi</label>
+              <input
+                value={campaignTargetAmount}
+                onChange={(event) => setCampaignTargetAmount(event.target.value)}
+                type="number"
+                placeholder="5000000"
+                className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#4F9A4E]"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-zinc-700 mb-2">Banner Kampanye</label>
+              <label className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-sm text-zinc-500 hover:border-[#4F9A4E] hover:text-[#4F9A4E] transition">
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    setCampaignBannerFile(file);
+                    if (!file) {
+                      setCampaignBannerPreview(null);
+                      return;
+                    }
+                    setCampaignBannerPreview(URL.createObjectURL(file));
+                  }}
+                />
+                {campaignBannerPreview ? 'Ganti foto banner' : 'Pilih atau seret file gambar'}
+              </label>
+            </div>
+          </div>
+          {campaignBannerPreview ? (
+            <div className="rounded-2xl overflow-hidden border border-zinc-200 bg-slate-50">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={campaignBannerPreview} alt="Banner preview" className="w-full h-44 object-cover" />
+            </div>
+          ) : null}
+          {campaignMessage ? (
+            <div className="text-black text-sm text-slate-700">{campaignMessage}</div>
+          ) : null}
+          <button
+            type="submit"
+            disabled={campaignLoading}
+            className="w-full bg-[#4F9A4E] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50"
+          >
+            {campaignLoading ? 'Memproses...' : 'Buat Kampanye Donasi'}
           </button>
         </form>
       </div>
