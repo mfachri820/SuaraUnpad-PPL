@@ -3,7 +3,7 @@ import { successResponse, errorResponse } from '@/lib/apiResponse';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Proteksi: Pastikan yang akses sudah login (ada userId dari middleware)
