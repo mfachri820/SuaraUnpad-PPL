@@ -16,7 +16,6 @@ interface GoogleUserInfo {
 }
 
 export default function CompleteProfileForm() {
-  // 1. Inisialisasi Form dengan Type Safety
   const { register, handleSubmit, setValue } = useForm<RegisterPayload>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [googleInfo, setGoogleInfo] = useState<GoogleUserInfo | null>(null);
@@ -30,43 +29,32 @@ export default function CompleteProfileForm() {
   useEffect(() => {
     const savedData = sessionStorage.getItem("googleData");
     if (savedData) {
-      try {
-        const parsed: GoogleUserInfo = JSON.parse(savedData);
-        setGoogleInfo(parsed);
-        
-        // Isi otomatis field Nama dan Email
-        setValue("fullName", parsed.fullName);
-        setValue("email", parsed.email);
-
-        // Deteksi Role berdasarkan domain email
-        const domain = parsed.email.split("@")[1];
-        if (domain === "unpad.ac.id") {
-          setUserRole("LECTURER");
-        } else {
-          setUserRole("STUDENT");
-        }
-      } catch (e) {
-        console.error("Gagal membaca data session");
-        router.push("/login");
-      }
+      const parsed: GoogleUserInfo = JSON.parse(savedData);
+      setGoogleInfo(parsed);
+      
+      // Set value form secara manual dari data session
+      setValue("fullName", parsed.fullName);
+      setValue("email", parsed.email);
+      
+      // LOGIKA DETEKSI DOMAIN DIHAPUS - Kita paksa semuanya jadi STUDENT saat submit
     } else {
       // Jika tidak ada data session, tendang balik ke login
       router.push("/login");
     }
   }, [setValue, router]);
 
-  // 3. Logic Submit Data ke API
   const onCompleteProfile: SubmitHandler<RegisterPayload> = async (data) => {
     setIsSubmitting(true);
     try {
-      const finalData = { 
-        ...data, 
-        role: userRole,
-        detectedRole: userRole 
+      // 🌟 KITA PAKSA DATA ROLE DAN GOOGLE AUTH DI SINI 🌟
+      const payload: RegisterPayload = {
+        ...data,
+        role: "STUDENT",       // Mutlak STUDENT sesuai kesepakatan
+        isGoogleAuth: true     // Wajib dikirim agar BE langsung set isVerified: true
       };
-      
-      await completeGoogleProfile(finalData);
-          
+
+      await completeGoogleProfile(payload);
+
       alert("Profil berhasil dilengkapi! Silakan masuk kembali dengan Google.");
       
       // Bersihkan session setelah berhasil
@@ -79,9 +67,6 @@ export default function CompleteProfileForm() {
       setIsSubmitting(false);
     }
   };
-
-  // Mencegah flickering UI sebelum role terdeteksi
-  if (!userRole) return null;
 
   return (
     <div className="flex min-h-screen items-center justify-center font-sans p-4 text-black bg-white">
@@ -118,25 +103,17 @@ export default function CompleteProfileForm() {
           </div>
         </div>
 
-        {/* Form Input Akademik */}
-        <form onSubmit={handleSubmit(onCompleteProfile)} className="w-full space-y-2">
-          
-          {/* Input ID Berdasarkan Role */}
-          {userRole === "LECTURER" ? (
-            <AuthInput 
-              label="NIP / NIDN" 
-              icon={FiHash} 
-              placeholder="198001012005011001" 
-              register={register("employeeId", { required: true })} 
-            />
-          ) : (
-            <AuthInput 
-              label="NPM (Nomor Pokok Mahasiswa)" 
-              icon={FiHash} 
-              placeholder="140810230041" 
-              register={register("studentId", { required: true })} 
-            />
-          )}
+        <form
+          onSubmit={handleSubmit(onCompleteProfile)}
+          className="w-full space-y-2"
+        >
+          {/* SEMUA CONDITIONAL LECTURER DIHAPUS, LANGSUNG TAMPILKAN FORM STUDENT */}
+          <AuthInput
+            label="NPM (Nomor Pokok Mahasiswa)"
+            icon={FiHash}
+            placeholder="140810230041"
+            register={register("studentId", { required: true })}
+          />
 
           <AuthInput 
             label="Fakultas" 
@@ -145,15 +122,12 @@ export default function CompleteProfileForm() {
             register={register("faculty", { required: true })} 
           />
 
-          {/* Program Studi hanya untuk Mahasiswa */}
-          {userRole === "STUDENT" && (
-            <AuthInput 
-              label="Program Studi" 
-              icon={FiBookOpen} 
-              placeholder="Contoh: Teknik Informatika" 
-              register={register("major", { required: true })} 
-            />
-          )}
+          <AuthInput
+            label="Program Studi"
+            icon={FiBookOpen}
+            placeholder="Teknik Informatika"
+            register={register("major", { required: true })}
+          />
 
           <button
             type="submit"

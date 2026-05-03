@@ -18,6 +18,8 @@ import {
 interface StudentProfile {
   fullName: string;
   faculty: string;
+  studentId?: string;
+  major?: string;
 }
 
 interface UserData {
@@ -36,25 +38,43 @@ interface Report {
   createdAt: string;
 }
 
-interface Policy {
-  id: string;
-}
-
 interface EditProfileInputs {
-  fullName: string;
   faculty: string;
+  major: string;
 }
 
 export default function ProfilePage() {
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [myReports, setMyReports] = useState<Report[]>([]);
-  const [policies, setPolicies] = useState<Policy[]>([]); 
+  const [postsCount, setPostsCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   
   const router = useRouter();
   const { register, handleSubmit, setValue } = useForm<EditProfileInputs>();
+
+  const handleOpenEdit = () => {
+    setSelectedAvatarFile(null);
+    setAvatarPreview(null);
+    setIsEditing(true);
+  };
+
+  const handleCloseEdit = () => {
+    setSelectedAvatarFile(null);
+    setAvatarPreview(null);
+    setIsEditing(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (avatarPreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(avatarPreview);
+      }
+    };
+  }, [avatarPreview]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -63,17 +83,15 @@ export default function ProfilePage() {
         if (!token) return router.push('/login');
         
         // Parallel fetch biar cepet
-        const [userRes, reportRes, policyRes] = await Promise.all([
+        const [userRes, reportRes] = await Promise.all([
           fetch("/api/auth/me", { headers: { "Authorization": `Bearer ${token}` } }),
-          fetch("/api/reports", { headers: { "Authorization": `Bearer ${token}` } }),
-          fetch("/api/policies", { headers: { "Authorization": `Bearer ${token}` } })
+          fetch("/api/reports", { headers: { "Authorization": `Bearer ${token}` } })
         ]);
 
         const userResult = await userRes.json();
         const reportResult = await reportRes.json();
-        const policyResult = await policyRes.json();
 
-        if (userRes.ok && reportRes.ok && policyRes.ok) {
+        if (userRes.ok && reportRes.ok) {
           const user = userResult.data as UserData;
           setUserData(user);
           
@@ -82,13 +100,21 @@ export default function ProfilePage() {
           const filtered = allReports.filter(r => r.authorId === user.id);
           
           setMyReports(filtered);
-          setPolicies(policyResult.data.data || []);
+
+          // Hitung total postingan user
+          const postsRes = await fetch(`/api/posts?authorId=${user.id}&limit=1`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          });
+          const postsResult = await postsRes.json();
+          if (postsRes.ok) {
+            setPostsCount(postsResult.data?.meta?.totalItems ?? 0);
+          }
 
           // Set form defaults
-          setValue("fullName", user.studentProfile?.fullName || "");
           setValue("faculty", user.studentProfile?.faculty || "");
+          setValue("major", user.studentProfile?.major || "");
         }
-      } catch (error) {
+      } catch {
         console.error("Sync error");
       } finally {
         setIsLoading(false);
@@ -97,18 +123,51 @@ export default function ProfilePage() {
     fetchData();
   }, [router, setValue]);
 
+  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setSelectedAvatarFile(file);
+
+    if (!file) {
+      setAvatarPreview(null);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setAvatarPreview(previewUrl);
+  };
+
   // 2. FUNGSI UPDATE TANPA ANY
   const onUpdateProfile: SubmitHandler<EditProfileInputs> = async (data) => {
     setIsUpdating(true);
     try {
       const token = Cookies.get('token');
+      let avatarUrl: string | undefined;
+
+      if (selectedAvatarFile) {
+        const uploadData = new FormData();
+        uploadData.append('file', selectedAvatarFile);
+        uploadData.append('folder', 'avatars');
+
+        const uploadRes = await fetch('/api/uploads', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: uploadData,
+        });
+
+        const uploadResult = await uploadRes.json();
+        if (!uploadRes.ok) throw new Error(uploadResult.message || 'Gagal mengunggah foto profil');
+        avatarUrl = uploadResult.data?.url;
+      }
+
       const res = await fetch("/api/auth/me", {
         method: "PATCH",
         headers: { 
           "Content-Type": "application/json", 
           "Authorization": `Bearer ${token}` 
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ avatarUrl, faculty: data.faculty, major: data.major }),
       });
 
       const result = await res.json();
@@ -119,15 +178,18 @@ export default function ProfilePage() {
         if (!prev) return null;
         return {
           ...prev,
+          avatarUrl: avatarUrl || prev.avatarUrl,
           studentProfile: {
             ...prev.studentProfile,
-            fullName: data.fullName,
-            faculty: data.faculty
+            faculty: data.faculty,
+            major: data.major
           }
         };
       });
 
       setIsEditing(false);
+      setSelectedAvatarFile(null);
+      setAvatarPreview(null);
       alert("Profil berhasil diperbarui!");
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Terjadi kesalahan";
@@ -152,6 +214,7 @@ export default function ProfilePage() {
           <div className="relative mb-6">
             <div className="w-28 h-28 rounded-full border-4 border-white shadow-lg overflow-hidden bg-zinc-100 flex items-center justify-center">
               {userData?.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={userData.avatarUrl} className="w-full h-full object-cover" alt="Profile" />
               ) : (
                 <span className="text-3xl font-bold text-[#E8A34D] uppercase">
@@ -175,7 +238,7 @@ export default function ProfilePage() {
           </div>
           
           <div className="flex gap-3 justify-center">
-            <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-6 py-3 bg-white rounded-full shadow-sm border border-zinc-100 text-sm font-bold text-zinc-700 active:scale-95 transition-all">
+            <button onClick={handleOpenEdit} className="flex items-center gap-2 px-6 py-3 bg-white rounded-full shadow-sm border border-zinc-100 text-sm font-bold text-zinc-700 active:scale-95 transition-all">
               <FiEdit2 size={16} className="text-[#E8A34D]" /> Edit Profil
             </button>
             <button onClick={() => { Cookies.remove('token'); router.push('/login'); }} className="p-3 bg-red-50 text-red-500 rounded-full border border-red-100 active:scale-95">
@@ -191,12 +254,12 @@ export default function ProfilePage() {
             <p className="text-zinc-400 text-[10px] font-extrabold tracking-widest mt-2 uppercase">Laporan</p>
           </div>
           <div className="bg-white p-7 rounded-[32px] border border-zinc-50 shadow-sm text-center">
-            <p className="text-4xl font-bold text-[#E8A34D]">{policies.length}</p>
-            <p className="text-zinc-400 text-[10px] font-extrabold tracking-widest mt-2 uppercase">Kebijakan</p>
+            <p className="text-4xl font-bold text-[#2682F9]">{postsCount}</p>
+            <p className="text-zinc-400 text-[10px] font-extrabold tracking-widest mt-2 uppercase">Postingan</p>
           </div>
         </div>
 
-        <div className="flex justify-between items-center mb-6 px-1">
+        <div className="justify-between items-center mb-6 px-1">
           <h3 className="text-xl font-bold text-zinc-900">Laporanku</h3>
           <button onClick={() => router.push('/profil/my-report')} className="text-[#E8A34D] text-xs font-bold uppercase tracking-wider">Lihat Semua</button>
         </div>
@@ -208,6 +271,7 @@ export default function ProfilePage() {
               <div key={report.id} onClick={() => router.push('/profil/my-report')} className="bg-white p-5 rounded-[28px] border border-zinc-50 shadow-sm flex items-center gap-5 hover:border-[#E8A34D]/20 cursor-pointer group transition-all">
                 <div className="w-16 h-16 bg-zinc-50 rounded-2xl flex-shrink-0 overflow-hidden">
                   {report.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
                     <img src={report.imageUrl} className="w-full h-full object-cover" alt="Report" />
                   ) : (
                     <div className="w-full h-full bg-[#E8A34D]/5 flex items-center justify-center text-[#E8A34D]"><FiInbox size={24} /></div>
@@ -236,16 +300,51 @@ export default function ProfilePage() {
             <div className="bg-white w-full max-w-sm rounded-[32px] p-8 shadow-2xl">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold">Ubah Profil</h3>
-                <button onClick={() => setIsEditing(false)} className="text-zinc-400"><FiX size={24}/></button>
+                <button onClick={handleCloseEdit} className="text-zinc-400"><FiX size={24}/></button>
               </div>
               <form onSubmit={handleSubmit(onUpdateProfile)} className="space-y-4 text-black">
                 <div className="space-y-1">
+                  <label className="text-xs font-bold text-zinc-400 uppercase">Foto Profil</label>
+                  <div className="flex items-center gap-3">
+                    <div className="w-16 h-16 rounded-full overflow-hidden bg-zinc-100 flex items-center justify-center">
+                      {avatarPreview ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={avatarPreview} className="w-full h-full object-cover" alt="Preview Foto Profil" />
+                      ) : userData?.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={userData.avatarUrl} className="w-full h-full object-cover" alt="Foto Profil" />
+                      ) : (
+                        <span className="text-xl font-bold text-[#E8A34D] uppercase">
+                          {userData?.studentProfile?.fullName?.charAt(0) || "U"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <label htmlFor="avatar-upload" className="inline-flex items-center justify-center px-4 py-3 bg-[#E8A34D] text-white rounded-xl font-semibold text-sm cursor-pointer hover:bg-[#cc7d2f] transition-colors">
+                        Unggah Foto
+                      </label>
+                      {selectedAvatarFile && (
+                        <p className="text-[11px] text-zinc-500">{selectedAvatarFile.name}</p>
+                      )}
+                    </div>
+                    <input id="avatar-upload" type="file" accept="image/png,image/jpeg,image/webp" onChange={handleAvatarChange} className="hidden" />
+                  </div>
+                </div>
+                <div className="space-y-1">
                   <label className="text-xs font-bold text-zinc-400 uppercase">Nama Lengkap</label>
-                  <input {...register("fullName", { required: true })} className="w-full px-4 py-3 bg-zinc-50 border rounded-xl outline-none focus:border-[#E8A34D]" />
+                  <input value={userData?.studentProfile?.fullName || ""} readOnly className="w-full px-4 py-3 bg-zinc-100 border border-zinc-200 rounded-xl outline-none text-zinc-500 cursor-not-allowed" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-zinc-400 uppercase">NPM</label>
+                  <input value={userData?.studentProfile?.studentId || ""} readOnly className="w-full px-4 py-3 bg-zinc-100 border border-zinc-200 rounded-xl outline-none text-zinc-500 cursor-not-allowed" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-zinc-400 uppercase">Fakultas</label>
                   <input {...register("faculty", { required: true })} className="w-full px-4 py-3 bg-zinc-50 border rounded-xl outline-none focus:border-[#E8A34D]" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-zinc-400 uppercase">Program Studi</label>
+                  <input {...register("major", { required: true })} className="w-full px-4 py-3 bg-zinc-50 border rounded-xl outline-none focus:border-[#E8A34D]" />
                 </div>
                 <button disabled={isUpdating} className="w-full py-4 bg-[#E8A34D] text-white rounded-xl font-bold shadow-lg mt-4 active:scale-95 transition-all">
                   {isUpdating ? <FiLoader className="animate-spin mx-auto"/> : "Simpan Perubahan"}

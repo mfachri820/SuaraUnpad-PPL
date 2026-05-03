@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     }
 
     // Timpa role dari frontend untuk keamanan mutlak
-    body.role = detectedRole;
+    body.role = "STUDENT";
 
     // Lanjutkan ke service
     const newUser = await authService.register(body);

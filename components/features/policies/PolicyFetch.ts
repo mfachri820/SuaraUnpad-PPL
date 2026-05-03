@@ -40,6 +40,20 @@ export const createPolicy = async (title: string, content: string) => {
   return result.data;
 };
 
+export const updatePolicyStatus = async (
+  id: string,
+  status: "DRAFT" | "ACTIVE" | "CLOSED"
+) => {
+  const res = await fetch(`/api/policies/${id}`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ status })
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(result.message || "Gagal memperbarui status kebijakan");
+  return result.data;
+};
+
 export const submitVotePolicy = async (
   id: string,
   choice: "AGREE" | "DISAGREE"

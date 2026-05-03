@@ -19,6 +19,7 @@ interface UserData {
 
 interface Post {
   id: string;
+  title: string;
   content: string;
   createdAt: string;
   authorId: string;
@@ -34,6 +35,7 @@ export default function AspirasiPage() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [postTitle, setPostTitle] = useState("");
   const [postContent, setPostContent] = useState("");
   const [isPosting, setIsPosting] = useState(false);
   const router = useRouter();
@@ -46,7 +48,7 @@ export default function AspirasiPage() {
       });
       const result = await res.json();
       if (res.ok) setPosts(result.data.data as Post[] || []);
-    } catch (error) {
+    } catch {
       console.error("Gagal load feed");
     }
   };
@@ -74,23 +76,25 @@ export default function AspirasiPage() {
   }, [router]);
 
   const handleCreatePost = async () => {
-    if (!postContent.trim()) return;
+    if (!postTitle.trim() || !postContent.trim()) return;
     setIsPosting(true);
     try {
       const token = Cookies.get('token');
       const res = await fetch("/api/posts", {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json", 
-          "Authorization": `Bearer ${token}` 
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ title: "Aspirasi Baru", content: postContent }),
+        body: JSON.stringify({ title: postTitle.trim(), content: postContent.trim() }),
       });
       if (res.ok) {
+        setPostTitle("");
         setPostContent("");
         await fetchPosts();
       }
     } catch (error) {
+      console.error(error);
       alert("Gagal posting");
     } finally {
       setIsPosting(false);
@@ -108,7 +112,7 @@ export default function AspirasiPage() {
       if (res.ok) {
         setPosts(prev => prev.filter(p => p.id !== postId));
       }
-    } catch (error) {
+    } catch {
       alert("Gagal menghapus");
     }
   };
@@ -153,17 +157,23 @@ export default function AspirasiPage() {
           <div className="w-10 h-10 rounded-full bg-orange-100 flex-shrink-0 flex items-center justify-center font-bold text-[#F99D26] uppercase">
             {userData?.studentProfile?.fullName?.charAt(0) || "U"}
           </div>
-          <div className="flex-grow">
+          <div className="flex-grow space-y-3">
+            <input
+              value={postTitle}
+              onChange={(e) => setPostTitle(e.target.value)}
+              placeholder="Judul aspirasi"
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-base font-semibold text-slate-900 outline-none focus:border-[#2682F9] focus:ring-2 focus:ring-[#2682F9]/20"
+            />
             <textarea
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
-              placeholder="Apa aspirasimu hari ini?"
-              className="w-full bg-transparent text-lg outline-none resize-none min-h-[50px] mt-1"
+              placeholder="Jelaskan aspirasi kamu..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-base text-slate-900 outline-none resize-none min-h-[100px] focus:border-[#2682F9] focus:ring-2 focus:ring-[#2682F9]/20"
             />
-            <div className="flex justify-end mt-2">
-              <button 
-                onClick={handleCreatePost} 
-                disabled={!postContent.trim() || isPosting}
+            <div className="flex justify-end">
+              <button
+                onClick={handleCreatePost}
+                disabled={!postTitle.trim() || !postContent.trim() || isPosting}
                 className="px-5 py-1.5 bg-[#F99D26] text-white rounded-full font-bold text-sm disabled:opacity-50 hover:bg-orange-500 transition-colors"
               >
                 {isPosting ? "..." : "Posting"}
@@ -194,7 +204,8 @@ export default function AspirasiPage() {
                       <FiMoreHorizontal className="text-slate-400" />
                     )}
                   </div>
-                  <p className="mt-1 text-[15px] leading-normal">{post.content}</p>
+                  <h2 className="mt-3 text-base font-bold text-slate-900">{post.title}</h2>
+                  <p className="mt-1 text-sm text-slate-700 leading-relaxed">{post.content}</p>
                   
                   <div className="flex items-center gap-6 mt-3 text-slate-400">
                     <button 
@@ -203,6 +214,12 @@ export default function AspirasiPage() {
                     >
                       <FiArrowUp size={18} strokeWidth={2.5} />
                       <span className="text-xs font-bold">{post._count.postUpvotes}</span>
+                    </button>
+                    <button
+                      onClick={() => router.push(`/aspirasi/${post.id}`)}
+                      className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 hover:text-[#2682F9] transition"
+                    >
+                      Komentar
                     </button>
                   </div>
                 </div>

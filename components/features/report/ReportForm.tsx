@@ -32,7 +32,7 @@ export default function ReportForm() {
     trigger
   } = useForm<ReportFormData>();
 
-  // States 
+  // States
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,7 +103,7 @@ export default function ReportForm() {
     try {
       // Ambil token langsung dari cookies user yang sedang login
       const token = Cookies.get("token");
-      
+
       if (!token) {
         alert("Sesi Anda tidak valid atau telah habis. Silakan login kembali.");
         setIsSubmitting(false);

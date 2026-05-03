@@ -71,13 +71,13 @@ export default function PolicyCard({
   return (
     <CardWrapper
       href={isDetail ? "#" : `/policies/${policy.id}`}
-      className={`block bg-white rounded-3xl border ${
+      className={`block bg-white rounded-3xl border shadow-sm ${
         isDetail
           ? "border-transparent"
           : "border-slate-100 hover:border-slate-200 hover:shadow-sm"
       } p-5 transition`}
     >
-      <div className="flex flex-col">
+      <div className="flex flex-col ">
         {/* Header: Status & Author */}
         <div className="flex items-center gap-2 mb-3">
           <span

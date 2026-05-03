@@ -19,9 +19,8 @@ import { GoogleLogin } from "@react-oauth/google";
 import { verifyGoogleAuth, registerManual, RegisterPayload } from "./AuthFetch";
 
 export default function RegisterForm() {
-  // 1. TAMBAHKAN 'watch' DI SINI agar tidak ReferenceError
+  // 1. Tambahkan generic <RegisterPayload> pada useForm
   const { register, handleSubmit, watch } = useForm<RegisterPayload>();
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleRegistration] = useState(false);
   const [isMounted, setIsMounted] = useState(false);

@@ -45,6 +45,8 @@ export default function Navbar() {
     { name: "Notifikasi", href: "/notif" }
   ];
 
+  const isAdmin = userRole === "ADMIN";
+
   const handleLogout = async () => {
     try {
       Cookies.remove("token");
@@ -83,8 +85,16 @@ export default function Navbar() {
                   {link.name}
                 </Link>
               ))}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="text-sm font-medium text-slate-600 transition hover:text-[#2682F9]"
+                >
+                  Admin
+                </Link>
+              )}
               {/* TOMBOL KHUSUS LECTURER & ADMIN */}
-              {(userRole === "LECTURER" || userRole === "ADMIN") && (
+              {(userRole === "LECTURER" || isAdmin) && (
                 <button
                   onClick={() => setIsPolicyModalOpen(true)}
                   className="flex items-center gap-1 text-sm font-medium text-white bg-[#2682F9] px-3 py-1.5 rounded-lg hover:bg-[#3995FF] transition hover:cursor-pointer"
@@ -168,6 +178,15 @@ export default function Navbar() {
                     Profil Saya
                   </span>
                 </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-50"
+                >
+                  <span className="text-sm font-medium text-slate-700">Admin</span>
+                </Link>
+              )}
 
                 <button
                   onClick={handleLogout}

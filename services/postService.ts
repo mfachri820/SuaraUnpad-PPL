@@ -11,6 +11,7 @@ export interface GetPostsFilter {
   page?: number;
   limit?: number;
   policyId?: string;
+  authorId?: string;
 }
 
 export const postService = {
@@ -43,6 +44,7 @@ export const postService = {
     const posts = await prisma.post.findMany({
       where: {
         ...(filter.policyId && { policyId: filter.policyId }),
+        ...(filter.authorId && { authorId: filter.authorId }),
       },
       skip: skip,
       take: limit,
@@ -73,6 +75,7 @@ export const postService = {
     const totalItems = await prisma.post.count({
       where: {
         ...(filter.policyId && { policyId: filter.policyId }),
+        ...(filter.authorId && { authorId: filter.authorId }),
       }
     });
 
