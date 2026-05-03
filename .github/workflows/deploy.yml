@@ -1,0 +1,66 @@
+name: Deploy SuaraUnpad to GCP
+
+on:
+  push:
+    branches:
+      - main
+      - fix-cicd
+
+env:
+  IMAGE_NAME: ghcr.io/mfachri820/suaraunpad-ppl/suaraunpad-web
+  CONTAINER_NAME: suaraunpad-app
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute SSH to deploy on GCP
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.GCP_HOST }}
+          username: ${{ secrets.GCP_USERNAME }}
+          key: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+          script: |
+            # Login ke GHCR di VPS
+            echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Pull image terbaru
+            docker pull ${{ env.IMAGE_NAME }}:latest
+
+            docker stop ${{ env.CONTAINER_NAME }} || true
+            docker rm ${{ env.CONTAINER_NAME }} || true
+
+            echo "${{ secrets.ENV_PRODUCTION }}" > .env
+
+            docker run -d --name ${{ env.CONTAINER_NAME }} \
+              --restart unless-stopped \
+              -p 80:3000 \
+              --env-file .env \
+              ${{ env.IMAGE_NAME }}:latest
+
+            docker image prune -af
