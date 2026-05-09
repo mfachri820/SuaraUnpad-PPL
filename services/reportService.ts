@@ -196,7 +196,18 @@ export const reportService = {
           data: { upvoteCount: { increment: 1 } }
         });
 
-        // TODO: Di Fase 4 (Notifikasi), kita akan memanggil notifikasi ke author di sini
+        // 🚀 FIX: Eksekusi TODO (Notifikasi ke author laporan)
+        // Kita pakai tx.notification biar masuk ke dalam satu transaksi yang sama
+        if (report.authorId !== userId) {
+          await tx.notification.create({
+            data: {
+              recipientId: report.authorId,
+              actorId: userId,
+              type: "UPVOTE_REPORT", 
+              reportId: reportId
+            }
+          });
+        }
 
         return { action: "upvoted", message: "Upvote berhasil ditambahkan" };
       }

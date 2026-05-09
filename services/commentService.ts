@@ -60,7 +60,7 @@ export const commentService = {
           });
         }
       } else if (data.postId) {
-        // Skenario kalo komen beneran
+        // Skenario kalo komen di postingan biasa
         const post = await prisma.post.findUnique({
           where: { id: data.postId }
         });
@@ -71,6 +71,21 @@ export const commentService = {
               actorId: authorId,
               type: "COMMENT_ON_POST",
               postId: data.postId
+            }
+          });
+        }
+      } else if (data.policyId) {
+        const policy = await prisma.policy.findUnique({
+          where: { id: data.policyId }
+        });
+        // Pastikan kita gak ngirim notif ke diri sendiri (misal Admin yg komen di kebijakannya sendiri)
+        if (policy && policy.authorId !== authorId) {
+          await prisma.notification.create({
+            data: {
+              recipientId: policy.authorId, 
+              actorId: authorId,
+              type: "COMMENT_ON_POLICY", 
+              policyId: data.policyId
             }
           });
         }
