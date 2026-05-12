@@ -6,6 +6,7 @@ import { FaCamera } from "react-icons/fa";
 import { IoMdInformationCircle } from "react-icons/io";
 import Image from "next/image";
 import Cookies from "js-cookie"; // Tambahkan import js-cookie
+import { toast } from "react-hot-toast";
 
 // import fungsi helper dan data konstanta
 import {
@@ -105,7 +106,7 @@ export default function ReportForm() {
       const token = Cookies.get("token");
 
       if (!token) {
-        alert("Sesi Anda tidak valid atau telah habis. Silakan login kembali.");
+        toast.error("Sesi Anda tidak valid atau telah habis. Silakan login kembali.");
         setIsSubmitting(false);
         return;
       }
@@ -124,13 +125,13 @@ export default function ReportForm() {
       // Gunakan token dinamis untuk submit data laporan
       await submitReport(finalPayload, token);
 
-      alert("Laporan berhasil dikirim!");
+      toast.success("Laporan berhasil dikirim!");
       reset();
       setImageFile(null);
       setImagePreview(null);
     } catch (error) {
       console.error(error);
-      alert(
+      toast.error(
         "Terjadi kesalahan saat mengirim laporan. Cek koneksi atau hubungi admin."
       );
     } finally {

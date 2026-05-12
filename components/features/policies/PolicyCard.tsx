@@ -74,7 +74,7 @@ export default function PolicyCard({
       className={`block bg-white rounded-3xl border shadow-sm ${
         isDetail
           ? "border-transparent"
-          : "border-slate-100 hover:border-slate-200 hover:shadow-sm"
+          : "border-slate-100 hover:bg-slate-50/50 hover:border-slate-200 hover:shadow-sm"
       } p-5 transition`}
     >
       <div className="flex flex-col ">
@@ -128,7 +128,7 @@ export default function PolicyCard({
             {/* Background Bar */}
             <div
               className={`absolute top-0 left-0 h-full transition-all duration-500 ease-out ${
-                userVote === "AGREE" ? "bg-blue-100" : "bg-slate-100"
+                userVote === "AGREE" ? "bg-blue-100" : "bg-slate-300"
               }`}
               style={{ width: `${agreePercentage}%` }}
             ></div>
@@ -209,9 +209,8 @@ export default function PolicyCard({
         {/* Footer: Kumpulan Tombol (Hanya Comment) */}
         {!isDetail && (
           <div className="flex items-center mt-3 pt-4 border-t border-slate-100">
-            <div className="flex items-center gap-2 text-slate-500 hover:text-slate-700 transition">
-              <BiCommentDetail className="text-xl text-slate-400" />
-              <span className="text-sm font-medium">Diskusi</span>
+            <div className="flex items-center gap-2 text-slate-500  transition">
+              <BiCommentDetail className="text-xl text-slate-400 hover:text-slate-700" />
             </div>
           </div>
         )}

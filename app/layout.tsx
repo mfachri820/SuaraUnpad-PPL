@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 //import { Geist, Geist_Mono } from "next/font/google";
-import Navbar from "@/components/ui/Navbar";
-import Footer from "@/components/ui/Footer";
+import StatusAlert from "@/components/ui/StatusAlert";
 import localFont from "next/font/local";
 import "./globals.css";
 
@@ -33,6 +32,7 @@ export default function RootLayout({
         className={`${myFont.className} antialiased`}
         suppressHydrationWarning
       >
+        <StatusAlert></StatusAlert>
         <main>{children}</main>
       </body>
     </html>

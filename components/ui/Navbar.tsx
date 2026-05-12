@@ -16,7 +16,6 @@ export default function Navbar() {
   const router = useRouter();
 
   useEffect(() => {
-    // Bungkus prosesnya ke dalam fungsi asinkron (async)
     const checkUserRole = async () => {
       const token = Cookies.get("token");
       if (token) {
@@ -24,22 +23,18 @@ export default function Navbar() {
           const payloadBase64 = token.split(".")[1];
           const decodedJson = atob(payloadBase64);
           const payload = JSON.parse(decodedJson);
-
-          // Karena dibungkus async, React tidak akan menganggap ini sebagai "cascading render"
           setUserRole(payload.role);
         } catch {
           console.error("Gagal decode token");
         }
       }
     };
-
-    // Panggil fungsinya
     checkUserRole();
   }, []);
 
+  // 🌟 Link "Aspirasi" sudah dibuang dari sini
   const navLinks = [
     { name: "Beranda", href: "/home" },
-    { name: "Aspirasi", href: "/aspirasi" },
     { name: "Lapor", href: "/report" },
     { name: "Notifikasi", href: "/notif" }
   ];
@@ -61,11 +56,10 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="sticky top-0 z-50 w-full border-b border-slate-300 bg-white">
+      <nav className="sticky top-0 z-50 w-full border-b border-slate-300 bg-white shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-          {/* LOGO: Disesuaikan ukurannya untuk mobile & pakai shrink-0 */}
           <Link
-            href="/"
+            href="/home"
             className="flex shrink-0 items-center text-xl sm:text-2xl font-black text-black tracking-tight hover:underline underline-offset-2"
           >
             <span className="text-[#2682F9]">Suara</span>
@@ -92,7 +86,6 @@ export default function Navbar() {
                   Admin
                 </Link>
               )}
-              {/* TOMBOL KHUSUS LECTURER & ADMIN */}
               {(userRole === "LECTURER" || isAdmin) && (
                 <button
                   onClick={() => setIsPolicyModalOpen(true)}
@@ -112,9 +105,7 @@ export default function Navbar() {
               >
                 Profil
               </Link>
-
               <div className="h-4 w-px bg-slate-300"></div>
-
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1.5 text-sm font-bold text-red-500 hover:underline hover:cursor-pointer"
@@ -126,7 +117,7 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* MENU MOBILE: pakai shrink-0 agar tidak kegencet logo */}
+          {/* MENU MOBILE */}
           <div className="flex shrink-0 items-center gap-3 sm:gap-4 md:hidden">
             <Link
               href="/report"
@@ -135,16 +126,11 @@ export default function Navbar() {
             >
               LAPOR
             </Link>
-
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="flex items-center justify-center p-1 text-slate-600 transition hover:text-[#2682F9] focus:outline-none"
             >
-              {isOpen ? (
-                <FiX className="text-3xl" />
-              ) : (
-                <FiMenu className="text-3xl" />
-              )}
+              {isOpen ? <FiX className="text-3xl" /> : <FiMenu className="text-3xl" />}
             </button>
           </div>
         </div>
@@ -173,20 +159,17 @@ export default function Navbar() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-500">
                     <FaUserCircle className="text-[2.5rem]" />
                   </div>
-                  <span className="text-sm font-medium text-slate-700">
-                    Profil Saya
-                  </span>
+                  <span className="text-sm font-medium text-slate-700">Profil Saya</span>
                 </Link>
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-50"
-                >
-                  <span className="text-sm font-medium text-slate-700">Admin</span>
-                </Link>
-              )}
-
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-50"
+                  >
+                    <span className="text-sm font-medium text-slate-700">Admin</span>
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-red-500 hover:bg-red-50 transition text-left"
@@ -201,9 +184,7 @@ export default function Navbar() {
           </div>
         )}
       </nav>
-      {isPolicyModalOpen && (
-        <PolicyCreateModal onClose={() => setIsPolicyModalOpen(false)} />
-      )}
+      {isPolicyModalOpen && <PolicyCreateModal onClose={() => setIsPolicyModalOpen(false)} />}
     </>
   );
 }
