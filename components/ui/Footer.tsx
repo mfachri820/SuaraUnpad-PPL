@@ -7,7 +7,6 @@ export default function Footer() {
     <footer className="border-t border-slate-200 bg-white pt-12 pb-8 px-4 mt-auto">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-12 md:flex-row md:items-start md:justify-between">
-          
           {/* KOLOM KIRI: Brand & Deskripsi */}
           <div className="flex flex-col items-center text-center md:items-start md:text-left">
             <Link href="/" className="mb-2 text-3xl font-black tracking-tight">
@@ -24,7 +23,6 @@ export default function Footer() {
           {/* KOLOM KANAN: Kontak & Sosial Media */}
           {/* FIX: Hapus md:min-w-75 yang tidak valid, pakai w-full md:w-auto */}
           <div className="flex flex-col gap-6 w-full md:w-auto">
-            
             {/* List Kontak: Rata kiri secara teks, tapi block-nya rata tengah di HP */}
             <div className="flex flex-col gap-3 w-max mx-auto md:mx-0">
               <div className="flex items-center gap-3 text-slate-600">
@@ -50,19 +48,22 @@ export default function Footer() {
             {/* Ikon Sosial Media: Center di HP, Left di Desktop */}
             <div className="flex items-center justify-center md:justify-start gap-6 mt-2">
               <Link
-                href="#"
+                href="https://web.facebook.com/unpad/"
+                target="_blank"
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1e293b] text-white shadow-sm transition hover:bg-[#2682F9] hover:scale-105 shrink-0"
               >
                 <FaFacebookF />
               </Link>
               <Link
-                href="#"
+                href="https://www.instagram.com/universitaspadjadjaran/"
+                target="_blank"
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1e293b] text-white shadow-sm transition hover:bg-[#2682F9] hover:scale-105 shrink-0"
               >
                 <FaInstagram />
               </Link>
               <Link
-                href="#"
+                href="https://x.com/unpad"
+                target="_blank"
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1e293b] text-white shadow-sm transition hover:bg-[#2682F9] hover:scale-105 shrink-0"
               >
                 <FaTwitter />

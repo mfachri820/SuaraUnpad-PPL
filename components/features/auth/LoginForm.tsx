@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import AuthInput from "@/components/ui/AuthInput";
 import Cookies from "js-cookie";
 import { GoogleLogin } from "@react-oauth/google";
+import { toast } from "react-hot-toast";
 
 // Import interface dan fungsi API
 import { verifyGoogleAuth, loginManual, LoginPayload } from "./AuthFetch";
@@ -32,13 +33,13 @@ function LoginFormContent() {
           Cookies.set("token", token, { expires: 7, path: "/" });
         }
 
-        alert(result.message || "Login Berhasil!");
+        toast.success(result.message || "Login Berhasil!");
         router.push("/home");
       }
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Gagal login manual";
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -58,7 +59,9 @@ function LoginFormContent() {
             JSON.stringify(result.data?.googleData)
           );
 
-          alert("Akun Google valid! Yuk, lengkapi data akademikmu dulu.");
+          toast.success(
+            "Akun Google valid! Yuk, lengkapi data akademikmu dulu."
+          );
           router.push("/complete-profile");
         }
         // JIKA USER LAMA
@@ -67,13 +70,13 @@ function LoginFormContent() {
           if (token) {
             Cookies.set("token", token, { expires: 7, path: "/" });
           }
-          alert("Selamat datang kembali!");
+          toast.success("Selamat datang kembali!");
           router.push("/home");
         }
       }
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Gagal Google Auth";
-      alert(msg);
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -110,14 +113,14 @@ function LoginFormContent() {
         <AuthInput
           label="Password"
           type="password"
-          placeholder="password123"
+          placeholder="********"
           register={register("password", { required: true })}
         />
 
-        <div className="text-right py-2 mb-4">
+        <div className="text-right py-0 mb-4">
           <button
             type="button"
-            className="font-bold text-black border-b-2 border-black leading-none text-sm"
+            className="font-bold text-black hover:underline hover:cursor-pointer  text-sm"
           >
             Lupa Password?
           </button>
@@ -148,7 +151,7 @@ function LoginFormContent() {
               handleGoogleAuth(credentialResponse.credential);
             }
           }}
-          onError={() => alert("Login Google Gagal!")}
+          onError={() => toast.error("Login Google Gagal!")}
           shape="rectangular"
           text="signin_with"
           size="large"
@@ -158,7 +161,10 @@ function LoginFormContent() {
 
       <div className="mt-12 text-center text-sm text-zinc-500 font-medium">
         Belum punya akun?{" "}
-        <a href="/register" className="text-[#2682F9] font-bold underline">
+        <a
+          href="/register"
+          className="text-[#2682F9] font-bold hover:underline"
+        >
           Daftar di sini.
         </a>
       </div>

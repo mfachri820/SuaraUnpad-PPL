@@ -5,9 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { fetchPolicyDetail } from "@/components/features/policies/PolicyFetch";
 import PolicyCard from "@/components/features/policies/PolicyCard";
 import CommentSection from "@/components/features/policies/CommentSection"; // Import komponen baru
-import { FiArrowLeft } from "react-icons/fi";
+import { FiArrowLeft, FiLoader } from "react-icons/fi";
 import Link from "next/link";
 import { Policy } from "@/components/features/policies/types";
+import { toast } from "react-hot-toast";
 
 export default function PolicyDetailPage() {
   const params = useParams();
@@ -24,7 +25,7 @@ export default function PolicyDetailPage() {
         setPolicy(data);
       } catch (error) {
         console.error(error);
-        alert("Kebijakan tidak ditemukan atau masih DRAFT");
+        toast.success("Kebijakan tidak ditemukan atau masih DRAFT");
         router.push("/home");
       } finally {
         setIsLoading(false);
@@ -35,8 +36,8 @@ export default function PolicyDetailPage() {
 
   if (isLoading)
     return (
-      <div className="p-10 text-center animate-pulse font-bold text-slate-400">
-        Memuat Data...
+      <div className="h-screen w-full flex items-center justify-center bg-white">
+        <FiLoader className="animate-spin text-[#F99D26]" size={40} />
       </div>
     );
   if (!policy) return null;

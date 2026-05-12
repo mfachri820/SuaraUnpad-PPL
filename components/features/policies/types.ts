@@ -16,6 +16,7 @@ export interface Policy {
   userVote: "AGREE" | "DISAGREE" | null;
   agreeCount: number;
   disagreeCount: number;
+  createdAt?: string;
 }
 
 export interface CommentData {

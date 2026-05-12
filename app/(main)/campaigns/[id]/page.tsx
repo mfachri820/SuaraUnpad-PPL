@@ -7,6 +7,8 @@ import {
 import DonateModal from "@/components/features/donations/DonateModal";
 import { useParams } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link"
+import { FiLoader, FiArrowLeft } from "react-icons/fi";
 
 export default function CampaignDetailPage() {
   const { id } = useParams();
@@ -19,12 +21,22 @@ export default function CampaignDetailPage() {
 
   if (!campaign)
     return (
-      <div className="p-10 text-center animate-pulse">Memuat Kampanye...</div>
+      <div className="h-screen w-full flex items-center justify-center bg-white">
+        <FiLoader className="animate-spin text-[#F99D26]" size={40} />
+      </div>
     );
 
   return (
     // Dihilangkan pb-24 karena sudah tidak ada tombol melayang di bawah
     <div className="max-w-2xl mx-auto min-h-screen p-4 md:p-8">
+      <div className="sticky top-0  backdrop-blur-md z-10 px-4 py-5 border-b border-slate-50 flex items-center gap-0">
+          <Link
+          href="/home"
+          className="inline-flex items-center gap-2 text-sm font-bold text-slate-500 hover:text-[#2682F9] mb-0 transition"
+        >
+          <FiArrowLeft /> Kembali
+        </Link>
+        </div>
       {/* Card Wrapper */}
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="relative w-full h-64">
