@@ -34,6 +34,7 @@ export interface RegisterPayload {
 
 export interface UpdateProfilePayload {
   fullName?: string;
+  studentId?: string;
   faculty?: string;
   major?: string;
   department?: string;
@@ -222,7 +223,15 @@ export const authService = {
         ...(data.department !== undefined && { department: data.department }),
       };
 
-      // Jika ada atribut profil yang di-update, dorong ke antrean query
+const npmRegex = /^[0-9]{10}$/;
+    if (role === 'STUDENT' && data.studentId !== undefined) {
+      if (!npmRegex.test(data.studentId)) {
+        throw new Error('Format NPM tidak valid');
+      }
+      Object.assign(profileUpdateData, { studentId: data.studentId });
+    }
+
+    // Jika ada atribut profil yang di-update, dorong ke antrean query
       if (Object.keys(profileUpdateData).length > 0) {
         if (role === 'STUDENT') {
           queries.push(prisma.studentProfile.update({ where: { userId }, data: profileUpdateData }));

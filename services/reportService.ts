@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ReportCategory, ReportStatus } from "@prisma/client";
+import { uploadService } from '@/services/uploadService';
 
 // Interface biar ga type 'any'
 export interface CreateReportPayload {
@@ -20,19 +21,28 @@ export interface GetReportsFilter {
 export const reportService = {
   // FUNGSI CREATE (Membuat Laporan Baru)
   async createReport(authorId: string, data: CreateReportPayload) {
-    const newReport = await prisma.report.create({
-      data: {
-        authorId: authorId,
-        title: data.title,
-        description: data.description,
-        category: data.category,
-        location: data.location,
-        imageUrl: data.imageUrl
-        // status dan upvoteCount tidak perlu diisi karena sudah punya nilai default di schema.prisma
-      }
-    });
+    try {
+      const newReport = await prisma.report.create({
+        data: {
+          authorId: authorId,
+          title: data.title,
+          description: data.description,
+          category: data.category,
+          location: data.location,
+          imageUrl: data.imageUrl
+          // status dan upvoteCount tidak perlu diisi karena sudah punya nilai default di schema.prisma
+        }
+      });
 
-    return newReport;
+      return newReport;
+    } catch (error) {
+      try {
+        await uploadService.deleteImageByUrl(data.imageUrl);
+      } catch (cleanupError) {
+        console.warn('Gagal menghapus gambar yang sudah diunggah setelah kegagalan DB:', cleanupError);
+      }
+      throw error;
+    }
   },
 
   // FUNGSI GET ALL (Mengambil Banyak Laporan dengan Pagination & Filter)

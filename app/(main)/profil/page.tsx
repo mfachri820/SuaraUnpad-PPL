@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import {
@@ -308,10 +309,11 @@ export default function ProfilePage() {
         <div className="space-y-4 mb-10">
           {myReports.length > 0 ? (
             myReports.slice(0, 3).map((report) => (
-              <div
+              <Link
                 key={report.id}
+                href="/profil/my-report"
+                className="block w-full bg-white p-5 rounded-[28px] border border-zinc-50 shadow-sm flex items-center gap-5 hover:border-[#E8A34D]/20 cursor-pointer group transition-all"
                 onClick={() => router.push("/profil/my-report")}
-                className="bg-white p-5 rounded-[28px] border border-zinc-50 shadow-sm flex items-center gap-5 hover:border-[#E8A34D]/20 cursor-pointer group transition-all"
               >
                 <div className="w-16 h-16 bg-zinc-50 rounded-2xl shrink-0 overflow-hidden">
                   {report.imageUrl ? (
@@ -349,7 +351,7 @@ export default function ProfilePage() {
                   className="text-zinc-300 group-hover:text-[#E8A34D]"
                   size={20}
                 />
-              </div>
+              </Link>
             ))
           ) : (
             <div className="bg-white py-10 rounded-4xl border border-zinc-50 text-center text-zinc-400 text-sm italic">

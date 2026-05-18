@@ -1,11 +1,21 @@
 import { reportService, CreateReportPayload, GetReportsFilter } from '@/services/reportService';
 import { successResponse, errorResponse } from '@/lib/apiResponse';
 import { ReportCategory, ReportStatus } from '@prisma/client';
+import { uploadService } from '@/services/uploadService';
+import { detectDamage, evaluateAiResult, AiDamageType } from '@/services/reportAiService';
+
+const CATEGORY_TO_AI_TYPE: Record<ReportCategory, AiDamageType | null> = {
+  POTHOLE: 'pothole',
+  CRACK: 'crack',
+  CORROSION: 'korosi',
+  SAMPAH: 'sampah',
+  OTHER: null
+};
 
 // 1. METHOD GET: Untuk List Laporan (Public / Tidak perlu login)
 export async function GET(request: Request) {
   try {
-    // A. Membaca Query Parameter dari URL (contoh: ?page=2&category=INFRASTRUCTURE)
+    // A. Membaca Query Parameter dari URL (contoh: ?page=2&category=POTHOLE)
     const { searchParams } = new URL(request.url);
     
     // B. Mengambil nilai satu per satu dan mengubah formatnya jika perlu
@@ -57,11 +67,45 @@ export async function POST(request: Request) {
       return errorResponse('Data tidak lengkap. title, description, category, location, dan imageUrl wajib diisi.', 400);
     }
 
+    const categoryValue = String(body.category).trim().toUpperCase();
+    if (!(categoryValue in CATEGORY_TO_AI_TYPE)) {
+      return errorResponse('Kategori tidak valid.', 400);
+    }
+
+    const normalizedBody: CreateReportPayload = {
+      ...body,
+      category: categoryValue as ReportCategory
+    };
+
+    const aiType = CATEGORY_TO_AI_TYPE[normalizedBody.category];
+    let aiEvaluation = null as ReturnType<typeof evaluateAiResult> | null;
+    let aiResult = null as Awaited<ReturnType<typeof detectDamage>> | null;
+
+    if (aiType) {
+      try {
+        aiResult = await detectDamage(body.imageUrl, aiType);
+        aiEvaluation = evaluateAiResult(aiResult);
+
+        if (aiEvaluation.decision === 'reject') {
+          await uploadService.deleteImageByUrl(body.imageUrl);
+          return errorResponse(aiEvaluation.message, 422);
+        }
+      } catch (error) {
+        await uploadService.deleteImageByUrl(body.imageUrl);
+        const errorMessage = error instanceof Error ? error.message : 'Gagal memproses AI deteksi kerusakan.';
+        return errorResponse(errorMessage, 502);
+      }
+    }
+
     // D. Menyuruh Service menyimpan ke Database
-    const newReport = await reportService.createReport(authorId, body);
+    const newReport = await reportService.createReport(authorId, normalizedBody);
     
     // E. Kasih tahu Frontend kalau berhasil (Status 201 Created)
-    return successResponse(newReport, 'Laporan berhasil dibuat', 201);
+    const message = aiEvaluation?.decision === 'warn'
+      ? `Laporan berhasil dibuat. ${aiEvaluation.message}`
+      : 'Laporan berhasil dibuat';
+
+    return successResponse({ report: newReport, ai: aiEvaluation }, message, 201);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan server';
     return errorResponse(errorMessage, 500);

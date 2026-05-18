@@ -16,9 +16,10 @@ enum Role {
 }
 
 enum ReportCategory {
-  INFRASTRUCTURE
-  CLEANLINESS
-  SECURITY
+  POTHOLE
+  CRACK
+  CORROSION
+  SAMPAH
   OTHER
 }
 

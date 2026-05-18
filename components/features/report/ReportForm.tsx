@@ -123,17 +123,24 @@ export default function ReportForm() {
       };
 
       // Gunakan token dinamis untuk submit data laporan
-      await submitReport(finalPayload, token);
+      const reportResponse = await submitReport(finalPayload, token);
 
       toast.success("Laporan berhasil dikirim!");
+
+      const aiDecision = reportResponse?.data?.ai?.decision;
+      const aiMessage = reportResponse?.data?.ai?.message;
+      if (aiDecision === "warn" && aiMessage) {
+        toast(aiMessage);
+      }
       reset();
       setImageFile(null);
       setImagePreview(null);
     } catch (error) {
-      console.error(error);
-      toast.error(
-        "Terjadi kesalahan saat mengirim laporan. Cek koneksi atau hubungi admin."
-      );
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Terjadi kesalahan saat mengirim laporan. Cek koneksi atau hubungi admin.";
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 import { BiCommentDetail } from "react-icons/bi";
 import { FiCheckCircle } from "react-icons/fi";
 import { submitVotePolicy, removeVotePolicy } from "./PolicyFetch";
@@ -19,6 +20,7 @@ export default function PolicyCard({
   );
   const [agreeCount, setAgreeCount] = useState(policy.agreeCount || 0);
   const [disagreeCount, setDisagreeCount] = useState(policy.disagreeCount || 0);
+  const [isVoting, setIsVoting] = useState(false);
 
   const totalVotes = agreeCount + disagreeCount;
 
@@ -39,28 +41,55 @@ export default function PolicyCard({
 
     if (policy.status !== "ACTIVE") return;
 
+    const prevVote = userVote;
+    const prevAgree = agreeCount;
+    const prevDisagree = disagreeCount;
+
     if (userVote === choice) {
       // Cabut vote
-      setUserVote(null);
-      if (choice === "AGREE") setAgreeCount((prev) => prev - 1);
-      if (choice === "DISAGREE") setDisagreeCount((prev) => prev - 1);
+      setIsVoting(true);
       try {
         await removeVotePolicy(policy.id);
+        setUserVote(null);
+        if (choice === "AGREE") setAgreeCount((prev) => Math.max(0, prev - 1));
+        if (choice === "DISAGREE") setDisagreeCount((prev) => Math.max(0, prev - 1));
       } catch (err) {
         console.error(err);
+        toast.error("Gagal mencabut vote. Silakan coba lagi.");
+        setUserVote(prevVote);
+        setAgreeCount(prevAgree);
+        setDisagreeCount(prevDisagree);
+      } finally {
+        setIsVoting(false);
       }
     } else {
       // Pindah vote atau Vote baru
-      if (userVote === "AGREE") setAgreeCount((prev) => prev - 1);
-      if (userVote === "DISAGREE") setDisagreeCount((prev) => prev - 1);
+      const nextAgree = Math.max(
+        0,
+        prevAgree + (choice === "AGREE" ? 1 : 0) -
+          (prevVote === "AGREE" ? 1 : 0)
+      );
+      const nextDisagree = Math.max(
+        0,
+        prevDisagree + (choice === "DISAGREE" ? 1 : 0) -
+          (prevVote === "DISAGREE" ? 1 : 0)
+      );
 
+      setIsVoting(true);
       setUserVote(choice);
-      if (choice === "AGREE") setAgreeCount((prev) => prev + 1);
-      if (choice === "DISAGREE") setDisagreeCount((prev) => prev + 1);
+      setAgreeCount(nextAgree);
+      setDisagreeCount(nextDisagree);
+
       try {
         await submitVotePolicy(policy.id, choice);
       } catch (err) {
         console.error(err);
+        toast.error("Gagal mengirim vote. Silakan coba lagi.");
+        setUserVote(prevVote);
+        setAgreeCount(prevAgree);
+        setDisagreeCount(prevDisagree);
+      } finally {
+        setIsVoting(false);
       }
     }
   };
@@ -118,12 +147,12 @@ export default function PolicyCard({
           {/* Tombol Agree */}
           <button
             onClick={(e) => handleVote(e, "AGREE")}
-            disabled={isVotingDisabled}
+            disabled={isVotingDisabled || isVoting}
             className={`relative w-full h-10 overflow-hidden rounded-xl border text-left transition ${
               userVote === "AGREE"
                 ? "border-blue-500 font-bold" // Terpilih
                 : "border-slate-200 font-medium hover:bg-slate-50" // Tidak terpilih
-            } ${isVotingDisabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+            } ${isVotingDisabled || isVoting ? "cursor-not-allowed" : "cursor-pointer"}`}
           >
             {/* Background Bar */}
             <div
@@ -160,12 +189,12 @@ export default function PolicyCard({
           {/* Tombol Disagree */}
           <button
             onClick={(e) => handleVote(e, "DISAGREE")}
-            disabled={isVotingDisabled}
+            disabled={isVotingDisabled || isVoting}
             className={`relative w-full h-10 overflow-hidden rounded-xl border text-left transition ${
               userVote === "DISAGREE"
                 ? "border-red-500 font-bold"
                 : "border-slate-200 font-medium hover:bg-slate-50"
-            } ${isVotingDisabled ? "cursor-not-allowed" : "cursor-pointer"}`}
+            } ${isVotingDisabled || isVoting ? "cursor-not-allowed" : "cursor-pointer"}`}
           >
             {/* Background Bar */}
             <div

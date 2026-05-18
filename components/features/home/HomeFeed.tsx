@@ -33,6 +33,7 @@ import { fetchPolicies } from "@/components/features/policies/PolicyFetch";
 // 🌟 Interface Tambahan dari Aspirasi
 interface UserData {
   id: string;
+  role?: string;
   studentProfile?: { fullName?: string } | null;
 }
 
@@ -65,6 +66,8 @@ export default function HomeFeed() {
   const [activeTab, setActiveTab] = useState<
     "ALL" | "ASPIRASI" | "LAPORAN" | "WACANA"
   >("ALL");
+
+  const POST_MAX_LENGTH = 500;
 
   // --- STATE FORM POSTING ---
   const [postContent, setPostContent] = useState("");
@@ -183,15 +186,20 @@ export default function HomeFeed() {
 
   // 📝 HANDLE BUAT ASPIRASI BARU
   const handleCreatePost = async () => {
-    if (!postContent.trim() && !imageUrl) {
+    const trimmedPost = postContent.trim();
+    if (!trimmedPost && !imageUrl) {
       toast.error("Isi aspirasi atau foto wajib diisi.");
+      return;
+    }
+    if (trimmedPost.length > POST_MAX_LENGTH) {
+      toast.error(`Aspirasi maksimal ${POST_MAX_LENGTH} karakter.`);
       return;
     }
     setIsPosting(true);
     try {
       const token = Cookies.get("token");
       const autoTitle =
-        postContent.trim().split(/\s+/).slice(0, 5).join(" ") ||
+        trimmedPost.split(/\s+/).slice(0, 5).join(" ") ||
         "Aspirasi Baru";
       const res = await fetch("/api/posts", {
         method: "POST",
@@ -202,7 +210,7 @@ export default function HomeFeed() {
         body: JSON.stringify({
           title: autoTitle,
           content:
-            postContent.trim() + (imageUrl ? `\n\n![image](${imageUrl})` : "")
+            trimmedPost + (imageUrl ? `\n\n![image](${imageUrl})` : "")
         })
       });
       if (!res.ok) {
@@ -267,6 +275,23 @@ export default function HomeFeed() {
         headers: { Authorization: `Bearer ${token}` }
       }).then((res) => res.json());
       if (postsRes.data?.data) setPosts(postsRes.data.data);
+    }
+  };
+
+  // 🗑️ HANDLE DELETE LAPORAN (ADMIN)
+  const handleDeleteReport = async (e: React.MouseEvent, reportId: string) => {
+    e.stopPropagation();
+    if (!confirm("Hapus laporan ini?")) return;
+    const token = Cookies.get("token");
+    if (!token) return;
+    const res = await fetch(`/api/reports/${reportId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
+      const currentUserId = getUserIdFromToken(token);
+      const refreshedReports = await fetchHomeReports(token, currentUserId);
+      setReports(refreshedReports);
     }
   };
 
@@ -426,9 +451,13 @@ export default function HomeFeed() {
             <textarea
               value={postContent}
               onChange={(e) => setPostContent(e.target.value)}
+              maxLength={POST_MAX_LENGTH}
               placeholder="Apa aspirasimu hari ini?"
               className="w-full text-xl outline-none resize-none min-h-16 text-slate-900 placeholder-slate-400 pt-2"
             />
+            <div className="text-xs text-slate-400 mt-2">
+              {postContent.length}/{POST_MAX_LENGTH} karakter
+            </div>
             {imageUrl && (
               <div className="relative mt-2 mb-4 w-full h-72 rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
                 <button
@@ -536,7 +565,7 @@ export default function HomeFeed() {
                             {post._count?.postUpvotes || 0}
                           </span>
                         </button>
-                        {post.authorId === userData?.id && (
+                        {(post.authorId === userData?.id || userData?.role === "ADMIN") && (
                           <button
                             onClick={(e) => handleDeletePost(e, post.id)}
                             className="hover:cursor-pointer hover:text-red-400 transition ml-auto"
@@ -579,7 +608,19 @@ export default function HomeFeed() {
                           </p>
                         </div>
                       </div>
-                      {getStatusBadge(report.status)}
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(report.status)}
+                        {userData?.role === "ADMIN" && (
+                          <button
+                            onClick={(e) => handleDeleteReport(e, report.id)}
+                            className="text-slate-400 hover:text-red-400 transition"
+                            aria-label="Hapus laporan"
+                            title="Hapus laporan"
+                          >
+                            <FiTrash2 size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="mt-1">

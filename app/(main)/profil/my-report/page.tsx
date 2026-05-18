@@ -114,13 +114,15 @@ export default function MyReportPage() {
                 className="bg-white p-5 rounded-4xl border border-zinc-50 shadow-sm flex gap-5 hover:border-[#E8A34D]/20 transition-all group"
               >
                 {/* Image Section */}
-                <div className="w-20 h-20 bg-zinc-100 rounded-[22px] shrink-0 overflow-hidden border border-zinc-50">
+                <div className="relative w-20 h-20 bg-zinc-100 rounded-[22px] shrink-0 overflow-hidden border border-zinc-50">
                   {report.imageUrl ? (
                     <Image
                       src={report.imageUrl}
                       alt="Laporan"
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    ></Image>
+                      fill
+                      unoptimized
+                      className="object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-cyan-50 text-cyan-200">
                       <FiMapPin size={28} />

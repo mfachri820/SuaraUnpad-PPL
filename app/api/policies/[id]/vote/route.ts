@@ -28,11 +28,15 @@ export async function POST(
     return successResponse(result, `Berhasil memberikan vote: ${choice}`, 200);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan server';
-    
+    const errorCode = (error as any)?.code;
+
     let statusCode = 500;
     if (errorMessage === 'Kebijakan tidak ditemukan') statusCode = 404;
     if (errorMessage.includes('Voting ditolak')) statusCode = 403;
-    
+    if (errorCode === 'P2002' || /unique constraint/i.test(errorMessage)) {
+      statusCode = 400;
+    }
+
     return errorResponse(errorMessage, statusCode);
   }
 }
