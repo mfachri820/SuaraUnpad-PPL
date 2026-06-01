@@ -12,6 +12,7 @@ import { POST as uploadRoutePOST } from '@/app/api/uploads/route';
 import { reportService } from '@/services/reportService';
 import { uploadService } from '@/services/uploadService';
 import { prisma } from '@/lib/prisma';
+import type { ReportCategory } from '@prisma/client';
 
 describe('Upload handler and report cleanup', () => {
   beforeEach(() => {
@@ -42,7 +43,7 @@ describe('Upload handler and report cleanup', () => {
   });
 
   it('calls deleteImageByUrl when report creation fails after an uploaded image URL is provided', async () => {
-    const payload = {
+    const payload: { title: string; description: string; category: ReportCategory; location: string; imageUrl: string } = {
       title: 'Test Report',
       description: 'Desc',
       category: 'POTHOLE',
@@ -54,7 +55,7 @@ describe('Upload handler and report cleanup', () => {
     const mockedReportCreate = prisma.report.create as unknown as ReturnType<typeof vi.fn>;
     mockedReportCreate.mockRejectedValueOnce(new Error('Database insertion failed'));
 
-    await expect(reportService.createReport('user-1', payload as unknown as { title: string; description: string; category: string; location: string; imageUrl: string; })).rejects.toThrow('Database insertion failed');
+    await expect(reportService.createReport('user-1', payload as unknown as { title: string; description: string; category: ReportCategory; location: string; imageUrl: string; })).rejects.toThrow('Database insertion failed');
     expect(deleteImageByUrlSpy).toHaveBeenCalledOnce();
     expect(deleteImageByUrlSpy).toHaveBeenCalledWith(payload.imageUrl);
   });

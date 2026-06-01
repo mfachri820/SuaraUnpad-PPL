@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { performance } from 'perf_hooks';
+import type { ReportCategory, ReportStatus } from '@prisma/client';
 
 vi.mock('@/services/reportService', () => ({
   reportService: {
@@ -29,12 +30,17 @@ import { uploadService } from '@/services/uploadService';
 import { detectDamage } from '@/services/reportAiService';
 
 type ReportRecord = {
+  status: ReportStatus;
   id: string;
+  createdAt: Date;
+  authorId: string;
   title: string;
   description: string;
-  category: string;
+  category: ReportCategory;
   location: string;
   imageUrl: string;
+  upvoteCount: number;
+  updatedAt: Date;
 };
 
 const mockedCreateReport = vi.mocked(reportService.createReport);

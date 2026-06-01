@@ -1,4 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type MockedFunction } from 'vitest';
+import type { JWTVerifyResult, ResolvedKey } from 'jose';
+import type { NextRequest } from 'next/server';
 
 vi.mock('jose', () => ({
   jwtVerify: vi.fn(),
@@ -28,7 +30,7 @@ describe('Middleware and profile validation', () => {
   });
 
   it('returns 403 when STUDENT role tries to access /api/admin', async () => {
-    mockedJwtVerify.mockResolvedValue({ payload: { isVerified: true, userId: 'user-1', role: 'STUDENT' } } as unknown as { payload: { isVerified: boolean; userId: string; role: string } });
+    mockedJwtVerify.mockResolvedValue({ payload: { isVerified: true, userId: 'user-1', role: 'STUDENT' }, protectedHeader: {} } as unknown as JWTVerifyResult<unknown> & ResolvedKey);
 
     const request = {
       headers: new Headers({ authorization: 'Bearer fake-token' }),
@@ -36,7 +38,7 @@ describe('Middleware and profile validation', () => {
       cookies: {
         get: vi.fn(() => undefined),
       },
-    } as unknown as Request;
+    } as unknown as NextRequest;
 
     const response = await middleware(request);
 
@@ -48,8 +50,9 @@ describe('Middleware and profile validation', () => {
 
   it('returns 403 when API token is valid but user is not verified', async () => {
     mockedJwtVerify.mockResolvedValue({
-      payload: { isVerified: false, userId: 'user-1', role: 'STUDENT' }
-    } as unknown as { payload: { isVerified: boolean; userId: string; role: string } });
+      payload: { isVerified: false, userId: 'user-1', role: 'STUDENT' },
+      protectedHeader: {}
+    } as unknown as JWTVerifyResult<unknown> & ResolvedKey);
 
     const request = {
       headers: new Headers({ authorization: 'Bearer fake-token' }),
@@ -57,7 +60,7 @@ describe('Middleware and profile validation', () => {
       cookies: {
         get: vi.fn(() => undefined),
       },
-    } as unknown as Request;
+    } as unknown as NextRequest;
 
     const response = await middleware(request);
 
@@ -79,7 +82,7 @@ describe('Middleware and profile validation', () => {
       cookies: {
         get: vi.fn(() => undefined),
       },
-    } as unknown as Request;
+    } as unknown as NextRequest;
 
     const response = await middleware(request);
 

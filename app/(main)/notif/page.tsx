@@ -247,6 +247,11 @@ export default function NotifikasiPage() {
         title: "Seseorang mendukung komentar Anda",
         message: `${actorName} memberikan dukungan pada komentar Anda.`,
         icon: <FiArrowUp />, colorClass: 'text-[#F99D26] border border-[#F99D26]/30', labelClass: 'text-[#F99D26]', label: 'DUKUNGAN'
+      },
+      'REPORT_STATUS_CHANGED': {
+        title: "Pemberitahuan status laporan",
+        message: "Status laporan Anda telah diperbarui.",
+        icon: <FiInfo />, colorClass: 'text-slate-500 border border-slate-200', labelClass: 'text-slate-500', label: 'INFO'
       }
     };
 

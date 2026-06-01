@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { PaymentStatus } from '@prisma/client';
 
 type MidtransPayload = {
   order_id: string;
@@ -25,6 +26,18 @@ import { prisma } from '@/lib/prisma';
 
 const mockedFindUnique = vi.mocked(prisma.transaction.findUnique);
 const mockedTransaction = vi.mocked(prisma.$transaction);
+
+type TransactionRecord = {
+  userId: string;
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  campaignId: string;
+  orderId: string;
+  amount: bigint;
+  paymentStatus: PaymentStatus;
+  paymentUrl: string | null;
+};
 
 function buildPayload(overrides?: Partial<MidtransPayload>) {
   return {
@@ -55,19 +68,25 @@ describe('Donation service webhook handling', () => {
 
   it('updates transaction and campaign on successful settlement', async () => {
     mockedFindUnique.mockResolvedValue({
+      userId: 'user-1',
+      id: 'tx-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
       orderId: 'order-123',
       campaignId: 'camp-1',
-      amount: 10000,
-      paymentStatus: 'PENDING'
-    } as { orderId: string; campaignId: string; amount: number; paymentStatus: 'PENDING' | 'SUCCESS' });
+      amount: BigInt(10000),
+      paymentStatus: 'PENDING',
+      paymentUrl: null
+    } as TransactionRecord);
 
     const tx = {
       transaction: { update: vi.fn() },
       donationCampaign: { update: vi.fn() }
     };
 
-    mockedTransaction.mockImplementation(async (callback: (transaction: typeof tx) => Promise<void>) => {
-      await callback(tx);
+    mockedTransaction.mockImplementation(async (callback) => {
+      const transactionCallback = callback as unknown as (transaction: typeof tx) => Promise<void>;
+      await transactionCallback(tx);
     });
 
     const payload = buildPayload({
@@ -98,11 +117,16 @@ describe('Donation service webhook handling', () => {
 
   it('does not update when transaction already SUCCESS', async () => {
     mockedFindUnique.mockResolvedValue({
+      userId: 'user-1',
+      id: 'tx-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
       orderId: 'order-123',
       campaignId: 'camp-1',
-      amount: 10000,
-      paymentStatus: 'SUCCESS'
-    } as { orderId: string; campaignId: string; amount: number; paymentStatus: 'PENDING' | 'SUCCESS' });
+      amount: BigInt(10000),
+      paymentStatus: 'SUCCESS',
+      paymentUrl: null
+    } as TransactionRecord);
 
     const payload = buildPayload();
     const crypto = await import('crypto');

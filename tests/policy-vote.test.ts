@@ -1,19 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
 
-let submitVoteMock: ReturnType<typeof vi.fn>;
-
-vi.mock('@/services/policyService', () => {
-  submitVoteMock = vi.fn(async (policyId: string, userId: string, choice: string) => {
+const submitVoteMock = vi.fn<[string, string, string], Promise<{ policyId: string; userId: string; choice: string; status: string }>>(
+  async (policyId, userId, choice) => {
     await new Promise((resolve) => setTimeout(resolve, 20));
     return { policyId, userId, choice, status: 'VOTED' };
-  });
+  }
+);
 
-  return {
-    policyService: {
-      submitVote: submitVoteMock,
-    },
-  };
-});
+vi.mock('@/services/policyService', () => ({
+  policyService: {
+    submitVote: submitVoteMock,
+  },
+}));
 
 describe('Policy vote scalability and duplicate handling', () => {
   it('handles 20 concurrent vote requests without crashing or timing out', async () => {
