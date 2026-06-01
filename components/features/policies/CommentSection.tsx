@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Cookies from "js-cookie";
+import { toast } from "react-hot-toast";
 import { FiSend, FiMessageSquare, FiEdit2, FiTrash2 } from "react-icons/fi";
 import { ImArrowUp } from "react-icons/im";
 import {
@@ -12,6 +13,8 @@ import {
   toggleUpvoteComment
 } from "./CommentFetch";
 import { Author, CommentData, ActiveAction } from "./types"; // 🌟 Import Tipe
+
+const COMMENT_MAX_LENGTH = 300;
 
 interface CommentItemProps {
   comment: CommentData;
@@ -48,6 +51,7 @@ const CommentItem = ({
 
   const isSoftDeleted = comment.content === "[Komentar ini telah dihapus]";
   const isAuthor = currentUserId === comment.authorId;
+  const isReplyable = !comment.parentId;
   const hasUpvoted = comment.hasOwnProperty("hasUpvoted")
     ? comment.hasUpvoted
     : comment.commentUpvotes?.some((vote) => vote.userId === currentUserId) ||
@@ -68,10 +72,23 @@ const CommentItem = ({
     }
   };
 
+  const handleReplyClick = () => {
+    if (!isReplyable) {
+      toast.error("Hanya bisa membalas komentar utama, tidak bisa membalas balasan.");
+      return;
+    }
+    handleActionToggle("reply");
+  };
+
   const handleSubmit = () => {
-    if (!inputText.trim()) return;
-    if (isReplying) onReply(comment.id, inputText);
-    if (isEditing) onEdit(comment.id, inputText);
+    const trimmed = inputText.trim();
+    if (!trimmed) return;
+    if (trimmed.length > COMMENT_MAX_LENGTH) {
+      alert(`Komentar maksimal ${COMMENT_MAX_LENGTH} karakter.`);
+      return;
+    }
+    if (isReplying) onReply(comment.id, trimmed);
+    if (isEditing) onEdit(comment.id, trimmed);
     setActiveAction(null);
     setInputText("");
   };
@@ -107,8 +124,12 @@ const CommentItem = ({
               onChange={(e) => setInputText(e.target.value)}
               className="w-full text-sm text-slate-700 bg-white border border-blue-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm resize-none"
               rows={2}
+              maxLength={COMMENT_MAX_LENGTH}
             />
-            <div className="flex gap-2 mt-2">
+            <div className="flex justify-between items-center mt-2">
+              <div className="text-[10px] text-slate-400">
+                {inputText.length}/{COMMENT_MAX_LENGTH}
+              </div>
               <button
                 onClick={handleSubmit}
                 className="text-xs font-bold text-white bg-[#2682F9] px-4 py-2 rounded-lg hover:bg-blue-600 transition shadow-sm active:scale-95 hover:cursor-pointer"
@@ -140,8 +161,8 @@ const CommentItem = ({
               <ImArrowUp className="text-sm" /> {upvoteCount}
             </button>
             <button
-              onClick={() => handleActionToggle("reply")}
-              className={`flex items-center gap-1.5 transition hover:cursor-pointer ${isReplying ? "text-[#2682F9]" : "hover:text-slate-800"}`}
+              onClick={handleReplyClick}
+              className={`flex items-center gap-1.5 transition hover:cursor-pointer ${isReplying ? "text-[#2682F9]" : isReplyable ? "hover:text-slate-800" : "text-slate-300 cursor-not-allowed"}`}
             >
               <FiMessageSquare /> {isReplying ? "Batal Balas" : "Balas"}
             </button>
@@ -169,7 +190,7 @@ const CommentItem = ({
             <div className="w-8 h-8 rounded-full bg-slate-50 shrink-0 border border-slate-100 flex items-center justify-center">
               <FiMessageSquare className="text-slate-300 text-xs" />
             </div>
-            <div className="flex-1 relative">
+            <div className="flex-1">
               <textarea
                 autoFocus
                 value={inputText}
@@ -177,13 +198,17 @@ const CommentItem = ({
                 rows={2}
                 placeholder={`Balas ${getAuthorName(comment.author)}...`}
                 className="w-full bg-slate-50 border text-black border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#2682F9] focus:outline-none resize-none transition-all shadow-inner"
+                maxLength={COMMENT_MAX_LENGTH}
               />
-              <button
-                onClick={handleSubmit}
-                className="absolute bottom-3 right-3 text-[#2682F9] hover:text-blue-700 p-1 active:scale-90 transition-transform hover:cursor-pointer"
-              >
-                <FiSend className="text-xl" />
-              </button>
+              <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400">
+                <span>{inputText.length}/{COMMENT_MAX_LENGTH}</span>
+                <button
+                  onClick={handleSubmit}
+                  className="text-[#2682F9] hover:text-blue-700 p-1 active:scale-90 transition-transform hover:cursor-pointer"
+                >
+                  <FiSend className="text-xl" />
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -261,9 +286,14 @@ export default function CommentSection({
   };
 
   const handleMainSubmit = async () => {
-    if (!newCommentText.trim()) return;
+    const trimmed = newCommentText.trim();
+    if (!trimmed) return;
+    if (trimmed.length > COMMENT_MAX_LENGTH) {
+      alert(`Komentar maksimal ${COMMENT_MAX_LENGTH} karakter.`);
+      return;
+    }
     try {
-      await createComment(newCommentText, postId, policyId);
+      await createComment(trimmed, postId, policyId);
       setNewCommentText("");
       loadData();
     } catch (error) {
@@ -346,7 +376,7 @@ export default function CommentSection({
       </h3>
       <div className="flex gap-3 mb-8">
         <div className="w-10 h-10 rounded-full bg-slate-100 shrink-0"></div>
-        <div className="flex-1 relative">
+        <div className="flex-1">
           <textarea
             value={newCommentText}
             onChange={(e) => {
@@ -355,14 +385,18 @@ export default function CommentSection({
             }}
             rows={2}
             placeholder={placeholder}
-            className="w-full bg-slate-50 border text-black border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#2682F9] focus:outline-none resize-none"
+            maxLength={COMMENT_MAX_LENGTH}
+            className="w-full bg-slate-50 border text-black border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm focus:ring-2 focus:ring-[#2682F9] focus:outline-none resize-none"
           />
-          <button
-            onClick={handleMainSubmit}
-            className="absolute bottom-3 right-3 text-[#2682F9] hover:text-blue-700 p-1 transition-transform active:scale-95 hover:cursor-pointer"
-          >
-            <FiSend className="text-xl" />
-          </button>
+          <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400">
+            <span>{newCommentText.length}/{COMMENT_MAX_LENGTH}</span>
+            <button
+              onClick={handleMainSubmit}
+              className="text-[#2682F9] hover:text-blue-700 p-1 transition-transform active:scale-95 hover:cursor-pointer"
+            >
+              <FiSend className="text-xl" />
+            </button>
+          </div>
         </div>
       </div>
       <div className="space-y-2">

@@ -104,13 +104,14 @@ export default function MyReportPage() {
                 key={report.id}
                 className="bg-white p-4 rounded-[32px] border border-zinc-50 shadow-sm flex gap-4 hover:border-[#E8A34D]/30 transition-all group cursor-pointer"
               >
-                {/* Image Section - FIXED PROPERTY */}
+                {/* Image Section */}
                 <div className="w-24 h-24 bg-zinc-100 rounded-[24px] shrink-0 overflow-hidden border border-zinc-50 relative">
                   {report.imageUrl ? (
                     <Image
                       src={report.imageUrl}
                       alt="Laporan"
-                      fill // PAKAI INI BIAR GAK ERROR WIDTH/HEIGHT
+                      fill
+                      unoptimized
                       className="object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                   ) : (

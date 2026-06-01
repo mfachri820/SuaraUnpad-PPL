@@ -114,6 +114,13 @@ export async function middleware(request: NextRequest) {
          );
       }
 
+      if (pathname.startsWith('/api/admin') && payload.role !== 'ADMIN') {
+        return NextResponse.json(
+          { status: 'error', message: 'Akses ditolak. Hanya Admin yang diizinkan.' },
+          { status: 403 }
+        );
+      }
+
       const requestHeaders = new Headers(request.headers);
       requestHeaders.set("x-user-id", payload.userId as string);
       requestHeaders.set("x-user-role", payload.role as string);

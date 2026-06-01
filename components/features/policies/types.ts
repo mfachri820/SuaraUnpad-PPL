@@ -23,6 +23,7 @@ export interface CommentData {
   id: string;
   content: string;
   authorId: string;
+  parentId?: string | null;
   author: Author;
   hasUpvoted?: boolean;
   _count?: { commentUpvotes: number };

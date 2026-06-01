@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { fetchPolicies, updatePolicyStatus } from '@/components/features/policies/PolicyFetch';
+import { fetchPolicies, updatePolicyStatus, createPolicy } from '@/components/features/policies/PolicyFetch';
 import { Policy } from '@/components/features/policies/types';
 
 interface AdminStats {
@@ -34,6 +34,10 @@ export default function AdminPage() {
   const [policyStatus, setPolicyStatus] = useState<'DRAFT' | 'ACTIVE' | 'CLOSED'>('ACTIVE');
   const [policyUpdateLoading, setPolicyUpdateLoading] = useState(false);
   const [policyUpdateMessage, setPolicyUpdateMessage] = useState<string | null>(null);
+  const [policyTitle, setPolicyTitle] = useState('');
+  const [policyContent, setPolicyContent] = useState('');
+  const [policyCreateLoading, setPolicyCreateLoading] = useState(false);
+  const [policyCreateMessage, setPolicyCreateMessage] = useState<string | null>(null);
 
   const [campaignTitle, setCampaignTitle] = useState('');
   const [campaignDescription, setCampaignDescription] = useState('');
@@ -181,6 +185,39 @@ export default function AdminPage() {
     }
   };
 
+  const handleCreatePolicy = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPolicyCreateLoading(true);
+    setPolicyCreateMessage(null);
+
+    const token = Cookies.get('token');
+    if (!token) {
+      setPolicyCreateMessage('Token tidak ditemukan. Silakan login ulang.');
+      setPolicyCreateLoading(false);
+      return;
+    }
+
+    if (!policyTitle || !policyContent) {
+      setPolicyCreateMessage('Semua field kebijakan wajib diisi.');
+      setPolicyCreateLoading(false);
+      return;
+    }
+
+    try {
+      await createPolicy(policyTitle, policyContent);
+      setPolicyCreateMessage('Kebijakan berhasil dibuat dan disimpan sebagai DRAFT.');
+      setPolicyTitle('');
+      setPolicyContent('');
+      const refreshedPolicies = await fetchPolicies();
+      setPolicies(refreshedPolicies);
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Gagal membuat kebijakan';
+      setPolicyCreateMessage(errorMessage);
+    } finally {
+      setPolicyCreateLoading(false);
+    }
+  };
+
   const handleUpdatePolicyStatus = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setPolicyUpdateLoading(true);
@@ -284,8 +321,12 @@ export default function AdminPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white font-sans p-4 text-center">
-      <h1 className="text-4xl font-bold text-[#2682F9] mb-2">Halaman Admin</h1>
-      <p className="text-zinc-600 mb-8">Ringkasan jumlah postingan dan kebijakan.</p>
+      <div className="flex flex-col items-center gap-4 w-full max-w-xl mb-6 text-center">
+        <div>
+          <h1 className="text-4xl font-bold text-[#2682F9] mb-2">Halaman Admin</h1>
+          <p className="text-zinc-600">Ringkasan jumlah postingan dan kebijakan.</p>
+        </div>
+      </div>
 
       {loading ? (
         <div className="text-zinc-500 mb-8">Memuat statistik...</div>
@@ -351,6 +392,44 @@ export default function AdminPage() {
             className="w-full bg-[#2682F9] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50"
           >
             {updateLoading ? 'Memproses...' : 'Perbarui Status'}
+          </button>
+        </form>
+      </div>
+
+      <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm mb-8 text-left">
+        <h2 className="text-2xl font-bold text-[#E8A34D] mb-4">Buat Kebijakan Baru</h2>
+        <form onSubmit={handleCreatePolicy} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-zinc-700 mb-2">Judul Kebijakan</label>
+            <input
+              value={policyTitle}
+              onChange={(event) => setPolicyTitle(event.target.value)}
+              type="text"
+              placeholder="Contoh: Perpanjangan Jam Malam Perpustakaan"
+              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#E8A34D]"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-zinc-700 mb-2">Isi Kebijakan</label>
+            <textarea
+              value={policyContent}
+              onChange={(event) => setPolicyContent(event.target.value)}
+              rows={5}
+              placeholder="Tuliskan detail kebijakan yang diusulkan..."
+              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#E8A34D] resize-none"
+              required
+            />
+          </div>
+          {policyCreateMessage ? (
+            <div className="text-black text-sm text-slate-700">{policyCreateMessage}</div>
+          ) : null}
+          <button
+            type="submit"
+            disabled={policyCreateLoading}
+            className="w-full bg-[#E8A34D] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50"
+          >
+            {policyCreateLoading ? 'Mengirim...' : 'Kirim Kebijakan'}
           </button>
         </form>
       </div>
@@ -481,12 +560,6 @@ export default function AdminPage() {
         </form>
       </div>
 
-      <button
-        onClick={handleLogout}
-        className="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-lg active:scale-95"
-      >
-        Logout dari Admin
-      </button>
     </div>
   );
 }

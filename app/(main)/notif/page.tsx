@@ -15,9 +15,17 @@ import {
 } from "react-icons/fi";
 
 // --- 1. INTERFACES ---
+type NotificationType =
+  | 'COMMENT_ON_POST'
+  | 'REPLY_ON_COMMENT'
+  | 'UPVOTE_POST'
+  | 'UPVOTE_REPORT'
+  | 'UPVOTE_COMMENT'
+  | 'REPORT_STATUS_CHANGED';
+
 interface Notification {
   id: string;
-  type: string;
+  type: NotificationType;
   isRead: boolean;
   createdAt: string;
   reportId: string | null;
@@ -205,7 +213,16 @@ export default function NotifikasiPage() {
       return { title, message, icon, colorClass, labelClass, label };
     }
 
-    const types: Record<string, any> = {
+    type NotificationDisplay = {
+      title: string;
+      message: string;
+      icon: React.ReactNode;
+      colorClass: string;
+      labelClass: string;
+      label: string;
+    };
+
+    const types: Record<NotificationType, NotificationDisplay> = {
       'COMMENT_ON_POST': {
         title: notif.post?.title ? `Seseorang mengomentari aspirasi ${postTitle}` : "Seseorang mengomentari aspirasi Anda",
         message: notif.comment?.content ? `${actorName}: ${commentContent}` : `${actorName} memberikan komentar.`,
@@ -230,6 +247,11 @@ export default function NotifikasiPage() {
         title: "Seseorang mendukung komentar Anda",
         message: `${actorName} memberikan dukungan pada komentar Anda.`,
         icon: <FiArrowUp />, colorClass: 'text-[#F99D26] border border-[#F99D26]/30', labelClass: 'text-[#F99D26]', label: 'DUKUNGAN'
+      },
+      'REPORT_STATUS_CHANGED': {
+        title: "Pemberitahuan status laporan",
+        message: "Status laporan Anda telah diperbarui.",
+        icon: <FiInfo />, colorClass: 'text-slate-500 border border-slate-200', labelClass: 'text-slate-500', label: 'INFO'
       }
     };
 

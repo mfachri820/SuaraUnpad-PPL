@@ -48,6 +48,49 @@ export const donationService = {
     return serializeBigInt(campaigns);
   },
 
+  // Arsipkan kampanye donasi
+  async archiveCampaign(campaignId: string) {
+    const existingCampaign = await prisma.donationCampaign.findUnique({
+      where: { id: campaignId }
+    });
+
+    if (!existingCampaign) {
+      throw new Error('Kampanye donasi tidak ditemukan');
+    }
+
+    if (existingCampaign.status === 'COMPLETED') {
+      throw new Error('Kampanye donasi sudah diarsipkan');
+    }
+
+    const archivedCampaign = await prisma.donationCampaign.update({
+      where: { id: campaignId },
+      data: { status: 'COMPLETED' }
+    });
+
+    return serializeBigInt(archivedCampaign);
+  },
+
+  async unarchiveCampaign(campaignId: string) {
+    const existingCampaign = await prisma.donationCampaign.findUnique({
+      where: { id: campaignId }
+    });
+
+    if (!existingCampaign) {
+      throw new Error('Kampanye donasi tidak ditemukan');
+    }
+
+    if (existingCampaign.status !== 'COMPLETED') {
+      throw new Error('Kampanye donasi tidak sedang diarsipkan');
+    }
+
+    const restoredCampaign = await prisma.donationCampaign.update({
+      where: { id: campaignId },
+      data: { status: 'ACTIVE' }
+    });
+
+    return serializeBigInt(restoredCampaign);
+  },
+
   // Transaksi donasi
   async createTransaction(userId: string, campaignId: string, amount: number) {
     // Validasi kampanye

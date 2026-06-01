@@ -34,6 +34,11 @@ export async function POST(request: Request) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    // Validasi magic byte untuk memastikan konten benar-benar gambar
+    if (!uploadService.isValidImageBuffer(buffer, file.type)) {
+      return errorResponse('Konten file tidak valid. Pastikan file benar-benar gambar.', 400);
+    }
+
     // Tentukan path folder di Cloudinary
     const targetFolder = folder ? `suara_unpad/${folder}` : 'suara_unpad/general';
 

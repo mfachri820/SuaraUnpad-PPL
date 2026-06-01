@@ -8,9 +8,10 @@ export interface ReportPayload {
 
 // Data untuk kategori (PR FIX)
 export const REPORT_CATEGORIES = [
-  { id: "INFRASTRUCTURE", label: "Infrastructure" },
-  { id: "CLEANLINESS", label: "Cleanliness" },
-  { id: "SECURITY", label: "Security" },
+  { id: "POTHOLE", label: "Pothole" },
+  { id: "CRACK", label: "Crack" },
+  { id: "CORROSION", label: "Corrosion" },
+  { id: "SAMPAH", label: "Sampah" },
   { id: "OTHER", label: "Other" },
 ];
 
@@ -25,7 +26,16 @@ export const uploadImage = async (file: File, token: string) => {
     body: formData,
   });
 
-  if (!res.ok) throw new Error("Gagal mengunggah foto ke server");
+  if (!res.ok) {
+    let errorMessage = "Gagal mengunggah foto ke server";
+    try {
+      const errorJson = await res.json();
+      if (errorJson?.message) errorMessage = errorJson.message;
+    } catch {
+      // Keep default message when response is not JSON.
+    }
+    throw new Error(errorMessage);
+  }
   return res.json();
 };
 
@@ -40,6 +50,15 @@ export const submitReport = async (payload: ReportPayload, token: string) => {
     body: JSON.stringify(payload),
   });
 
-  if (!res.ok) throw new Error("Gagal menyimpan data laporan");
+  if (!res.ok) {
+    let errorMessage = "Gagal menyimpan data laporan";
+    try {
+      const errorJson = await res.json();
+      if (errorJson?.message) errorMessage = errorJson.message;
+    } catch {
+      // Keep default message when response is not JSON.
+    }
+    throw new Error(errorMessage);
+  }
   return res.json();
 };
