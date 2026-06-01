@@ -103,6 +103,7 @@ export default function ReportForm() {
 
     try {
       // Ambil token langsung dari cookies user yang sedang login
+      // gitleaks:allow
       const token = Cookies.get("token");
 
       if (!token) {
