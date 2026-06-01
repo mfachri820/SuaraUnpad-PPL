@@ -10,7 +10,7 @@ vi.mock('@/lib/prisma', () => ({
         paymentStatus: 'PENDING',
       })),
     },
-    $transaction: vi.fn(async (callback: any) => {
+    $transaction: vi.fn(async (callback: (trx: { transaction: { update: ReturnType<typeof vi.fn> }; donationCampaign: { update: ReturnType<typeof vi.fn> } }) => Promise<void>) => {
       // Simulate database failure during transactional update
       await callback({
         transaction: {

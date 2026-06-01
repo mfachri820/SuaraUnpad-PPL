@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+type MidtransPayload = {
+  order_id: string;
+  status_code: string;
+  gross_amount: string;
+  signature_key: string;
+  transaction_status: string;
+};
+
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     transaction: {
@@ -18,13 +26,7 @@ import { prisma } from '@/lib/prisma';
 const mockedFindUnique = vi.mocked(prisma.transaction.findUnique);
 const mockedTransaction = vi.mocked(prisma.$transaction);
 
-function buildPayload(overrides?: Partial<{
-  order_id: string;
-  status_code: string;
-  gross_amount: string;
-  signature_key: string;
-  transaction_status: string;
-}>) {
+function buildPayload(overrides?: Partial<MidtransPayload>) {
   return {
     order_id: 'order-123',
     status_code: '200',
@@ -44,7 +46,7 @@ describe('Donation service webhook handling', () => {
   it('rejects webhook when signature is invalid', async () => {
     const payload = buildPayload({ signature_key: 'bad-signature' });
 
-    await expect(donationService.handleMidtransWebhook(payload as any)).rejects.toThrow(
+    await expect(donationService.handleMidtransWebhook(payload)).rejects.toThrow(
       /Signature Key tidak valid/i
     );
 
@@ -57,14 +59,14 @@ describe('Donation service webhook handling', () => {
       campaignId: 'camp-1',
       amount: 10000,
       paymentStatus: 'PENDING'
-    } as any);
+    } as { orderId: string; campaignId: string; amount: number; paymentStatus: 'PENDING' | 'SUCCESS' });
 
     const tx = {
       transaction: { update: vi.fn() },
       donationCampaign: { update: vi.fn() }
     };
 
-    mockedTransaction.mockImplementation(async (callback: any) => {
+    mockedTransaction.mockImplementation(async (callback: (transaction: typeof tx) => Promise<void>) => {
       await callback(tx);
     });
 
@@ -80,7 +82,7 @@ describe('Donation service webhook handling', () => {
 
     payload.signature_key = signature;
 
-    const result = await donationService.handleMidtransWebhook(payload as any);
+    const result = await donationService.handleMidtransWebhook(payload);
 
     expect(result.message).toMatch(/Webhook diproses/i);
     expect(mockedTransaction).toHaveBeenCalledOnce();
@@ -100,7 +102,7 @@ describe('Donation service webhook handling', () => {
       campaignId: 'camp-1',
       amount: 10000,
       paymentStatus: 'SUCCESS'
-    } as any);
+    } as { orderId: string; campaignId: string; amount: number; paymentStatus: 'PENDING' | 'SUCCESS' });
 
     const payload = buildPayload();
     const crypto = await import('crypto');
@@ -111,7 +113,7 @@ describe('Donation service webhook handling', () => {
 
     payload.signature_key = signature;
 
-    const result = await donationService.handleMidtransWebhook(payload as any);
+    const result = await donationService.handleMidtransWebhook(payload);
 
     expect(result.message).toMatch(/sukses sebelumnya/i);
     expect(mockedTransaction).not.toHaveBeenCalled();

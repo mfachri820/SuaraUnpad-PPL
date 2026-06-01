@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-var submitVoteMock: any;
+let submitVoteMock: ReturnType<typeof vi.fn>;
 
 vi.mock('@/services/policyService', () => {
   submitVoteMock = vi.fn(async (policyId: string, userId: string, choice: string) => {
@@ -46,7 +46,8 @@ describe('Policy vote scalability and duplicate handling', () => {
   it('returns 400 when a duplicate vote insertion triggers Prisma P2002', async () => {
     submitVoteMock.mockImplementationOnce(async () => {
       const error = new Error('Unique constraint failed on the fields: (`userId`, `policyId`)');
-      (error as any).code = 'P2002';
+      const prismaError = error as Error & { code?: string };
+      prismaError.code = 'P2002';
       throw error;
     });
 

@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { checkHealth } from '../../../lib/health';
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     const result = await checkHealth();
     return NextResponse.json(result, { status: 200 });

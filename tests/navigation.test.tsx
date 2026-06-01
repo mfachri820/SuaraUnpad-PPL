@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import React from 'react';
+import React, { type ComponentProps } from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createRoot } from 'react-dom/client';
 import { act } from 'react-dom/test-utils';
@@ -16,7 +16,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('next/link', () => ({
   __esModule: true,
-  default: ({ children, href, ...props }: any) => (
+  default: ({ children, href, ...props }: ComponentProps<'a'>) => (
     <a href={href} {...props}>
       {children}
     </a>

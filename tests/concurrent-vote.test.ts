@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-let submitVoteMock: any;
+let submitVoteMock: ReturnType<typeof vi.fn>;
 
 vi.mock('@/services/policyService', () => {
   submitVoteMock = vi.fn(async (policyId: string, userId: string, choice: string) => {

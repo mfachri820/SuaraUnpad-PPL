@@ -28,7 +28,7 @@ describe('Middleware and profile validation', () => {
   });
 
   it('returns 403 when STUDENT role tries to access /api/admin', async () => {
-    mockedJwtVerify.mockResolvedValue({ payload: { isVerified: true, userId: 'user-1', role: 'STUDENT' } } as any);
+    mockedJwtVerify.mockResolvedValue({ payload: { isVerified: true, userId: 'user-1', role: 'STUDENT' } } as unknown as { payload: { isVerified: boolean; userId: string; role: string } });
 
     const request = {
       headers: new Headers({ authorization: 'Bearer fake-token' }),
@@ -36,7 +36,7 @@ describe('Middleware and profile validation', () => {
       cookies: {
         get: vi.fn(() => undefined),
       },
-    } as any;
+    } as unknown as Request;
 
     const response = await middleware(request);
 
@@ -49,7 +49,7 @@ describe('Middleware and profile validation', () => {
   it('returns 403 when API token is valid but user is not verified', async () => {
     mockedJwtVerify.mockResolvedValue({
       payload: { isVerified: false, userId: 'user-1', role: 'STUDENT' }
-    } as any);
+    } as unknown as { payload: { isVerified: boolean; userId: string; role: string } });
 
     const request = {
       headers: new Headers({ authorization: 'Bearer fake-token' }),
@@ -57,7 +57,7 @@ describe('Middleware and profile validation', () => {
       cookies: {
         get: vi.fn(() => undefined),
       },
-    } as any;
+    } as unknown as Request;
 
     const response = await middleware(request);
 
@@ -79,7 +79,7 @@ describe('Middleware and profile validation', () => {
       cookies: {
         get: vi.fn(() => undefined),
       },
-    } as any;
+    } as unknown as Request;
 
     const response = await middleware(request);
 

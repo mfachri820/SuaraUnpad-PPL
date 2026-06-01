@@ -15,9 +15,17 @@ import {
 } from "react-icons/fi";
 
 // --- 1. INTERFACES ---
+type NotificationType =
+  | 'COMMENT_ON_POST'
+  | 'REPLY_ON_COMMENT'
+  | 'UPVOTE_POST'
+  | 'UPVOTE_REPORT'
+  | 'UPVOTE_COMMENT'
+  | 'REPORT_STATUS_CHANGED';
+
 interface Notification {
   id: string;
-  type: string;
+  type: NotificationType;
   isRead: boolean;
   createdAt: string;
   reportId: string | null;
@@ -205,7 +213,16 @@ export default function NotifikasiPage() {
       return { title, message, icon, colorClass, labelClass, label };
     }
 
-    const types: Record<string, any> = {
+    type NotificationDisplay = {
+      title: string;
+      message: string;
+      icon: React.ReactNode;
+      colorClass: string;
+      labelClass: string;
+      label: string;
+    };
+
+    const types: Record<NotificationType, NotificationDisplay> = {
       'COMMENT_ON_POST': {
         title: notif.post?.title ? `Seseorang mengomentari aspirasi ${postTitle}` : "Seseorang mengomentari aspirasi Anda",
         message: notif.comment?.content ? `${actorName}: ${commentContent}` : `${actorName} memberikan komentar.`,

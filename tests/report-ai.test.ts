@@ -28,6 +28,15 @@ import { reportService } from '@/services/reportService';
 import { uploadService } from '@/services/uploadService';
 import { detectDamage } from '@/services/reportAiService';
 
+type ReportRecord = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  location: string;
+  imageUrl: string;
+};
+
 const mockedCreateReport = vi.mocked(reportService.createReport);
 const mockedDeleteImage = vi.mocked(uploadService.deleteImageByUrl);
 const mockedDetectDamage = vi.mocked(detectDamage);
@@ -70,7 +79,7 @@ describe('AI Report whitebox', () => {
       category,
       location: 'Location',
       imageUrl: 'https://example.com/image.jpg'
-    } as any);
+    } as ReportRecord);
 
     const response = await POST(
       buildRequest({
@@ -202,7 +211,7 @@ describe('AI Report whitebox', () => {
       category: 'POTHOLE',
       location: 'Location',
       imageUrl: 'https://example.com/image.jpg'
-    } as any);
+    } as ReportRecord);
 
     const start = performance.now();
     const response = await POST(
