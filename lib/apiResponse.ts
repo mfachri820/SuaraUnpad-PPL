@@ -14,3 +14,6 @@ export function errorResponse(message = 'Internal Server Error', statusCode = 50
     message
   }, { status: statusCode });
 }
+
+
+    
