@@ -84,7 +84,7 @@ const CommentItem = ({
     const trimmed = inputText.trim();
     if (!trimmed) return;
     if (trimmed.length > COMMENT_MAX_LENGTH) {
-      alert(`Komentar maksimal ${COMMENT_MAX_LENGTH} karakter.`);
+      toast.error(`Komentar maksimal ${COMMENT_MAX_LENGTH} karakter.`);
       return;
     }
     if (isReplying) onReply(comment.id, trimmed);
@@ -289,7 +289,7 @@ export default function CommentSection({
     const trimmed = newCommentText.trim();
     if (!trimmed) return;
     if (trimmed.length > COMMENT_MAX_LENGTH) {
-      alert(`Komentar maksimal ${COMMENT_MAX_LENGTH} karakter.`);
+      toast.error(`Komentar maksimal ${COMMENT_MAX_LENGTH} karakter.`);
       return;
     }
     try {
@@ -297,7 +297,7 @@ export default function CommentSection({
       setNewCommentText("");
       loadData();
     } catch (error) {
-      if (error instanceof Error) alert(error.message);
+      if (error instanceof Error) toast.error(error.message);
     }
   };
 
@@ -306,7 +306,7 @@ export default function CommentSection({
       await createComment(content, postId, policyId, parentId);
       loadData();
     } catch (error) {
-      if (error instanceof Error) alert(error.message);
+      if (error instanceof Error) toast.error(error.message);
     }
   };
 
@@ -315,7 +315,7 @@ export default function CommentSection({
       setComments((prev) => updateTree(prev, id, (c) => ({ ...c, content })));
       await updateComment(id, content);
     } catch (error) {
-      if (error instanceof Error) alert(error.message);
+      if (error instanceof Error) toast.error(error.message);
       loadData();
     }
   };
@@ -331,7 +331,7 @@ export default function CommentSection({
       );
       await deleteComment(id);
     } catch (error) {
-      if (error instanceof Error) alert(error.message);
+      if (error instanceof Error) toast.error(error.message);
       loadData();
     }
   };

@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
+import { toast } from 'react-hot-toast';
 import { fetchPolicies, updatePolicyStatus, createPolicy } from '@/components/features/policies/PolicyFetch';
 import { Policy } from '@/components/features/policies/types';
 
@@ -145,7 +146,7 @@ export default function AdminPage() {
 
   const handleLogout = () => {
     Cookies.remove('token', { path: '/' });
-    alert('Berhasil Logout!');
+    toast.success('Berhasil Logout!');
     router.push('/login');
   };
 
