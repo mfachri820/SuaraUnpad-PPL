@@ -5,9 +5,9 @@ export interface FlatComment {
   [key: string]: unknown;
 }
 
-export interface NestedComment<T extends FlatComment = FlatComment> extends T {
+export type NestedComment<T extends FlatComment = FlatComment> = T & {
   replies: NestedComment<T>[];
-}
+};
 
 export function buildCommentTree<T extends FlatComment>(comments: T[]): NestedComment<T>[] {
   const nodes = new Map<string, NestedComment<T>>();

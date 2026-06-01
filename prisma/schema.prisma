@@ -55,6 +55,7 @@ enum PaymentStatus {
 
 enum NotificationType {
   COMMENT_ON_POST
+  COMMENT_ON_POLICY
   REPLY_ON_COMMENT
   UPVOTE_REPORT
   UPVOTE_POST
@@ -177,6 +178,7 @@ model Policy {
   votes    Vote[]
   posts    Post[]
   comments Comment[]
+  notifications Notification[]
 
   @@map("policies")
 }
@@ -315,6 +317,7 @@ model Notification {
   postId      String?          @map("post_id") @db.Uuid
   commentId   String?          @map("comment_id") @db.Uuid
   reportId    String?          @map("report_id") @db.Uuid
+  policyId    String?          @map("policy_id") @db.Uuid
   isRead      Boolean          @default(false) @map("is_read")
   createdAt   DateTime         @default(now()) @map("created_at")
 
@@ -323,6 +326,7 @@ model Notification {
   post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
   comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
   report    Report?  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  policy    Policy?  @relation(fields: [policyId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
 }

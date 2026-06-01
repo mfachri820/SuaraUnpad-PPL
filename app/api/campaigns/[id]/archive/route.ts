@@ -3,9 +3,10 @@ import { errorResponse, successResponse } from '@/lib/apiResponse';
 
 export async function POST(
   request: Request,
-  { params }: { params: { id?: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const resolvedParams = await params;
     const userRole = request.headers.get('x-user-role');
 
     if (userRole !== 'ADMIN') {
@@ -16,7 +17,7 @@ export async function POST(
     }
 
     const body = await request.json().catch(() => ({} as { campaignId?: string; action?: 'ARCHIVE' | 'UNARCHIVE' }));
-    const campaignId = params.id || body.campaignId;
+    const campaignId = resolvedParams.id || body.campaignId;
     const action = body.action || 'ARCHIVE';
 
     if (!campaignId) {
