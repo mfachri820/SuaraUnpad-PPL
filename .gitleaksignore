@@ -1,0 +1,2 @@
+# Ignore the dynamic token read in ReportForm.tsx
+components/features/report/ReportForm.tsx:46
