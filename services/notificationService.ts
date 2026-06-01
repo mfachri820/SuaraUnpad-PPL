@@ -27,7 +27,10 @@ export const notificationService = {
             lecturerProfile: { select: { fullName: true } },
             adminProfile: { select: { fullName: true } },
           }
-        }
+        },
+        post: { select: { title: true } },
+        report: { select: { title: true, status: true } },
+        comment: { select: { content: true } }
       }
     });
 
