@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 import { FiHash, FiBookOpen, FiBriefcase } from "react-icons/fi";
 import AuthInput from "@/components/ui/AuthInput";
 import Image from "next/image";
@@ -55,14 +56,14 @@ export default function CompleteProfileForm() {
 
       await completeGoogleProfile(payload);
 
-      alert("Profil berhasil dilengkapi! Silakan masuk kembali dengan Google.");
+      toast.success("Profil berhasil dilengkapi! Silakan masuk kembali dengan Google.");
       
       // Bersihkan session setelah berhasil
       sessionStorage.removeItem("googleData");
       router.push("/login");
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Gagal melengkapi profil";
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }

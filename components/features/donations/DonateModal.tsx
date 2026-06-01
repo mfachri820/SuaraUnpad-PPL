@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { toast } from "react-hot-toast";
 import { createDonation } from "./DonationFetch";
 
 interface SnapOptions {
@@ -39,27 +40,27 @@ export default function DonateModal({
 
       window.snap.pay(token as string, {
         onSuccess: () => {
-          alert("Pembayaran Berhasil!");
+          toast.success("Pembayaran Berhasil!");
           onClose();
           window.location.reload();
         },
         onPending: () => {
-          alert("Menunggu Pembayaran...");
+          toast("Menunggu Pembayaran...");
           onClose();
         },
         onError: () => {
-          alert("Pembayaran Gagal!");
+          toast.error("Pembayaran Gagal!");
         },
         onClose: () => {
-          alert("Kamu menutup jendela pembayaran");
+          toast("Kamu menutup jendela pembayaran");
         }
       });
     } catch (err) {
       // 🌟 3. Gunakan Type Narrowing pengganti 'catch (err: any)'
       if (err instanceof Error) {
-        alert(err.message);
+        toast.error(err.message);
       } else {
-        alert("Terjadi kesalahan sistem saat memproses donasi.");
+        toast.error("Terjadi kesalahan sistem saat memproses donasi.");
       }
     } finally {
       setLoading(false);

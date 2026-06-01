@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { FiX } from "react-icons/fi";
+import { toast } from "react-hot-toast";
 import { createPolicy } from "./PolicyFetch";
 import { useRouter } from "next/navigation";
 
@@ -20,14 +21,14 @@ export default function PolicyCreateModal({
     setIsSubmitting(true);
     try {
       await createPolicy(title, content);
-      alert("Wacana Kebijakan berhasil dikirim!");
+      toast.success("Wacana Kebijakan berhasil dikirim!");
       onClose();
       router.refresh();
     } catch (error) {
       if (error instanceof Error) {
-        alert(error.message);
+        toast.error(error.message);
       } else {
-        alert("Terjadi kesalahan yang tidak terduga.");
+        toast.error("Terjadi kesalahan yang tidak terduga.");
       }
     } finally {
       setIsSubmitting(false);
