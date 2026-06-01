@@ -7,11 +7,9 @@ import Cookies from "js-cookie";
 import { FiMenu, FiX, FiLogOut } from "react-icons/fi";
 import { IoMdExit } from "react-icons/io";
 import { FaUserCircle } from "react-icons/fa";
-import PolicyCreateModal from "@/components/features/policies/PolicyCreateModal";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const router = useRouter();
 
@@ -85,14 +83,6 @@ export default function Navbar() {
                 >
                   Admin
                 </Link>
-              )}
-              {(userRole === "LECTURER" || isAdmin) && (
-                <button
-                  onClick={() => setIsPolicyModalOpen(true)}
-                  className="flex items-center gap-1 text-sm font-medium text-white bg-[#2682F9] px-3 py-1.5 rounded-lg hover:bg-[#3995FF] transition hover:cursor-pointer"
-                >
-                  Kebijakan Baru
-                </button>
               )}
             </div>
 
@@ -184,7 +174,6 @@ export default function Navbar() {
           </div>
         )}
       </nav>
-      {isPolicyModalOpen && <PolicyCreateModal onClose={() => setIsPolicyModalOpen(false)} />}
     </>
   );
 }
