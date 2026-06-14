@@ -1,3 +1,5 @@
+<img width="1920" height="1080" alt="Unpad" src="https://github.com/user-attachments/assets/7f08addb-9ec7-4ba8-b167-424f15bc76ec" />
+
 # 🌆 Platform Partisipasi Publik – SDG 11
 
 ## 📌 Pendahuluan
