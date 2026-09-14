@@ -111,7 +111,7 @@ describe('Donation service webhook handling', () => {
     });
     expect(tx.donationCampaign.update).toHaveBeenCalledWith({
       where: { id: 'camp-1' },
-      data: { collectedAmount: { increment: 10000 } }
+      data: { collectedAmount: { increment: BigInt(10000) } }
     });
   });
 
@@ -142,4 +142,4 @@ describe('Donation service webhook handling', () => {
     expect(result.message).toMatch(/sukses sebelumnya/i);
     expect(mockedTransaction).not.toHaveBeenCalled();
   });
-});
+});   
