@@ -34,6 +34,10 @@ jobs:
           context: .
           push: true
           tags: ${{ env.IMAGE_NAME }}:latest
+          # 🚀 FIX: Suntikkan nilai rahasia dari GitHub ke proses build Docker
+          build-args: |
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID_PURE }}
+            NEXT_PUBLIC_APP_URL=${{ secrets.CLOUDFLARE_URL_PURE }}
 
   deploy:
     needs: build-and-push

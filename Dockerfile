@@ -11,6 +11,15 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# 🚀 FIX: Tangkap variabel dari GitHub Actions sebelum proses compile dijalankan
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ARG NEXT_PUBLIC_APP_URL
+
+# Set variabel tersebut ke dalam environment build Next.js
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+
 # Generate prisma client sebelum build
 RUN npx prisma generate
 RUN npm run build
