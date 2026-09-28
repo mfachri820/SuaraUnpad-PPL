@@ -35,7 +35,7 @@
     "@types/estree": "^1.0.8",
     "@types/js-cookie": "^3.0.6",
     "@types/midtrans-client": "^1.4.0",
-    "@types/node": "^20",
+    "@types/node": "^26",
     "@types/nodemailer": "^8.0.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
