@@ -47,7 +47,7 @@
     "prisma": "^7.6.0",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.21.0",
-    "typescript": "^5",
+    "typescript": "^7",
     "vitest": "^1.5.4"
   }
 }
