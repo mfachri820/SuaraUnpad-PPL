@@ -1,24 +1,15 @@
-import { NextRequest } from 'next/server';
 import { userService } from '@/services/userService';
-import { successResponse, errorResponse } from '@/lib/apiResponse';
+import { successResponse } from '@/lib/apiResponse';
+import { assertUuid, forbidden, requireAuth, withErrorHandling } from '@/lib/http';
 
-export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    
-    const currentUserId = request.headers.get('x-user-id');
-    if (!currentUserId) {
-      return errorResponse('Akses ditolak. Silakan login terlebih dahulu.', 401);
+export const GET = withErrorHandling(
+  async (request: Request, { params }: { params: Promise<{ id: string }> }) => {
+    const auth = requireAuth(request);
+    const id = assertUuid((await params).id, 'User tidak ditemukan');
+    if (auth.role !== 'ADMIN' && auth.userId !== id) {
+      throw forbidden('Akses ditolak. Anda hanya dapat melihat profil Anda sendiri.');
     }
-
     const user = await userService.getUserById(id);
     return successResponse(user, 'Berhasil mengambil detail user', 200);
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan server';
-    const statusCode = errorMessage === 'User tidak ditemukan' ? 404 : 500;
-    return errorResponse(errorMessage, statusCode);
   }
-}
+);

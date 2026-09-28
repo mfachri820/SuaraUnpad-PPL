@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import type { PaymentStatus } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { snap } from '@/lib/midtrans';
 
@@ -14,6 +15,7 @@ export interface MidtransNotificationPayload {
   gross_amount: string;
   signature_key: string;
   transaction_status: string;
+  fraud_status?: string;
   // Index signature extra di bawah ini misal Midtrans mengirim data ekstra 
   // agar TypeScript tidak kaget, tapi tetap aman dari error 'any'
   [key: string]: unknown; 
@@ -151,16 +153,19 @@ export const donationService = {
     return serializeBigInt(newTransaction);
   },
 
- async handleMidtransWebhook(payload: MidtransNotificationPayload) { 
+ async handleMidtransWebhook(payload: MidtransNotificationPayload) {
     const { order_id, status_code, gross_amount, signature_key, transaction_status } = payload;
     const serverKey = process.env.MIDTRANS_SERVER_KEY || '';
 
     // Validasi yang ngirim itu Midtrans pake signature key
-    const hash = crypto.createHash('sha512');
-    hash.update(`${order_id}${status_code}${gross_amount}${serverKey}`);
-    const expectedSignature = hash.digest('hex');
+    const expectedSignature = crypto
+      .createHash('sha512')
+      .update(`${order_id}${status_code}${gross_amount}${serverKey}`)
+      .digest('hex');
+    const received = Buffer.from(String(signature_key ?? ''), 'utf8');
+    const expected = Buffer.from(expectedSignature, 'utf8');
 
-    if (expectedSignature !== signature_key) {
+    if (received.length !== expected.length || !crypto.timingSafeEqual(received, expected)) {
       throw new Error('Akses Ditolak: Signature Key tidak valid. Anda bukan Midtrans!');
     }
 
@@ -173,40 +178,47 @@ export const donationService = {
       return { message: 'Transaksi sudah sukses sebelumnya, diabaikan.' };
     }
 
-    // Tentukan status baru berdasarkan laporan Midtrans
-    let newStatus: string = transaction.paymentStatus as string;
-    
-    // 'settlement' artinya uang sudah benar-benar masuk ke rekening (Sukses)
-    if (transaction_status === 'settlement' || transaction_status === 'capture') {
-      newStatus = 'SUCCESS';
-    } else if (transaction_status === 'deny' || transaction_status === 'cancel' || transaction_status === 'expire') {
-      newStatus = 'FAILED';
+    if (Number(gross_amount) !== Number(transaction.amount)) {
+      throw new Error('Nominal transaksi dari Midtrans tidak sesuai dengan data kita');
     }
 
-    // Update Database 
-    // Jika sukses, kita ubah status transaksi JADI SUCCESS, dan kita TAMBAH uang terkumpul di Kampanye
+    // Tentukan status baru berdasarkan laporan Midtrans
+    let newStatus: PaymentStatus | null = null;
+    if (
+      transaction_status === 'settlement' ||
+      (transaction_status === 'capture' && (payload.fraud_status ?? 'accept') === 'accept')
+    ) {
+      // 'settlement' artinya uang sudah benar-benar masuk ke rekening (Sukses)
+      newStatus = 'SUCCESS';
+    } else if (transaction_status === 'deny' || transaction_status === 'cancel') {
+      newStatus = 'FAILED';
+    } else if (transaction_status === 'expire') {
+      newStatus = 'EXPIRED';
+    }
+
     if (newStatus === 'SUCCESS') {
       await prisma.$transaction(async (tx) => {
-        // Ubah status struk transaksi
-        await tx.transaction.update({
-          where: { orderId: order_id },
+        const { count } = await tx.transaction.updateMany({
+          where: { orderId: order_id, paymentStatus: { not: 'SUCCESS' } },
           data: { paymentStatus: 'SUCCESS' }
         });
 
-        // Tambahkan saldo ke Kampanye donasi
-        await tx.donationCampaign.update({
-          where: { id: transaction.campaignId },
-          data: { collectedAmount: { increment: transaction.amount } }
-        });
+        if (count === 1) {
+          // Tambahkan saldo ke Kampanye donasi
+          await tx.donationCampaign.update({
+            where: { id: transaction.campaignId },
+            data: { collectedAmount: { increment: transaction.amount } }
+          });
+        }
       });
-    } else if (newStatus === 'FAILED') {
+    } else if (newStatus) {
       // Kalau gagal, cukup ubah status transaksi saja (saldo kampanye tidak berubah)
-      await prisma.transaction.update({
-        where: { orderId: order_id },
-        data: { paymentStatus: 'FAILED' }
+      await prisma.transaction.updateMany({
+        where: { orderId: order_id, paymentStatus: 'PENDING' },
+        data: { paymentStatus: newStatus }
       });
     }
 
-    return { message: `Webhook diproses. Status transaksi: ${newStatus}` };
+    return { message: `Webhook diproses. Status transaksi: ${newStatus ?? transaction.paymentStatus}` };
   }
 };

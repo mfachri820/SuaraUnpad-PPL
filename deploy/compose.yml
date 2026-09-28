@@ -1,0 +1,72 @@
+name: suara-mipa-server
+
+x-app-image: &app-image ${REGISTRY:-local}/suara-mipa:${IMAGE_TAG:-latest}
+x-tools-image: &tools-image ${REGISTRY:-local}/suara-mipa-tools:${IMAGE_TAG:-latest}
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file: app.env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    image: *tools-image
+    profiles: ["tools"]
+    env_file: app.env
+    command: ["npx", "prisma", "migrate", "deploy"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  seed:
+    image: *tools-image
+    profiles: ["tools"]
+    env_file: app.env
+    command: ["npx", "tsx", "prisma/seed.ts"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    image: *app-image
+    restart: unless-stopped
+    env_file: app.env
+    expose: ["3000"]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_PORT:-443}:443/udp"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

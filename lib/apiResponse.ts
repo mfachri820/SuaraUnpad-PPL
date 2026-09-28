@@ -8,12 +8,16 @@ export function successResponse<T>(data: T | null = null, message = 'Success', s
   }, { status: statusCode });
 }
 
-export function errorResponse(message = 'Internal Server Error', statusCode = 500) {
-  return NextResponse.json({
-    status: 'error',
-    message
-  }, { status: statusCode });
+export interface ErrorDetails {
+  code?: string;
+  errors?: { path: string; message: string }[];
 }
 
-
-    
+export function errorResponse(message = 'Internal Server Error', statusCode = 500, details: ErrorDetails = {}) {
+  return NextResponse.json({
+    status: 'error',
+    message,
+    ...(details.code && { code: details.code }),
+    ...(details.errors && { errors: details.errors })
+  }, { status: statusCode });
+}

@@ -1,26 +1,12 @@
 import { commentService } from '@/services/commentService';
-import { successResponse, errorResponse } from '@/lib/apiResponse';
+import { successResponse } from '@/lib/apiResponse';
+import { assertUuid, requireAuth, withErrorHandling } from '@/lib/http';
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    
-    // Proteksi: Wajib Login
-    const currentUserId = request.headers.get('x-user-id');
-    if (!currentUserId) {
-      return errorResponse('Akses ditolak. Silakan login terlebih dahulu.', 401);
-    }
-
-    // Eksekusi Service
-    const result = await commentService.toggleUpvote(id, currentUserId);
-    
+export const POST = withErrorHandling(
+  async (request: Request, { params }: { params: Promise<{ id: string }> }) => {
+    const id = assertUuid((await params).id, 'Komentar tidak ditemukan');
+    const auth = requireAuth(request);
+    const result = await commentService.toggleUpvote(id, auth.userId);
     return successResponse(result, result.message, 200);
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan server';
-    const statusCode = errorMessage === 'Komentar tidak ditemukan' ? 404 : 500;
-    return errorResponse(errorMessage, statusCode);
   }
-}
+);

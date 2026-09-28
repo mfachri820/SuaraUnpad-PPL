@@ -1,15 +1,14 @@
 import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 import { prisma } from '@/lib/prisma';
-
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key');
+import { getJwtSecret } from '@/lib/jwt';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const token = searchParams.get('token');
 
   // URL Frontend untuk redirect
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
   if (!token) {
     return NextResponse.redirect(`${baseUrl}/login?error=Token tidak ditemukan`);
@@ -17,7 +16,7 @@ export async function GET(request: Request) {
 
   try {
     // 1. Ekstrak dan validasi token
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     
     if (payload.action !== 'verify_email') {
       throw new Error("Token tidak valid");

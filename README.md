@@ -86,3 +86,11 @@ Platform ini diharapkan mampu:
 - Mempercepat respons terhadap kerusakan fasilitas umum.
 - Mewujudkan tata kelola kota yang transparan dan berbasis data.
 - Mendukung SDG 11 secara konkret melalui teknologi digital.
+
+---
+
+# 🛠️ Dokumentasi Teknis
+
+- [Development lokal (Postgres lokal, seeder, test)](docs/DEVELOPMENT.md)
+- [API contract & arahan frontend (moderasi, pengumuman)](docs/API_CONTRACT_FE.md)
+- [Setup AWS staging + CI/CD](docs/SETUP_AWS_CICD.md)

@@ -1,43 +1,47 @@
-# Stage 1: Install dependencies
-FROM node:20-alpine AS deps
-# Tambahkan openssl agar Prisma tidak crash di Alpine!
+# syntax=docker/dockerfile:1
+ARG NODE_IMAGE=node:24-alpine
+
+FROM ${NODE_IMAGE} AS base
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm ci
+ENV NEXT_TELEMETRY_DISABLED=1
 
-# Stage 2: Build the app
-FROM node:20-alpine AS builder
-WORKDIR /app
+FROM base AS deps
+COPY package.json package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
+
+FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# 🚀 FIX: Tangkap variabel dari GitHub Actions sebelum proses compile dijalankan
 ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID
-ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_MIDTRANS_CLIENT_KEY
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID \
+    NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=$NEXT_PUBLIC_MIDTRANS_CLIENT_KEY
+RUN npx prisma generate && npm run build
 
-# Set variabel tersebut ke dalam environment build Next.js
-ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
-ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
-
-# Generate prisma client sebelum build
+FROM base AS tools
+ENV PRISMA_HIDE_UPDATE_MESSAGE=1
+RUN chown node:node /app
+USER node
+COPY --from=deps --chown=node:node /app/node_modules ./node_modules
+COPY --chown=node:node package.json package-lock.json tsconfig.json prisma.config.ts ./
+COPY --chown=node:node prisma ./prisma
+COPY --chown=node:node lib/prisma.ts ./lib/prisma.ts
 RUN npx prisma generate
-RUN npm run build
+CMD ["npx", "prisma", "migrate", "deploy"]
 
-# Stage 3: Production server
-FROM node:20-alpine AS runner
-WORKDIR /app
-ENV NODE_ENV production
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-COPY --from=builder /app/public ./public
-# Pastikan folder .next/standalone sudah ter-generate via next.config.ts
+FROM base AS runner
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+RUN addgroup -S -g 1001 nodejs && adduser -S -u 1001 -G nodejs nextjs
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
 USER nextjs
 EXPOSE 3000
-ENV PORT 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/api/health >/dev/null || exit 1
+ARG GIT_SHA=dev
+ENV APP_VERSION=$GIT_SHA
 CMD ["node", "server.js"]

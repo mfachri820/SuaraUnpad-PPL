@@ -1,4 +1,7 @@
-// Test API helper: database URL validation for health checks
+import { prisma } from '@/lib/prisma';
+
+const DB_TIMEOUT_MS = 3000;
+
 export function validateDatabaseUrl() {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
@@ -11,11 +14,19 @@ export function validateDatabaseUrl() {
 }
 
 export async function checkHealth() {
-  validateDatabaseUrl();
+  const version = process.env.APP_VERSION || 'dev';
 
-  // Add other service checks here if needed in the future.
-  return {
-    status: 'ok',
-    database: 'connected',
-  };
+  try {
+    validateDatabaseUrl();
+    await Promise.race([
+      prisma.$queryRaw`SELECT 1`,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Database timeout')), DB_TIMEOUT_MS)
+      )
+    ]);
+    return { status: 'ok' as const, database: 'connected', version };
+  } catch (error) {
+    console.error('[health] Database check failed:', error);
+    return { status: 'error' as const, database: 'unreachable', version };
+  }
 }

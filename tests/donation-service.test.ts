@@ -80,7 +80,7 @@ describe('Donation service webhook handling', () => {
     } as TransactionRecord);
 
     const tx = {
-      transaction: { update: vi.fn() },
+      transaction: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
       donationCampaign: { update: vi.fn() }
     };
 
@@ -105,14 +105,71 @@ describe('Donation service webhook handling', () => {
 
     expect(result.message).toMatch(/Webhook diproses/i);
     expect(mockedTransaction).toHaveBeenCalledOnce();
-    expect(tx.transaction.update).toHaveBeenCalledWith({
-      where: { orderId: 'order-123' },
+    expect(tx.transaction.updateMany).toHaveBeenCalledWith({
+      where: { orderId: 'order-123', paymentStatus: { not: 'SUCCESS' } },
       data: { paymentStatus: 'SUCCESS' }
     });
     expect(tx.donationCampaign.update).toHaveBeenCalledWith({
       where: { id: 'camp-1' },
-      data: { collectedAmount: { increment: 10000 } }
+      data: { collectedAmount: { increment: BigInt(10000) } }
     });
+  });
+
+  it('does not add to the campaign when a concurrent webhook already marked it SUCCESS', async () => {
+    mockedFindUnique.mockResolvedValue({
+      userId: 'user-1',
+      id: 'tx-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      orderId: 'order-123',
+      campaignId: 'camp-1',
+      amount: BigInt(10000),
+      paymentStatus: 'PENDING',
+      paymentUrl: null
+    } as TransactionRecord);
+
+    const tx = {
+      transaction: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      donationCampaign: { update: vi.fn() }
+    };
+    mockedTransaction.mockImplementation(async (callback) => {
+      await (callback as unknown as (t: typeof tx) => Promise<void>)(tx);
+    });
+
+    const payload = buildPayload();
+    const crypto = await import('crypto');
+    payload.signature_key = crypto
+      .createHash('sha512')
+      .update(`${payload.order_id}${payload.status_code}${payload.gross_amount}${process.env.MIDTRANS_SERVER_KEY}`)
+      .digest('hex');
+
+    await donationService.handleMidtransWebhook(payload);
+
+    expect(tx.donationCampaign.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects a webhook whose amount does not match the stored transaction', async () => {
+    mockedFindUnique.mockResolvedValue({
+      userId: 'user-1',
+      id: 'tx-1',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      orderId: 'order-123',
+      campaignId: 'camp-1',
+      amount: BigInt(999999),
+      paymentStatus: 'PENDING',
+      paymentUrl: null
+    } as TransactionRecord);
+
+    const payload = buildPayload();
+    const crypto = await import('crypto');
+    payload.signature_key = crypto
+      .createHash('sha512')
+      .update(`${payload.order_id}${payload.status_code}${payload.gross_amount}${process.env.MIDTRANS_SERVER_KEY}`)
+      .digest('hex');
+
+    await expect(donationService.handleMidtransWebhook(payload)).rejects.toThrow(/Nominal/);
+    expect(mockedTransaction).not.toHaveBeenCalled();
   });
 
   it('does not update when transaction already SUCCESS', async () => {

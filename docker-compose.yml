@@ -1,13 +1,65 @@
-version: '3.8'
+name: suara-mipa
 
 services:
-  suaraunpad-web:
-    build: 
-      context: .
-      dockerfile: Dockerfile
-    container_name: suaraunpad-app
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env
+  db:
+    image: postgres:17-alpine
+    container_name: suara-mipa-db
     restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-suara}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-suara}
+      POSTGRES_DB: ${POSTGRES_DB:-suara_mipa}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: suara-mipa-mailpit
+    profiles: ["mail"]
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
+  migrate:
+    profiles: ["app"]
+    build:
+      context: .
+      target: tools
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-suara}:${POSTGRES_PASSWORD:-suara}@db:5432/${POSTGRES_DB:-suara_mipa}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    profiles: ["app"]
+    build:
+      context: .
+      target: runner
+      args:
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
+        NEXT_PUBLIC_MIDTRANS_CLIENT_KEY: ${NEXT_PUBLIC_MIDTRANS_CLIENT_KEY:-}
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-suara}:${POSTGRES_PASSWORD:-suara}@db:5432/${POSTGRES_DB:-suara_mipa}
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

@@ -4,6 +4,14 @@ const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff]);
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const WEBP_MAGIC = Buffer.from('RIFF');
 
+export const UPLOAD_FOLDERS = ['general', 'avatars', 'posts', 'reports', 'campaigns', 'announcements'] as const;
+export type UploadFolder = (typeof UPLOAD_FOLDERS)[number];
+
+export function resolveUploadFolder(folder: UploadFolder) {
+  const root = (process.env.CLOUDINARY_ROOT_FOLDER || 'suara_mipa').replace(/^\/+|\/+$/g, '');
+  return `${root}/${folder}`;
+}
+
 function getImageMimeType(fileBuffer: Buffer): string | null {
   if (fileBuffer.length >= 3 && fileBuffer.slice(0, 3).equals(JPEG_MAGIC)) {
     return 'image/jpeg';
@@ -24,20 +32,26 @@ function getImageMimeType(fileBuffer: Buffer): string | null {
   return null;
 }
 
-function extractPublicIdFromUrl(imageUrl: string) {
+export function extractPublicIdFromUrl(imageUrl: string, cloudName = process.env.CLOUDINARY_CLOUD_NAME) {
   try {
     const parsed = new URL(imageUrl);
-    const parts = parsed.pathname.split('/').filter(Boolean);
-    const lastSegment = parts.pop();
-    if (!lastSegment) return null;
-    return lastSegment.replace(/\.[^.]+$/, '');
+    if (parsed.hostname !== 'res.cloudinary.com') return null;
+
+    const parts = parsed.pathname.split('/').filter(Boolean).map(decodeURIComponent);
+    const [cloud, resourceType, deliveryType, ...rest] = parts;
+    if (!cloudName || cloud !== cloudName || resourceType !== 'image' || deliveryType !== 'upload') return null;
+
+    const pathParts = /^v\d+$/.test(rest[0] ?? '') ? rest.slice(1) : rest;
+    if (pathParts.length === 0) return null;
+
+    return pathParts.join('/').replace(/\.[^./]+$/, '');
   } catch {
     return null;
   }
 }
 
 export const uploadService = {
-  async uploadImage(fileBuffer: Buffer, folder: string = 'suara_unpad/general'): Promise<string> {
+  async uploadImage(fileBuffer: Buffer, folder: string = resolveUploadFolder('general')): Promise<string> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
@@ -46,7 +60,7 @@ export const uploadService = {
         (error, result) => {
           if (error) return reject(error);
           if (!result) return reject(new Error('Upload gagal, tidak ada hasil dari Cloudinary'));
-          
+
           resolve(result.secure_url);
         }
       );
@@ -62,12 +76,16 @@ export const uploadService = {
   async deleteImageByUrl(imageUrl: string) {
     const publicId = extractPublicIdFromUrl(imageUrl);
     if (!publicId) {
-      throw new Error('Gagal menghapus gambar: publicId tidak dapat diekstrak dari URL');
+      console.warn('Lewati hapus gambar: URL bukan aset Cloudinary milik aplikasi ini:', imageUrl);
+      return { result: 'skipped' };
     }
 
-    return new Promise((resolve, reject) => {
+    return new Promise<{ result?: string }>((resolve, reject) => {
       cloudinary.uploader.destroy(publicId, { resource_type: 'image' }, (error, result) => {
         if (error) return reject(error);
+        if (result?.result !== 'ok') {
+          console.warn(`Cloudinary tidak menghapus ${publicId}:`, result);
+        }
         resolve(result);
       });
     });

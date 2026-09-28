@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  // output   = "../app/generated/prisma"
 }
 
 datasource db {
@@ -61,6 +60,29 @@ enum NotificationType {
   UPVOTE_POST
   UPVOTE_COMMENT
   REPORT_STATUS_CHANGED
+  POST_CLOSED
+  CONTENT_REMOVED
+  NEW_ANNOUNCEMENT
+}
+
+enum PostKind {
+  ASPIRASI
+  ANNOUNCEMENT
+}
+
+enum FlagReason {
+  SPAM
+  UJARAN_KEBENCIAN
+  PELECEHAN
+  HOAKS
+  TIDAK_RELEVAN
+  LAINNYA
+}
+
+enum FlagStatus {
+  PENDING
+  ACTIONED
+  DISMISSED
 }
 
 // --- MODELS ---
@@ -68,7 +90,7 @@ enum NotificationType {
 model User {
   id           String   @id @default(uuid()) @db.Uuid
   email        String   @unique @db.VarChar
-  passwordHash String?   @map("password_hash") @db.VarChar
+  passwordHash String?  @map("password_hash") @db.VarChar
   role         Role
   isVerified   Boolean  @default(false) @map("is_verified")
   avatarUrl    String?  @map("avatar_url") @db.VarChar
@@ -84,14 +106,18 @@ model User {
   reportUpvotes    ReportUpvote[]
   policies         Policy[]
   votes            Vote[]
-  posts            Post[]
-  comments         Comment[]
+  posts            Post[]           @relation("PostAuthor")
+  closedPosts      Post[]           @relation("PostClosedBy")
+  comments         Comment[]        @relation("CommentAuthor")
+  deletedComments  Comment[]        @relation("CommentDeletedBy")
   commentMentions  CommentMention[]
   transactions     Transaction[]
   postUpvotes      PostUpvote[]
   commentUpvotes   CommentUpvote[]
   notificationsRec Notification[]   @relation("NotificationRecipient")
   notificationsAct Notification[]   @relation("NotificationActor")
+  flagsReported    ContentFlag[]    @relation("FlagReporter")
+  flagsReviewed    ContentFlag[]    @relation("FlagReviewer")
 
   @@map("users")
 }
@@ -149,6 +175,8 @@ model Report {
   reportUpvotes ReportUpvote[]
   notifications Notification[]
 
+  @@index([authorId])
+  @@index([createdAt])
   @@map("reports")
 }
 
@@ -162,6 +190,7 @@ model ReportUpvote {
   report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
 
   @@unique([userId, reportId])
+  @@index([reportId])
   @@map("report_upvotes")
 }
 
@@ -174,12 +203,13 @@ model Policy {
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 
-  author   User      @relation(fields: [authorId], references: [id])
-  votes    Vote[]
-  posts    Post[]
-  comments Comment[]
+  author        User           @relation(fields: [authorId], references: [id])
+  votes         Vote[]
+  posts         Post[]
+  comments      Comment[]
   notifications Notification[]
 
+  @@index([status, createdAt])
   @@map("policies")
 }
 
@@ -194,38 +224,53 @@ model Vote {
   policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
 
   @@unique([userId, policyId])
+  @@index([policyId])
   @@map("votes")
 }
 
 model Post {
-  id        String   @id @default(uuid()) @db.Uuid
-  authorId  String   @map("author_id") @db.Uuid
-  policyId  String?  @map("policy_id") @db.Uuid
-  title     String   @db.VarChar
-  content   String   @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id           String    @id @default(uuid()) @db.Uuid
+  authorId     String    @map("author_id") @db.Uuid
+  policyId     String?   @map("policy_id") @db.Uuid
+  kind         PostKind  @default(ASPIRASI)
+  title        String    @db.VarChar
+  content      String    @db.Text
+  imageUrl     String?   @map("image_url") @db.VarChar
+  pinnedUntil  DateTime? @map("pinned_until")
+  closedAt     DateTime? @map("closed_at")
+  closedReason String?   @map("closed_reason") @db.Text
+  closedById   String?   @map("closed_by_id") @db.Uuid
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author        User           @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  closedBy      User?          @relation("PostClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
   policy        Policy?        @relation(fields: [policyId], references: [id], onDelete: SetNull)
   comments      Comment[]
   postUpvotes   PostUpvote[]
   notifications Notification[]
+  flags         ContentFlag[]
 
+  @@index([kind, createdAt])
+  @@index([kind, pinnedUntil])
+  @@index([authorId])
+  @@index([policyId])
   @@map("posts")
 }
 
 model Comment {
-  id        String    @id @default(uuid()) @db.Uuid
-  authorId  String    @map("author_id") @db.Uuid
-  postId    String?   @map("post_id") @db.Uuid
-  policyId  String?   @map("policy_id") @db.Uuid
-  parentId  String?   @map("parent_id") @db.Uuid
-  content   String    @db.Text
-  createdAt DateTime  @default(now()) @map("created_at")
-  deletedAt DateTime? @map("deleted_at")
+  id          String    @id @default(uuid()) @db.Uuid
+  authorId    String    @map("author_id") @db.Uuid
+  postId      String?   @map("post_id") @db.Uuid
+  policyId    String?   @map("policy_id") @db.Uuid
+  parentId    String?   @map("parent_id") @db.Uuid
+  content     String    @db.Text
+  createdAt   DateTime  @default(now()) @map("created_at")
+  deletedAt   DateTime? @map("deleted_at")
+  deletedById String?   @map("deleted_by_id") @db.Uuid
 
-  author          User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author          User             @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  deletedBy       User?            @relation("CommentDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
   post            Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
   policy          Policy?          @relation(fields: [policyId], references: [id], onDelete: Cascade)
   parent          Comment?         @relation("CommentToComment", fields: [parentId], references: [id], onDelete: Cascade)
@@ -233,7 +278,12 @@ model Comment {
   commentMentions CommentMention[]
   commentUpvotes  CommentUpvote[]
   notifications   Notification[]
+  flags           ContentFlag[]
 
+  @@index([postId, parentId, createdAt])
+  @@index([policyId, parentId, createdAt])
+  @@index([parentId])
+  @@index([authorId])
   @@map("comments")
 }
 
@@ -247,6 +297,7 @@ model CommentMention {
   mentionedUser User    @relation(fields: [mentionedUserId], references: [id], onDelete: Cascade)
 
   @@unique([commentId, mentionedUserId])
+  @@index([mentionedUserId])
   @@map("comment_mentions")
 }
 
@@ -280,6 +331,8 @@ model Transaction {
   user     User             @relation(fields: [userId], references: [id])
   campaign DonationCampaign @relation(fields: [campaignId], references: [id])
 
+  @@index([campaignId])
+  @@index([userId])
   @@map("transactions")
 }
 
@@ -293,6 +346,7 @@ model PostUpvote {
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
   @@unique([userId, postId])
+  @@index([postId])
   @@map("post_upvotes")
 }
 
@@ -306,6 +360,7 @@ model CommentUpvote {
   comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   @@unique([userId, commentId])
+  @@index([commentId])
   @@map("comment_upvotes")
 }
 
@@ -328,5 +383,31 @@ model Notification {
   report    Report?  @relation(fields: [reportId], references: [id], onDelete: Cascade)
   policy    Policy?  @relation(fields: [policyId], references: [id], onDelete: Cascade)
 
+  @@index([recipientId, createdAt])
+  @@index([recipientId, isRead])
   @@map("notifications")
+}
+
+model ContentFlag {
+  id           String     @id @default(uuid()) @db.Uuid
+  reporterId   String     @map("reporter_id") @db.Uuid
+  postId       String?    @map("post_id") @db.Uuid
+  commentId    String?    @map("comment_id") @db.Uuid
+  reason       FlagReason
+  note         String?    @db.Text
+  status       FlagStatus @default(PENDING)
+  reviewedById String?    @map("reviewed_by_id") @db.Uuid
+  reviewedAt   DateTime?  @map("reviewed_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  reporter   User     @relation("FlagReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewedBy User?    @relation("FlagReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  post       Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([reporterId, postId])
+  @@unique([reporterId, commentId])
+  @@index([postId, status])
+  @@index([commentId, status])
+  @@map("content_flags")
 }

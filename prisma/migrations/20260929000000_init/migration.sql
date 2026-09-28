@@ -1,8 +1,11 @@
+-- CreateSchema
+CREATE SCHEMA IF NOT EXISTS "public";
+
 -- CreateEnum
 CREATE TYPE "Role" AS ENUM ('STUDENT', 'LECTURER', 'ADMIN');
 
 -- CreateEnum
-CREATE TYPE "ReportCategory" AS ENUM ('INFRASTRUCTURE', 'CLEANLINESS', 'SECURITY', 'OTHER');
+CREATE TYPE "ReportCategory" AS ENUM ('POTHOLE', 'CRACK', 'CORROSION', 'SAMPAH', 'OTHER');
 
 -- CreateEnum
 CREATE TYPE "ReportStatus" AS ENUM ('SUBMITTED', 'VERIFIED', 'IN_PROGRESS', 'RESOLVED');
@@ -20,15 +23,16 @@ CREATE TYPE "CampaignStatus" AS ENUM ('ACTIVE', 'COMPLETED');
 CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'SUCCESS', 'FAILED', 'EXPIRED');
 
 -- CreateEnum
-CREATE TYPE "NotificationType" AS ENUM ('COMMENT_ON_POST', 'REPLY_ON_COMMENT', 'UPVOTE_REPORT', 'UPVOTE_POST', 'UPVOTE_COMMENT');
+CREATE TYPE "NotificationType" AS ENUM ('COMMENT_ON_POST', 'COMMENT_ON_POLICY', 'REPLY_ON_COMMENT', 'UPVOTE_REPORT', 'UPVOTE_POST', 'UPVOTE_COMMENT', 'REPORT_STATUS_CHANGED');
 
 -- CreateTable
 CREATE TABLE "users" (
     "id" UUID NOT NULL,
     "email" VARCHAR NOT NULL,
-    "password_hash" VARCHAR NOT NULL,
+    "password_hash" VARCHAR,
     "role" "Role" NOT NULL,
     "is_verified" BOOLEAN NOT NULL DEFAULT false,
+    "avatar_url" VARCHAR,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
@@ -161,6 +165,7 @@ CREATE TABLE "donation_campaigns" (
     "title" VARCHAR NOT NULL,
     "description" TEXT NOT NULL,
     "target_amount" BIGINT NOT NULL,
+    "banner_url" VARCHAR NOT NULL,
     "collected_amount" BIGINT NOT NULL DEFAULT 0,
     "status" "CampaignStatus" NOT NULL DEFAULT 'ACTIVE',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -213,6 +218,7 @@ CREATE TABLE "notifications" (
     "post_id" UUID,
     "comment_id" UUID,
     "report_id" UUID,
+    "policy_id" UUID,
     "is_read" BOOLEAN NOT NULL DEFAULT false,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -338,3 +344,6 @@ ALTER TABLE "notifications" ADD CONSTRAINT "notifications_comment_id_fkey" FOREI
 
 -- AddForeignKey
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_report_id_fkey" FOREIGN KEY ("report_id") REFERENCES "reports"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_policy_id_fkey" FOREIGN KEY ("policy_id") REFERENCES "policies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
