@@ -1,0 +1,138 @@
+name: Deploy Staging (AWS)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
+  build:
+    name: Build & push image
+    needs: ci
+    runs-on: ubuntu-latest
+    environment: staging
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: meta
+        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - uses: docker/setup-buildx-action@v4
+      - name: Image aplikasi
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: runner
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/suara-mipa:${{ steps.meta.outputs.tag }}
+            ${{ steps.ecr.outputs.registry }}/suara-mipa:staging
+          build-args: |
+            NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+            NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=${{ vars.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY }}
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=runner
+          cache-to: type=gha,mode=max,scope=runner
+      - name: Image tools (migrasi & seeder)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: tools
+          push: true
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/suara-mipa-tools:${{ steps.meta.outputs.tag }}
+            ${{ steps.ecr.outputs.registry }}/suara-mipa-tools:staging
+          cache-from: type=gha,scope=tools
+          cache-to: type=gha,mode=max,scope=tools
+
+  deploy:
+    name: Rollout ke EC2
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_URL }}
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: deploy
+      - name: Kirim file deploy + jalankan deploy.sh lewat SSM Run Command
+        env:
+          INSTANCE_ID: ${{ vars.STAGING_INSTANCE_ID }}
+          TAG: ${{ needs.build.outputs.tag }}
+          SITE_ADDRESS: ${{ vars.SITE_ADDRESS }}
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          REGISTRY="$ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+          printf 'AWS_REGION=%s\nREGISTRY=%s\nSITE_ADDRESS=%s\nENV_SSM_PARAM=%s\n' \
+            "$AWS_REGION" "$REGISTRY" "${SITE_ADDRESS:-:80}" "/suara-mipa/staging/app-env" > deploy/deploy.env
+          BUNDLE=$(tar -C deploy -czf - compose.yml Caddyfile deploy.sh seed.sh backup-db.sh deploy.env | base64 -w0)
+          PARAMS=$(jq -nc --arg b "$BUNDLE" --arg t "$TAG" '{
+            commands: [
+              "set -eu",
+              "mkdir -p /opt/suara-mipa && cd /opt/suara-mipa",
+              ("echo " + $b + " | base64 -d | tar -xzf -"),
+              "chmod 700 deploy.sh seed.sh backup-db.sh && chmod 600 deploy.env",
+              ("./deploy.sh " + $t)
+            ],
+            executionTimeout: ["900"]
+          }')
+          CMD_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "deploy $TAG" \
+            --parameters "$PARAMS" \
+            --query Command.CommandId --output text)
+          echo "SSM command: $CMD_ID"
+          for i in $(seq 1 120); do
+            STATUS=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in
+              Success)
+                aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+                  --query StandardOutputContent --output text | tail -20
+                exit 0 ;;
+              Failed|Cancelled|TimedOut|Cancelling)
+                aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+                  --query '[StandardOutputContent,StandardErrorContent]' --output text | tail -40
+                exit 1 ;;
+            esac
+            sleep 5
+          done
+          echo "Timeout menunggu deploy" >&2
+          exit 1
+
+      - name: Smoke test (versi yang jalan = commit ini)
+        env:
+          STAGING_URL: ${{ vars.STAGING_URL }}
+        run: |
+          for i in $(seq 1 30); do
+            BODY=$(curl -fsS "$STAGING_URL/api/health" || true)
+            echo "$BODY"
+            echo "$BODY" | grep -q "\"version\":\"$GITHUB_SHA\"" && exit 0
+            sleep 5
+          done
+          echo "Health check gagal atau versi tidak sesuai" >&2
+          exit 1

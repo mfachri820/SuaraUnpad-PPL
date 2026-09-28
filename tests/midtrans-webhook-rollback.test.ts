@@ -10,11 +10,11 @@ vi.mock('@/lib/prisma', () => ({
         paymentStatus: 'PENDING',
       })),
     },
-    $transaction: vi.fn(async (callback: (trx: { transaction: { update: ReturnType<typeof vi.fn> }; donationCampaign: { update: ReturnType<typeof vi.fn> } }) => Promise<void>) => {
+    $transaction: vi.fn(async (callback: (trx: { transaction: { updateMany: ReturnType<typeof vi.fn> }; donationCampaign: { update: ReturnType<typeof vi.fn> } }) => Promise<void>) => {
       // Simulate database failure during transactional update
       await callback({
         transaction: {
-          update: vi.fn(),
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }) as ReturnType<typeof vi.fn>,
         },
         donationCampaign: {
           update: vi.fn(),

@@ -4,8 +4,8 @@ import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 import { OAuth2Client } from 'google-auth-library';
 import nodemailer from 'nodemailer';
+import { getJwtSecret } from '@/lib/jwt';
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'fallback_secret_key');
 const googleClient = new OAuth2Client(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
 
 const transporter = nodemailer.createTransport({
@@ -85,10 +85,11 @@ export const authService = {
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
-        .sign(JWT_SECRET);
+        .sign(getJwtSecret());
 
       // 2. Buat URL Verifikasi
-      const verificationUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/verify?token=${verifyToken}`;
+      const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
+      const verificationUrl = `${appUrl}/api/auth/verify?token=${verifyToken}`;
 
       // 3. Kirim Email
       await transporter.sendMail({
@@ -127,7 +128,7 @@ export const authService = {
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
       .setExpirationTime('7d') // Token berlaku 7 hari
-      .sign(JWT_SECRET);
+      .sign(getJwtSecret());
 
     return {  
       user: { id: user.id, email: user.email, role: user.role, isVerified: user.isVerified },
@@ -172,7 +173,7 @@ export const authService = {
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('7d')
-        .sign(JWT_SECRET);
+        .sign(getJwtSecret());
 
       // Kalau avatar di DB masih kosong, kita update pakai foto profil Google
       if (!user.avatarUrl && payload.picture) {

@@ -1,21 +1,17 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
-
-// Secret key harus sama dengan yang ada di authService
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "fallback_secret_key"
-);
+import { getJwtSecret } from "@/lib/jwt";
 
 // Daftar endpoint API yang bisa diakses tanpa login (Kodingan BE Asli)
-const publicApiPaths = [
+const publicApiPaths = new Set([
   "/api/auth/login",
   "/api/auth/register",
   "/api/auth/verify",
-  "/api/donations/webhook",
   "/api/auth/google",
-  "/api/webhooks/midtrans" 
-];
+  "/api/webhooks/midtrans",
+  "/api/health",
+]);
 
 // Daftar halaman UI/Frontend yang boleh diakses TANPA login
 const publicUIPaths = [
@@ -24,7 +20,15 @@ const publicUIPaths = [
   "/complete-profile",
 ];
 
-export async function middleware(request: NextRequest) {
+const IDENTITY_HEADERS = ["x-user-id", "x-user-role"];
+
+function withoutIdentityHeaders(request: NextRequest) {
+  const headers = new Headers(request.headers);
+  IDENTITY_HEADERS.forEach((name) => headers.delete(name));
+  return headers;
+}
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ========================================================
@@ -45,15 +49,16 @@ export async function middleware(request: NextRequest) {
 
     // B. Jika user SUDAH login
     if (tokenCookie) {
+      const secret = getJwtSecret();
       try {
         // Kita BONGKAR tokennya di sini untuk mengecek status isVerified
-        const { payload } = await jwtVerify(tokenCookie, JWT_SECRET);
+        const { payload } = await jwtVerify(tokenCookie, secret);
         const isVerified = payload.isVerified as boolean;
 
         // B1. Jika user mengakses halaman Public UI (seperti /login) saat sudah login -> Tendang ke Home
         if (isPublicUI) {
           const homeUrl = request.nextUrl.clone();
-          homeUrl.pathname = "/home"; 
+          homeUrl.pathname = "/home";
           return NextResponse.redirect(homeUrl);
         }
 
@@ -70,9 +75,7 @@ export async function middleware(request: NextRequest) {
           homeUrl.pathname = "/home";
           return NextResponse.redirect(homeUrl);
         }
-
-
-      } catch (error) {
+      } catch {
         // Jika token kedaluwarsa atau diotak-atik: Hapus cookie & tendang ke login
         const loginUrl = request.nextUrl.clone();
         loginUrl.pathname = "/login";
@@ -82,63 +85,62 @@ export async function middleware(request: NextRequest) {
         return response;
       }
     }
+
+    return NextResponse.next();
   }
 
   // ========================================================
   // 2. LOGIKA BACKEND (API PROTECTION) - DITAMBAH PROTEKSI VERIFIKASI
   // ========================================================
-  if (publicApiPaths.some((path) => pathname.startsWith(path))) {
-    return NextResponse.next();
+  if (publicApiPaths.has(pathname)) {
+    return NextResponse.next({ request: { headers: withoutIdentityHeaders(request) } });
   }
 
-  if (pathname.startsWith("/api/")) {
-    const authHeader = request.headers.get("authorization");
+  const authHeader = request.headers.get("authorization");
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return NextResponse.json(
+      { status: "error", message: "Akses ditolak. Token tidak ditemukan." },
+      { status: 401 }
+    );
+  }
+
+  const token = authHeader.split(" ")[1];
+  const secret = getJwtSecret();
+
+  try {
+    const { payload } = await jwtVerify(token, secret);
+
+    // CEK VERIFIKASI DI API: Cegah user nembak API via Postman kalau belum verified
+    if (!payload.isVerified) {
       return NextResponse.json(
-        { status: "error", message: "Akses ditolak. Token tidak ditemukan." },
-        { status: 401 }
+        { status: "error", message: "Akun belum terverifikasi. Silakan cek email Anda." },
+        { status: 403 } // 403 Forbidden (Login sukses, tapi hak akses ditolak)
       );
     }
 
-    const token = authHeader.split(" ")[1];
-
-    try {
-      const { payload } = await jwtVerify(token, JWT_SECRET);
-      
-      // CEK VERIFIKASI DI API: Cegah user nembak API via Postman kalau belum verified
-      if (!payload.isVerified) {
-         return NextResponse.json(
-           { status: "error", message: "Akun belum terverifikasi. Silakan cek email Anda." },
-           { status: 403 } // 403 Forbidden (Login sukses, tapi hak akses ditolak)
-         );
-      }
-
-      if (pathname.startsWith('/api/admin') && payload.role !== 'ADMIN') {
-        return NextResponse.json(
-          { status: 'error', message: 'Akses ditolak. Hanya Admin yang diizinkan.' },
-          { status: 403 }
-        );
-      }
-
-      const requestHeaders = new Headers(request.headers);
-      requestHeaders.set("x-user-id", payload.userId as string);
-      requestHeaders.set("x-user-role", payload.role as string);
-
-      return NextResponse.next({
-        request: {
-          headers: requestHeaders
-        }
-      });
-    } catch (error) {
+    if (pathname.startsWith("/api/admin") && payload.role !== "ADMIN") {
       return NextResponse.json(
-        { status: "error", message: "Sesi tidak valid atau telah kadaluarsa." },
-        { status: 401 }
+        { status: "error", message: "Akses ditolak. Hanya Admin yang diizinkan." },
+        { status: 403 }
       );
     }
-  }
 
-  return NextResponse.next();
+    const requestHeaders = withoutIdentityHeaders(request);
+    requestHeaders.set("x-user-id", payload.userId as string);
+    requestHeaders.set("x-user-role", payload.role as string);
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders
+      }
+    });
+  } catch {
+    return NextResponse.json(
+      { status: "error", message: "Sesi tidak valid atau telah kadaluarsa." },
+      { status: 401 }
+    );
+  }
 }
 
 // ========================================================

@@ -1,20 +1,13 @@
+import { z } from "zod";
 import { userService } from "@/services/userService";
-import { successResponse, errorResponse } from "@/lib/apiResponse";
-import { Role } from "@prisma/client";
+import { successResponse } from "@/lib/apiResponse";
+import { parseQuery, requireAdmin, withErrorHandling } from "@/lib/http";
 
-export async function GET(request: Request) {
-    try {
-        const userRole = request.headers.get('x-user-role');
-        if (userRole !== 'ADMIN') {
-            return errorResponse('Akses ditolak, Hanya admin yang diizinkan.', 403);
-        }
+const querySchema = z.object({ role: z.enum(["STUDENT", "LECTURER", "ADMIN"]).optional() });
 
-        const {searchParams} = new URL(request.url);
-        const roleFilter = searchParams.get('role') as Role | null;
-        const users = await userService.getAllUsers(roleFilter || undefined);
-        return successResponse(users, 'Berhasil mengambil daftar user', 200);
-    } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan server";
-        return errorResponse(errorMessage, 500);
-    }
-}
+export const GET = withErrorHandling(async (request: Request) => {
+  requireAdmin(request);
+  const { role } = parseQuery(request, querySchema);
+  const users = await userService.getAllUsers(role);
+  return successResponse(users, 'Berhasil mengambil daftar user', 200);
+});

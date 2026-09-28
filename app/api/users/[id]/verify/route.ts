@@ -1,33 +1,18 @@
-import { NextRequest } from 'next/server';
+import { z } from 'zod';
 import { userService } from '@/services/userService';
-import { successResponse, errorResponse } from '@/lib/apiResponse';
+import { successResponse } from '@/lib/apiResponse';
+import { assertUuid, parseBody, requireAdmin, withErrorHandling } from '@/lib/http';
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    
-    // Proteksi: Hanya Admin
-    const userRole = request.headers.get('x-user-role');
-    if (userRole !== 'ADMIN') {
-      return errorResponse('Akses ditolak. Hanya Admin yang diizinkan.', 403);
-    }
+const bodySchema = z.object({
+  isVerified: z.boolean({ message: 'Field isVerified wajib diisi dengan format boolean (true / false)' })
+});
 
-    // Ambil request body
-    const body = await request.json();
-
-    // Validasi input strict boolean
-    if (typeof body.isVerified !== 'boolean') {
-      return errorResponse('Field isVerified wajib diisi dengan format boolean (true / false)', 400);
-    }
-
-    const updatedUser = await userService.verifyUser(id, body.isVerified);
-    return successResponse(updatedUser, `Status verifikasi user berhasil diubah menjadi ${body.isVerified}`, 200);
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan server';
-    const statusCode = errorMessage === 'User tidak ditemukan' ? 404 : 500;
-    return errorResponse(errorMessage, statusCode);
+export const PATCH = withErrorHandling(
+  async (request: Request, { params }: { params: Promise<{ id: string }> }) => {
+    requireAdmin(request);
+    const id = assertUuid((await params).id, 'User tidak ditemukan');
+    const { isVerified } = await parseBody(request, bodySchema);
+    const updatedUser = await userService.verifyUser(id, isVerified);
+    return successResponse(updatedUser, `Status verifikasi user berhasil diubah menjadi ${isVerified}`, 200);
   }
-}
+);

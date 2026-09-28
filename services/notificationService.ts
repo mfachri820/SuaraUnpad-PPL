@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+import { forbidden, notFound } from '@/lib/http';
+import { DELETED_COMMENT_PLACEHOLDER } from '@/services/commentService';
 
 export interface GetNotificationsFilter {
   page?: number;
@@ -28,9 +30,10 @@ export const notificationService = {
             adminProfile: { select: { fullName: true } },
           }
         },
-        post: { select: { title: true } },
+        post: { select: { title: true, kind: true } },
         report: { select: { title: true, status: true } },
-        comment: { select: { content: true } }
+        policy: { select: { title: true } },
+        comment: { select: { content: true, deletedAt: true } }
       }
     });
 
@@ -43,7 +46,12 @@ export const notificationService = {
     });
 
     return {
-      data: notifications,
+      data: notifications.map((notification) => ({
+        ...notification,
+        comment: notification.comment
+          ? { content: notification.comment.deletedAt ? DELETED_COMMENT_PLACEHOLDER : notification.comment.content }
+          : null
+      })),
       meta: {
         currentPage: page,
         itemsPerPage: limit,
@@ -57,11 +65,11 @@ export const notificationService = {
   // FUNGSI BACA SATU
   async markAsRead(notificationId: string, userId: string) {
     const notification = await prisma.notification.findUnique({ where: { id: notificationId } });
-    if (!notification) throw new Error('Notifikasi tidak ditemukan');
+    if (!notification) throw notFound('Notifikasi tidak ditemukan');
 
     // Pastikan user hanya bisa membaca notif miliknya sendiri
     if (notification.recipientId !== userId) { 
-      throw new Error('Akses ditolak. Ini bukan notifikasi Anda.');
+      throw forbidden('Akses ditolak. Ini bukan notifikasi Anda.');
     }
 
     const updatedNotification = await prisma.notification.update({

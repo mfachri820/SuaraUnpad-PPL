@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+  push:
+    branches: [main]
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint, typecheck, unit test, build
+    runs-on: ubuntu-latest
+    env:
+      PRISMA_HIDE_UPDATE_MESSAGE: "1"
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx prisma validate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      - run: npx prisma generate
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - name: Build Next.js
+        run: npm run build
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+          JWT_SECRET: ci-build-only-secret-not-used-at-runtime-000
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ci-dummy-client-id
+
+  database:
+    name: Migrasi, drift check, seeder, integration test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: suara
+          POSTGRES_PASSWORD: suara
+          POSTGRES_DB: suara_mipa_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U suara -d suara_mipa_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      PRISMA_HIDE_UPDATE_MESSAGE: "1"
+      DATABASE_URL: postgresql://suara:suara@localhost:5432/suara_mipa_ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx prisma generate
+      - name: Migrasi berlaku di database kosong
+        run: npx prisma migrate deploy
+      - name: Tidak ada drift antara migrasi dan schema.prisma
+        run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+      - name: Seeder berjalan di database baru
+        run: npm run db:seed
+      - name: Integration test (Postgres asli)
+        run: |
+          createdb -h localhost -U suara suara_mipa_ci_test
+          npm run test:integration
+        env:
+          PGPASSWORD: suara
+          TEST_DATABASE_URL: postgresql://suara:suara@localhost:5432/suara_mipa_ci_test
+
+  security:
+    name: Secret scan & dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: npm audit (production)
+        run: |
+          npm audit --omit=dev || true
+          npm audit --omit=dev --audit-level=critical

@@ -1,5 +1,6 @@
 import {prisma} from '@/lib/prisma';
 import { Role } from '@prisma/client';
+import { notFound } from '@/lib/http';
 
 export const userService = {
     async getAllUsers(roleFilter?: Role) {
@@ -37,13 +38,13 @@ export const userService = {
             },
         });
 
-        if (!user) throw new Error('User tidak ditemukan');
+        if (!user) throw notFound('User tidak ditemukan');
         return user;
     },
 
     async verifyUser(id: string, isVerified: boolean) {
         const existingUser = await prisma.user.findUnique({where: {id}});
-        if (!existingUser) throw new Error('User tidak ditemukan');
+        if (!existingUser) throw notFound('User tidak ditemukan');
 
         const updatedUser = await prisma.user.update({
             where: { id },
