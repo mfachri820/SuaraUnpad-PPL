@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { FiHash, FiBookOpen, FiBriefcase } from "react-icons/fi";
 import AuthInput from "@/components/ui/AuthInput";
+import AuthSelect from "@/components/ui/AuthSelect";
 import Image from "next/image";
+import { FMIPA_MAJORS } from "@/lib/fmipa";
 
 // Import fungsi API dan Interface dari AuthFetch.ts
 import { completeGoogleProfile, RegisterPayload } from "./AuthFetch";
@@ -82,7 +84,7 @@ export default function CompleteProfileForm() {
             </span>
           </h2>
           <p className="text-zinc-500 text-sm mt-2 leading-relaxed">
-            Halo, <span className="font-bold text-black">{googleInfo?.fullName?.split(" ")[0]}</span>! Sedikit lagi untuk bergabung di SuaraUnpad.
+            Halo, <span className="font-bold text-black">{googleInfo?.fullName?.split(" ")[0]}</span>! Sedikit lagi untuk bergabung di Suara MIPA.
           </p>
         </div>
 
@@ -116,17 +118,26 @@ export default function CompleteProfileForm() {
             register={register("studentId", { required: true })}
           />
 
-          <AuthInput 
-            label="Fakultas" 
-            icon={FiBriefcase} 
-            placeholder="Contoh: FMIPA" 
-            register={register("faculty", { required: true })} 
-          />
+          <div className="mb-4 w-full text-left">
+            <label className="block text-zinc-700 font-bold text-sm mb-2">Fakultas</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#E8A34D]">
+                <FiBriefcase size={18} />
+              </div>
+              <input
+                value="FMIPA"
+                readOnly
+                {...register("faculty")}
+                className="w-full pl-10 pr-4 py-3 bg-zinc-100 border border-[#E8A34D]/30 rounded-xl text-sm text-zinc-500 cursor-not-allowed"
+              />
+            </div>
+          </div>
 
-          <AuthInput
+          <AuthSelect
             label="Program Studi"
             icon={FiBookOpen}
-            placeholder="Teknik Informatika"
+            placeholder="Pilih program studi"
+            options={FMIPA_MAJORS}
             register={register("major", { required: true })}
           />
 

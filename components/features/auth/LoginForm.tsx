@@ -87,13 +87,13 @@ function LoginFormContent() {
       <div className="mb-10 w-full text-left">
         <h1 className="text-4xl font-bold mb-6">
           <span className="text-[#2682F9]">Suara</span>
-          <span className="text-[#E8A34D]">Unpad</span>
+          <span className="text-[#E8A34D]">MIPA</span>
         </h1>
         <p className="text-black font-bold text-lg leading-tight">
-          Selamat datang di SUARAUNPAD
+          Selamat datang di SUARA MIPA
         </p>
         <p className="text-zinc-500 text-sm mt-1">
-          Sebuah one-stop platform untuk Unpad yang lebih UNGGUL
+          Sebuah one-stop platform untuk FMIPA yang lebih UNGGUL
         </p>
       </div>
 

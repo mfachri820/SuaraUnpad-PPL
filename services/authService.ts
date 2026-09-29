@@ -5,6 +5,7 @@ import { SignJWT } from 'jose';
 import { OAuth2Client } from 'google-auth-library';
 import nodemailer from 'nodemailer';
 import { getJwtSecret } from '@/lib/jwt';
+import { FMIPA_FACULTY, isFmipaMajor } from '@/lib/fmipa';
 
 const googleClient = new OAuth2Client(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
 
@@ -44,10 +45,15 @@ export interface UpdateProfilePayload {
 export const authService = {
   // Ganti tipe data 'any' jadi 'RegisterPayload'
   async register(data: RegisterPayload) {
-  const { email, password, role, fullName, studentId, employeeId, department, faculty, major, isGoogleAuth } = data;
+  const { email, password, role, fullName, studentId, employeeId, department, major, isGoogleAuth } = data;
     // Cek email apakah sudah dipakai
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) throw new Error('Email sudah terdaftar');
+
+    // Suara MIPA hanya untuk sivitas FMIPA: fakultas dikunci, program studi dibatasi
+    if (role === 'STUDENT' && (!major || !isFmipaMajor(major))) {
+      throw new Error('Program studi tidak valid. Pilih salah satu program studi FMIPA.');
+    }
 
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
@@ -55,9 +61,9 @@ export const authService = {
     // Siapkan payload profile sesuai Role
     let profileData = {};
     if (role === 'STUDENT') {
-      profileData = { studentProfile: { create: { fullName, studentId: studentId!, faculty: faculty!, major: major! } } };
+      profileData = { studentProfile: { create: { fullName, studentId: studentId!, faculty: FMIPA_FACULTY, major: major! } } };
     } else if (role === 'LECTURER') {
-      profileData = { lecturerProfile: { create: { fullName, employeeId: employeeId!, faculty: faculty! } } };
+      profileData = { lecturerProfile: { create: { fullName, employeeId: employeeId!, faculty: FMIPA_FACULTY } } };
     } else if (role === 'ADMIN') {
       profileData = { adminProfile: { create: { fullName, department: department! } } };
     }
@@ -93,13 +99,13 @@ export const authService = {
 
       // 3. Kirim Email
       await transporter.sendMail({
-        from: `"SuaraUnpad" <${process.env.SMTP_USER}>`,
+        from: `"Suara MIPA" <${process.env.SMTP_USER}>`,
         to: email,
-        subject: "Verifikasi Email Akun SuaraUnpad",
+        subject: "Verifikasi Email Akun Suara MIPA",
         html: `
           <div style="font-family: sans-serif; padding: 20px;">
             <h2>Selamat datang, ${fullName}!</h2>
-            <p>Terima kasih telah mendaftar di SuaraUnpad. Tinggal satu langkah lagi untuk mengaktifkan akun Anda.</p>
+            <p>Terima kasih telah mendaftar di Suara MIPA. Tinggal satu langkah lagi untuk mengaktifkan akun Anda.</p>
             <a href="${verificationUrl}" style="background-color: #2682F9; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin-top: 10px;">Verifikasi Email Saya</a>
             <p style="margin-top: 20px; font-size: 12px; color: gray;">Link ini hanya berlaku selama 1 jam.</p>
           </div>
@@ -215,11 +221,16 @@ export const authService = {
         );
       }
 
-      // Rakit data profil secara type-safe. 
+      // Suara MIPA hanya untuk FMIPA: fakultas dikunci, program studi dibatasi
+      if (role === 'STUDENT' && data.major !== undefined && !isFmipaMajor(data.major)) {
+        throw new Error('Program studi tidak valid. Pilih salah satu program studi FMIPA.');
+      }
+
+      // Rakit data profil secara type-safe.
       // Teknik spread bersyarat ini hanya memasukkan properti jika nilainya BUKAN undefined.
       const profileUpdateData = {
         ...(data.fullName !== undefined && { fullName: data.fullName }),
-        ...(data.faculty !== undefined && { faculty: data.faculty }),
+        ...(data.faculty !== undefined && { faculty: FMIPA_FACULTY }),
         ...(data.major !== undefined && { major: data.major }),
         ...(data.department !== undefined && { department: data.department }),
       };

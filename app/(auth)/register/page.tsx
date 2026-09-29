@@ -6,9 +6,9 @@ import Footer from "@/components/ui/Footer";
 
 // Metadata sudah pake type, jadi aman dari linter
 export const metadata: Metadata = {
-  title: "Daftar Akun | SuaraUnpad",
+  title: "Daftar Akun | Suara MIPA",
   description:
-    "Buat akun baru untuk mulai melaporkan kerusakan di kampus Unpad."
+    "Buat akun baru untuk mulai melaporkan kerusakan di kampus FMIPA."
 };
 
 export default function RegisterPage() {

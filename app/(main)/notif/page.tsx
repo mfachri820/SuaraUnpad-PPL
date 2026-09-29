@@ -3,25 +3,32 @@
 import React, { useEffect, useState } from 'react';
 import Cookies from 'js-cookie';
 import { useRouter } from 'next/navigation';
-import { 
-  FiBell, 
-  FiLoader, 
-  FiClock, 
-  FiMessageSquare, 
+import {
+  FiBell,
+  FiLoader,
+  FiClock,
+  FiMessageSquare,
   FiInfo,
   FiArrowUp,
   FiCheckCircle,
-  FiShield
+  FiShield,
+  FiLock,
+  FiTrash2,
+  FiSpeaker
 } from "react-icons/fi";
 
 // --- 1. INTERFACES ---
 type NotificationType =
   | 'COMMENT_ON_POST'
+  | 'COMMENT_ON_POLICY'
   | 'REPLY_ON_COMMENT'
   | 'UPVOTE_POST'
   | 'UPVOTE_REPORT'
   | 'UPVOTE_COMMENT'
-  | 'REPORT_STATUS_CHANGED';
+  | 'REPORT_STATUS_CHANGED'
+  | 'POST_CLOSED'
+  | 'CONTENT_REMOVED'
+  | 'NEW_ANNOUNCEMENT';
 
 interface Notification {
   id: string;
@@ -31,12 +38,14 @@ interface Notification {
   reportId: string | null;
   postId: string | null;
   commentId: string | null;
+  policyId: string | null;
   actor: {
     adminProfile?: { fullName: string } | null;
     studentProfile?: { fullName: string } | null;
     lecturerProfile?: { fullName: string } | null;
   } | null;
-  post: { title: string } | null;
+  post: { title: string; kind?: 'ASPIRASI' | 'ANNOUNCEMENT' } | null;
+  policy: { title: string } | null;
   report: { title: string; status?: string } | null;
   comment: { content: string } | null;
 }
@@ -111,6 +120,8 @@ export default function NotifikasiPage() {
 
     if (notif.postId) {
       router.push(`/aspirasi/${notif.postId}`);
+    } else if (notif.policyId) {
+      router.push(`/policies/${notif.policyId}`);
     } else if (notif.reportId) {
       router.push(`/profil/my-report`);
     }
@@ -168,6 +179,7 @@ export default function NotifikasiPage() {
       "Seseorang";
     
     const postTitle = notif.post?.title ? `"${notif.post.title}"` : 'Anda';
+    const policyTitle = notif.policy?.title ? `"${notif.policy.title}"` : 'Anda';
     const reportTitle = notif.report?.title ? `"${notif.report.title}"` : 'Anda';
     const reportStatus = notif.report?.status; // Will be undefined without backend changes
     const commentContent = notif.comment?.content ? `"${notif.comment.content.substring(0, 50)}${notif.comment.content.length > 50 ? '...' : ''}"` : 'Silakan cek balasan terbaru.';
@@ -228,6 +240,11 @@ export default function NotifikasiPage() {
         message: notif.comment?.content ? `${actorName}: ${commentContent}` : `${actorName} memberikan komentar.`,
         icon: <FiMessageSquare />, colorClass: 'text-blue-500 border border-blue-200', labelClass: 'text-blue-500', label: 'ASPIRASI'
       },
+      'COMMENT_ON_POLICY': {
+        title: notif.policy?.title ? `Seseorang mengomentari kebijakan ${policyTitle}` : "Seseorang mengomentari kebijakan Anda",
+        message: notif.comment?.content ? `${actorName}: ${commentContent}` : `${actorName} memberikan komentar.`,
+        icon: <FiMessageSquare />, colorClass: 'text-blue-500 border border-blue-200', labelClass: 'text-blue-500', label: 'WACANA'
+      },
       'REPLY_ON_COMMENT': {
         title: "Seseorang membalas komentar Anda",
         message: notif.comment?.content ? `${actorName}: ${commentContent}` : `${actorName} membalas komentar Anda.`,
@@ -252,6 +269,21 @@ export default function NotifikasiPage() {
         title: "Pemberitahuan status laporan",
         message: "Status laporan Anda telah diperbarui.",
         icon: <FiInfo />, colorClass: 'text-slate-500 border border-slate-200', labelClass: 'text-slate-500', label: 'INFO'
+      },
+      'POST_CLOSED': {
+        title: notif.post?.title ? `Aspirasi ${postTitle} ditutup oleh admin` : "Aspirasi Anda ditutup oleh admin",
+        message: "Cek detail postingan untuk melihat alasan penutupannya.",
+        icon: <FiLock />, colorClass: 'text-slate-600 border border-slate-300', labelClass: 'text-slate-600', label: 'MODERASI'
+      },
+      'CONTENT_REMOVED': {
+        title: "Komentarmu dihapus oleh admin",
+        message: "Komentar dianggap melanggar aturan komunitas Suara MIPA.",
+        icon: <FiTrash2 />, colorClass: 'text-red-500 border border-red-200', labelClass: 'text-red-500', label: 'MODERASI'
+      },
+      'NEW_ANNOUNCEMENT': {
+        title: notif.post?.title ? `Pengumuman baru: ${postTitle}` : "Ada pengumuman baru",
+        message: `${actorName} membagikan pengumuman resmi. Tap untuk membaca selengkapnya.`,
+        icon: <FiSpeaker />, colorClass: 'text-blue-600 border border-blue-200', labelClass: 'text-blue-600', label: 'PENGUMUMAN'
       }
     };
 
