@@ -61,7 +61,7 @@ export default function Navbar() {
             className="flex shrink-0 items-center text-xl sm:text-2xl font-black text-black tracking-tight hover:underline underline-offset-2"
           >
             <span className="text-[#2682F9]">Suara</span>
-            <span className="text-[#F99D26]">Unpad</span>
+            <span className="text-[#F99D26]">MIPA</span>
           </Link>
 
           {/* MENU DESKTOP */}

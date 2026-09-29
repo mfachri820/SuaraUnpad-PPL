@@ -42,7 +42,7 @@ export default function StatusAlert() {
       <Toaster
         position="top-center"
         toastOptions={{
-          // Kustomisasi style agar cocok dengan tema Tailwind SuaraUnpad
+          // Kustomisasi style agar cocok dengan tema Tailwind Suara MIPA
           className: "font-medium text-sm",
           duration: 4000,
           style: {

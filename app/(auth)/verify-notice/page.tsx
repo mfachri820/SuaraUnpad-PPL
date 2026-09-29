@@ -29,7 +29,7 @@ export default function VerifyNoticePage() {
         <p className="text-slate-600 text-sm leading-relaxed mb-8">
           Kami telah mengirimkan tautan verifikasi ke alamat email Anda. Silakan
           cek kotak masuk (Inbox) atau folder Spam untuk mengaktifkan akun
-          SuaraUnpad Anda.
+          Suara MIPA Anda.
         </p>
 
         {/* 🌟 Ubah Link menjadi button interaktif */}

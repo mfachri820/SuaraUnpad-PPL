@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { booleanFlag, optionalUuid, paginationSchema } from '@/lib/http';
 import { ANNOUNCEMENT_PIN_DAYS } from '@/services/postService';
 import { CLOSE_REASON_MAX, CLOSE_REASON_MIN, FLAG_NOTE_MAX } from '@/services/moderationService';
+import { FMIPA_MAJORS } from '@/lib/fmipa';
 
 type PinDays = (typeof ANNOUNCEMENT_PIN_DAYS)[number];
 const PIN_DAYS_MESSAGE = `Durasi pin harus salah satu dari ${ANNOUNCEMENT_PIN_DAYS.join('/')} hari.`;
@@ -109,6 +110,10 @@ export const flagTargetSchema = z
 
 export const flagQueueQuerySchema = z.object({
   type: z.enum(['post', 'comment']).default('comment')
+});
+
+export const majorSchema = z.enum(FMIPA_MAJORS, {
+  message: 'Program studi tidak valid. Pilih salah satu program studi FMIPA.'
 });
 
 export const closePostSchema = z.object({

@@ -11,12 +11,12 @@ export default function Footer() {
           <div className="flex flex-col items-center text-center md:items-start md:text-left">
             <Link href="/" className="mb-2 text-3xl font-black tracking-tight">
               <span className="text-[#2682F9]">Suara</span>
-              <span className="text-[#F99D26]">Unpad</span>
+              <span className="text-[#F99D26]">MIPA</span>
             </Link>
             <p className="text-base sm:text-lg text-slate-700 leading-snug">
               Sebuah <span className="italic">one-stop</span> platform{" "}
               <br className="hidden md:block" />
-              untuk Unpad yang lebih <span className="font-bold">UNGGUL</span>
+              untuk FMIPA yang lebih <span className="font-bold">UNGGUL</span>
             </p>
           </div>
 
@@ -74,7 +74,7 @@ export default function Footer() {
 
         {/* COPYRIGHT */}
         <div className="mt-12 border-t border-slate-100 pt-6 text-center text-xs text-slate-400">
-          © {new Date().getFullYear()} SuaraUnpad. All rights reserved.
+          © {new Date().getFullYear()} Suara MIPA. All rights reserved.
         </div>
       </div>
     </footer>
