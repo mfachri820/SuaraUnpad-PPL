@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
@@ -13,22 +13,26 @@ import {
   FiArrowUp,
   FiTrash2,
   FiAlertCircle,
-  FiClock
+  FiClock,
+  FiLock
 } from "react-icons/fi";
 import { ImArrowUp } from "react-icons/im";
 import { toast } from "react-hot-toast";
 
 // 🌟 Import Komponen External
-import { Policy } from "@/components/features/policies/types";
+import { Policy, getAuthorName, isAdminAuthor } from "@/components/features/policies/types";
 import PolicyCard from "@/components/features/policies/PolicyCard";
 import CampaignCarousel from "@/components/features/donations/CampaignCarousel";
 import {
   Report,
+  Author as ReportAuthor,
   getUserIdFromToken,
   fetchHomeReports,
   toggleUpvoteApi
 } from "./HomeFetch";
 import { fetchPolicies } from "@/components/features/policies/PolicyFetch";
+import { apiFetch, getApiErrorMessage } from "@/lib/api/client";
+import { Post, Paginated } from "@/lib/api/types";
 
 // 🌟 Interface Tambahan dari Aspirasi
 interface UserData {
@@ -37,20 +41,41 @@ interface UserData {
   studentProfile?: { fullName?: string } | null;
 }
 
-interface PostItem {
-  id: string;
-  authorId: string;
-  content: string;
-  createdAt: string;
-  author: { studentProfile?: { fullName?: string } };
-  _count?: { postUpvotes?: number };
-}
+// Laporan (/api/reports) belum memakai author.displayName seperti post/komentar,
+// jadi tetap pakai fallback manual di sini.
+const getReportAuthorName = (author: ReportAuthor | null | undefined) => {
+  if (!author) return "Anonim";
+  return (
+    author.studentProfile?.fullName ||
+    author.lecturerProfile?.fullName ||
+    author.adminProfile?.fullName ||
+    author.email?.split("@")[0] ||
+    "User"
+  );
+};
+
+type Tab = "ALL" | "ASPIRASI" | "LAPORAN" | "WACANA" | "PENGUMUMAN";
 
 // 🌟 Tipe Data Gabungan untuk Super Feed Timeline
 type FeedItem =
-  | { type: "POST"; data: PostItem; date: number }
+  | { type: "POST"; data: Post; date: number }
   | { type: "REPORT"; data: Report; date: number }
   | { type: "POLICY"; data: Policy; date: number };
+
+const fetchPosts = async (tab: Tab) => {
+  const params = new URLSearchParams();
+  if (tab === "ASPIRASI") params.set("kind", "ASPIRASI");
+  else if (tab === "PENGUMUMAN") params.set("kind", "ANNOUNCEMENT");
+  else params.set("excludePinned", "true");
+  params.set("limit", "50");
+  const result = await apiFetch<Paginated<Post>>(`/api/posts?${params.toString()}`);
+  return result.data;
+};
+
+const fetchPinnedAnnouncements = async () => {
+  const result = await apiFetch<Paginated<Post>>("/api/posts?kind=ANNOUNCEMENT&pinned=true");
+  return result.data;
+};
 
 export default function HomeFeed() {
   const router = useRouter();
@@ -59,13 +84,12 @@ export default function HomeFeed() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [reports, setReports] = useState<Report[]>([]);
   const [policies, setPolicies] = useState<Policy[]>([]);
-  const [posts, setPosts] = useState<PostItem[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [pinnedAnnouncements, setPinnedAnnouncements] = useState<Post[]>([]);
 
   // --- STATE UI & LOADING ---
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<
-    "ALL" | "ASPIRASI" | "LAPORAN" | "WACANA"
-  >("ALL");
+  const [activeTab, setActiveTab] = useState<Tab>("ALL");
 
   const POST_MAX_LENGTH = 500;
 
@@ -80,7 +104,16 @@ export default function HomeFeed() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [isUpvotingReport, setIsUpvotingReport] = useState(false);
 
-  // 🚀 FETCHING
+  const reloadPosts = useCallback(async (tab: Tab) => {
+    try {
+      const data = await fetchPosts(tab);
+      setPosts(data);
+    } catch (e) {
+      console.error("Gagal memuat postingan:", e);
+    }
+  }, []);
+
+  // 🚀 FETCHING AWAL
   useEffect(() => {
     const fetchAllData = async () => {
       try {
@@ -100,19 +133,17 @@ export default function HomeFeed() {
           setUserData(userDoc.data);
         }
 
-        const fetchPostsReq = fetch("/api/posts", {
-          headers: { Authorization: `Bearer ${token}` }
-        }).then((res) => res.json());
-
-        const [reportsData, policiesData, postsData] = await Promise.all([
+        const [reportsData, policiesData, postsData, pinnedData] = await Promise.all([
           fetchHomeReports(token, currentUserId),
           fetchPolicies(),
-          fetchPostsReq
+          fetchPosts("ALL"),
+          fetchPinnedAnnouncements()
         ]);
 
         setReports(reportsData);
         setPolicies(policiesData);
-        if (postsData.data?.data) setPosts(postsData.data.data);
+        setPosts(postsData);
+        setPinnedAnnouncements(pinnedData);
       } catch (e) {
         console.error("Error fetching data:", e);
       } finally {
@@ -123,10 +154,18 @@ export default function HomeFeed() {
     fetchAllData();
   }, [router]);
 
+  // 🔁 REFETCH POSTS SAAT TAB BERGANTI (kecuali LAPORAN/WACANA yang tidak butuh posts)
+  const handleTabChange = (tab: Tab) => {
+    setActiveTab(tab);
+    if (tab === "ALL" || tab === "ASPIRASI" || tab === "PENGUMUMAN") {
+      reloadPosts(tab);
+    }
+  };
+
   // 🛠️ LOGIKA PENGGABUNGAN TIMELINE
   const getSuperFeed = (): FeedItem[] => {
     const combined: FeedItem[] = [];
-    if (activeTab === "ALL" || activeTab === "ASPIRASI") {
+    if (activeTab === "ALL" || activeTab === "ASPIRASI" || activeTab === "PENGUMUMAN") {
       combined.push(
         ...posts.map((p) => ({
           type: "POST" as const,
@@ -165,20 +204,16 @@ export default function HomeFeed() {
     setIsUploading(true);
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("folder", "posts");
     try {
-      const token = Cookies.get("token");
-      const res = await fetch("/api/uploads", {
+      const result = await apiFetch<{ url: string }>("/api/uploads", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
         body: formData
       });
-      const result = await res.json();
-      if (res.ok) {
-        toast.success("berhasil Upload");
-        setImageUrl(result.data.url);
-      }
-    } catch {
-      toast.error("Gagal upload gambar");
+      toast.success("berhasil Upload");
+      setImageUrl(result.url);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal upload gambar"));
     } finally {
       setIsUploading(false);
     }
@@ -197,67 +232,51 @@ export default function HomeFeed() {
     }
     setIsPosting(true);
     try {
-      const token = Cookies.get("token");
-      const autoTitle =
-        trimmedPost.split(/\s+/).slice(0, 5).join(" ") ||
-        "Aspirasi Baru";
-      const res = await fetch("/api/posts", {
+      await apiFetch("/api/posts", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`
-        },
         body: JSON.stringify({
-          title: autoTitle,
-          content:
-            trimmedPost + (imageUrl ? `\n\n![image](${imageUrl})` : "")
+          content: trimmedPost,
+          imageUrl: imageUrl || undefined
         })
       });
-      if (!res.ok) {
-        toast.error("Gagal posting aspirasi.");
-        return;
-      }
 
       setPostContent("");
       setImageUrl("");
-      const postsRes = await fetch("/api/posts", {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then((res) => res.json());
-      if (postsRes.data?.data) setPosts(postsRes.data.data);
+      await reloadPosts(activeTab === "PENGUMUMAN" ? "ASPIRASI" : activeTab);
     } catch (e) {
       console.error(e);
-      toast.error("Terjadi kesalahan jaringan.");
+      toast.error(getApiErrorMessage(e, "Gagal posting aspirasi."));
     } finally {
       setIsPosting(false);
     }
   };
 
   // 👍 HANDLE UPVOTE ASPIRASI (POST)
-  const handlePostUpvote = async (e: React.MouseEvent, postId: string) => {
+  const handlePostUpvote = async (e: React.MouseEvent, post: Post) => {
     e.stopPropagation();
-    const token = Cookies.get("token");
-    const res = await fetch(`/api/posts/${postId}/upvote`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const result = await res.json();
-    if (res.ok) {
+    if (post.isClosed || post.kind === "ANNOUNCEMENT") return;
+    try {
+      const result = await apiFetch<{ action: "upvoted" | "unvoted" }>(
+        `/api/posts/${post.id}/upvote`,
+        { method: "POST" }
+      );
       setPosts((prev) =>
         prev.map((p) => {
-          if (p.id !== postId) return p;
+          if (p.id !== post.id) return p;
           const currentUpvotes = p._count?.postUpvotes ?? 0;
           return {
             ...p,
+            hasUpvoted: result.action === "upvoted",
             _count: {
               ...p._count,
               postUpvotes:
-                result.data.action === "upvoted"
-                  ? currentUpvotes + 1
-                  : currentUpvotes - 1
+                result.action === "upvoted" ? currentUpvotes + 1 : Math.max(0, currentUpvotes - 1)
             }
           };
         })
       );
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal melakukan upvote."));
     }
   };
 
@@ -265,16 +284,11 @@ export default function HomeFeed() {
   const handleDeletePost = async (e: React.MouseEvent, postId: string) => {
     e.stopPropagation();
     if (!confirm("Hapus aspirasi ini?")) return;
-    const token = Cookies.get("token");
-    const res = await fetch(`/api/posts/${postId}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (res.ok) {
-      const postsRes = await fetch("/api/posts", {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then((res) => res.json());
-      if (postsRes.data?.data) setPosts(postsRes.data.data);
+    try {
+      await apiFetch(`/api/posts/${postId}`, { method: "DELETE" });
+      await reloadPosts(activeTab === "LAPORAN" || activeTab === "WACANA" ? "ALL" : activeTab);
+    } catch (err) {
+      toast.error(getApiErrorMessage(err, "Gagal menghapus postingan."));
     }
   };
 
@@ -338,47 +352,25 @@ export default function HomeFeed() {
   };
 
   // 🎨 HELPER RENDERERS
-  const renderPostContent = (content: string) => {
+  const renderPostContent = (content: string, postImageUrl: string | null) => {
     const match = content.match(/!\[image\]\((.*?)\)/);
-    if (match) {
-      const text = content.replace(/!\[image\]\((.*?)\)/, "").trim();
-      return (
-        <>
-          {text && <p className="text-slate-700 text-[15px] mb-3">{text}</p>}
+    const text = match ? content.replace(/!\[image\]\((.*?)\)/, "").trim() : content;
+    const resolvedImageUrl = postImageUrl || match?.[1];
+    return (
+      <>
+        {text && <p className="text-slate-700 text-[15px] mb-3 whitespace-pre-line">{text}</p>}
+        {resolvedImageUrl && (
           <div className="relative w-full h-80 rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 mt-2">
             <Image
-              src={match[1]}
+              src={resolvedImageUrl}
               alt="Aspirasi"
               fill
               className="object-cover"
               unoptimized
             />
           </div>
-        </>
-      );
-    }
-    return (
-      <p className="text-slate-700 text-[15px] whitespace-pre-line">
-        {content}
-      </p>
-    );
-  };
-
-  type FeedAuthor = {
-    email?: string | null;
-    studentProfile?: { fullName?: string } | null;
-    lecturerProfile?: { fullName?: string } | null;
-    adminProfile?: { fullName?: string } | null;
-  };
-
-  const getAuthorName = (author: FeedAuthor | null | undefined) => {
-    if (!author) return "Anonim";
-    return (
-      author.studentProfile?.fullName ||
-      author.lecturerProfile?.fullName ||
-      author.adminProfile?.fullName ||
-      author.email?.split("@")[0] ||
-      "User"
+        )}
+      </>
     );
   };
 
@@ -423,7 +415,84 @@ export default function HomeFeed() {
     }).format(new Date(dateString));
   };
 
+  // 🎨 RENDER SATU KARTU POSTINGAN (ASPIRASI atau PENGUMUMAN)
+  const renderPostCard = (post: Post, index: number) => {
+    const isAnnouncement = post.kind === "ANNOUNCEMENT";
+    const authorName = getAuthorName(post.author);
+
+    return (
+      <div
+        key={`post-${post.id}-${index}`}
+        onClick={() => router.push(`/aspirasi/${post.id}`)}
+        className={`p-4 sm:p-6 hover:bg-slate-50/50 transition cursor-pointer flex gap-3 sm:gap-4 ${isAnnouncement ? "border-l-4 border-l-blue-600 bg-blue-50/30" : ""}`}
+      >
+        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-100 shrink-0 flex items-center justify-center font-bold text-slate-400 uppercase">
+          {authorName.charAt(0)}
+        </div>
+        <div className="grow">
+          <div className="font-bold text-slate-900 flex flex-wrap items-center gap-2 mb-1">
+            {authorName}
+            {isAdminAuthor(post.author) && (
+              <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded">
+                Admin
+              </span>
+            )}
+            <span className="font-medium text-slate-400 text-sm">
+              · {isAnnouncement ? "Pengumuman" : "Aspirasi"}
+            </span>
+            {post.isClosed && (
+              <span className="bg-slate-200 text-slate-600 text-[10px] font-black px-2 py-0.5 rounded-md uppercase tracking-wide flex items-center gap-1">
+                <FiLock size={10} /> Ditutup
+              </span>
+            )}
+          </div>
+          {isAnnouncement && (
+            <div className="text-blue-700 text-xs font-black uppercase tracking-widest mb-2">
+              📢 Pengumuman
+            </div>
+          )}
+          {isAnnouncement && post.title && (
+            <h3 className="text-lg font-black text-blue-900 mb-2">{post.title}</h3>
+          )}
+          {renderPostContent(post.content, post.imageUrl)}
+          <div className="flex items-center gap-8 mt-4 text-slate-400">
+            <button className="hover:cursor-pointer flex items-center gap-1.5 hover:text-[#2682F9] transition">
+              <FiMessageCircle size={18} />
+            </button>
+            {!isAnnouncement && (
+              <button
+                onClick={(e) => handlePostUpvote(e, post)}
+                disabled={post.isClosed}
+                className={`hover:cursor-pointer flex items-center gap-1.5 transition ${post.isClosed ? "opacity-40 cursor-not-allowed" : "hover:text-[#F99D26]"} ${post.hasUpvoted ? "text-[#F99D26]" : ""}`}
+              >
+                <FiArrowUp size={18} />
+                <span className="text-sm font-bold">
+                  {post._count?.postUpvotes || 0}
+                </span>
+              </button>
+            )}
+            {!post.isClosed && (post.authorId === userData?.id || userData?.role === "ADMIN") && (
+              <button
+                onClick={(e) => handleDeletePost(e, post.id)}
+                className="hover:cursor-pointer hover:text-red-400 transition ml-auto"
+              >
+                <FiTrash2 size={18} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const superFeedData = getSuperFeed();
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "ALL", label: "Semua" },
+    { key: "ASPIRASI", label: "Aspirasi" },
+    { key: "LAPORAN", label: "Laporan" },
+    { key: "WACANA", label: "Wacana" },
+    { key: "PENGUMUMAN", label: "Pengumuman" }
+  ];
 
   if (isLoading)
     return (
@@ -441,6 +510,25 @@ export default function HomeFeed() {
         <div className="border-b border-slate-100 pb-4 p-4 bg-slate-50/50">
           <CampaignCarousel />
         </div>
+
+        {/* 1b. STRIP PENGUMUMAN TER-PIN */}
+        {pinnedAnnouncements.length > 0 && (
+          <div className="border-b border-slate-100 p-4 space-y-3 bg-blue-50/40">
+            {pinnedAnnouncements.map((announcement) => (
+              <div
+                key={announcement.id}
+                onClick={() => router.push(`/aspirasi/${announcement.id}`)}
+                className="cursor-pointer bg-white rounded-2xl border border-blue-200 p-4 hover:shadow-md transition"
+              >
+                <div className="text-blue-700 text-xs font-black uppercase tracking-widest mb-1 flex items-center gap-1">
+                  📌 Pengumuman
+                </div>
+                <h3 className="font-black text-slate-900 mb-1">{announcement.title}</h3>
+                <p className="text-sm text-slate-600 line-clamp-2">{announcement.content}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* 2. KOTAK INPUT ASPIRASI */}
         <div className="p-4 sm:p-6 border-b border-slate-100 flex gap-4">
@@ -510,16 +598,14 @@ export default function HomeFeed() {
         </div>
 
         {/* 3. STICKY TABS */}
-        <div className="flex border-b border-slate-100 sticky top-16 md:top-20 bg-white/95 backdrop-blur-md z-20">
-          {(["ALL", "ASPIRASI", "LAPORAN", "WACANA"] as const).map((tab) => (
+        <div className="flex border-b border-slate-100 sticky top-16 md:top-20 bg-white/95 backdrop-blur-md z-20 overflow-x-auto">
+          {tabs.map((tab) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-4 text-sm font-bold transition border-b-4 ${activeTab === tab ? "text-[#F99D26] border-[#F99D26] hover:cursor-pointer" : "text-slate-400 border-transparent hover:cursor-pointer hover:bg-slate-50"}`}
+              key={tab.key}
+              onClick={() => handleTabChange(tab.key)}
+              className={`flex-1 py-4 px-2 text-xs sm:text-sm font-bold transition border-b-4 whitespace-nowrap ${activeTab === tab.key ? "text-[#F99D26] border-[#F99D26] hover:cursor-pointer" : "text-slate-400 border-transparent hover:cursor-pointer hover:bg-slate-50"}`}
             >
-              {tab === "ALL"
-                ? "Semua"
-                : tab.charAt(0) + tab.slice(1).toLowerCase()}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -532,51 +618,9 @@ export default function HomeFeed() {
             </div>
           ) : (
             superFeedData.map((item, index) => {
-              // 🎨 RENDER ASPIRASI
+              // 🎨 RENDER ASPIRASI / PENGUMUMAN
               if (item.type === "POST") {
-                const post = item.data;
-                return (
-                  <div
-                    key={`post-${post.id}-${index}`}
-                    onClick={() => router.push(`/aspirasi/${post.id}`)}
-                    className="p-4 sm:p-6 hover:bg-slate-50/50 transition cursor-pointer flex gap-3 sm:gap-4"
-                  >
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-100 shrink-0 flex items-center justify-center font-bold text-slate-400 uppercase">
-                      {post.author.studentProfile?.fullName?.charAt(0) || "U"}
-                    </div>
-                    <div className="grow">
-                      <div className="font-bold text-slate-900 flex flex-wrap items-center gap-2 mb-1">
-                        {post.author.studentProfile?.fullName || "Anonim"}
-                        <span className="font-medium text-slate-400 text-sm">
-                          · Aspirasi
-                        </span>
-                      </div>
-                      {renderPostContent(post.content)}
-                      <div className="flex items-center gap-8 mt-4 text-slate-400">
-                        <button className="hover:cursor-pointer flex items-center gap-1.5 hover:text-[#2682F9] transition">
-                          <FiMessageCircle size={18} />
-                        </button>
-                        <button
-                          onClick={(e) => handlePostUpvote(e, post.id)}
-                          className="hover:cursor-pointer flex items-center gap-1.5 hover:text-[#F99D26] transition"
-                        >
-                          <FiArrowUp size={18} />
-                          <span className="text-sm font-bold">
-                            {post._count?.postUpvotes || 0}
-                          </span>
-                        </button>
-                        {(post.authorId === userData?.id || userData?.role === "ADMIN") && (
-                          <button
-                            onClick={(e) => handleDeletePost(e, post.id)}
-                            className="hover:cursor-pointer hover:text-red-400 transition ml-auto"
-                          >
-                            <FiTrash2 size={18} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
+                return renderPostCard(item.data, index);
               }
 
               // 🎨 RENDER LAPORAN
@@ -594,11 +638,11 @@ export default function HomeFeed() {
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-orange-50 shrink-0 flex items-center justify-center font-bold text-[#F99D26] uppercase border border-orange-100">
-                          {getAuthorName(report.author).charAt(0)}
+                          {getReportAuthorName(report.author).charAt(0)}
                         </div>
                         <div>
                           <div className="font-bold text-slate-900 flex items-center gap-2">
-                            {getAuthorName(report.author)}
+                            {getReportAuthorName(report.author)}
                           </div>
                           <p className="text-xs text-slate-400 flex items-center gap-1">
                             {formatDate(report.createdAt)}{" "}

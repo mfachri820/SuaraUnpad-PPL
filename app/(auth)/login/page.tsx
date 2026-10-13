@@ -3,8 +3,8 @@ import LoginForm from "@/components/features/auth/LoginForm";
 import Footer from "@/components/ui/Footer";
 // Pakai tipe Metadata biar makin cakep di linter
 export const metadata: Metadata = {
-  title: "Masuk | SuaraUnpad",
-  description: "Masuk ke akun SuaraUnpad Anda."
+  title: "Masuk | Suara MIPA",
+  description: "Masuk ke akun Suara MIPA Anda."
 };
 
 export default function LoginPage() {

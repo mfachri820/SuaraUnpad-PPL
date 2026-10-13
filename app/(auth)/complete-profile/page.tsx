@@ -1,7 +1,7 @@
 import CompleteProfileForm from "@/components/features/auth/CompleteProfileForm";
 
 export const metadata = {
-  title: "Lengkapi Profil | SuaraUnpad",
+  title: "Lengkapi Profil | Suara MIPA",
   description: "Lengkapi data akademik Anda untuk menyelesaikan pendaftaran."
 };
 

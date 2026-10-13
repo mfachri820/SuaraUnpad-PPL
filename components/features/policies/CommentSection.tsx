@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
-import { FiSend, FiMessageSquare, FiEdit2, FiTrash2 } from "react-icons/fi";
+import { FiSend, FiMessageSquare, FiEdit2, FiTrash2, FiFlag } from "react-icons/fi";
 import { ImArrowUp } from "react-icons/im";
 import {
   fetchComments,
@@ -12,51 +12,50 @@ import {
   deleteComment,
   toggleUpvoteComment
 } from "./CommentFetch";
-import { Author, CommentData, ActiveAction } from "./types"; // 🌟 Import Tipe
+import { CommentData, ActiveAction, getAuthorName, isAdminAuthor } from "./types";
+import ReportContentModal from "@/components/features/moderation/ReportContentModal";
+import { apiFetch, getApiErrorMessage } from "@/lib/api/client";
 
-const COMMENT_MAX_LENGTH = 300;
+const COMMENT_MAX_LENGTH = 1000;
 
 interface CommentItemProps {
   comment: CommentData;
   currentUserId: string | null;
+  isAdmin: boolean;
+  readOnly: boolean;
   activeAction: ActiveAction;
   setActiveAction: (action: ActiveAction) => void;
   onReply: (parentId: string, content: string) => void;
   onEdit: (id: string, content: string) => void;
   onDelete: (id: string) => void;
   onUpvote: (id: string) => void;
+  onAdminRemove: (id: string) => void;
+  onReportClick: (id: string) => void;
 }
-
-const getAuthorName = (author: Author) => {
-  if (!author) return "Anonim";
-  return (
-    author.studentProfile?.fullName ||
-    author.lecturerProfile?.fullName ||
-    author.adminProfile?.fullName ||
-    "User"
-  );
-};
 
 const CommentItem = ({
   comment,
   currentUserId,
+  isAdmin,
+  readOnly,
   activeAction,
   setActiveAction,
   onReply,
   onEdit,
   onDelete,
-  onUpvote
+  onUpvote,
+  onAdminRemove,
+  onReportClick
 }: CommentItemProps) => {
   const [inputText, setInputText] = useState("");
 
-  const isSoftDeleted = comment.content === "[Komentar ini telah dihapus]";
+  const isDeleted = Boolean(comment.isDeleted);
   const isAuthor = currentUserId === comment.authorId;
   const isReplyable = !comment.parentId;
-  const hasUpvoted = comment.hasOwnProperty("hasUpvoted")
-    ? comment.hasUpvoted
-    : comment.commentUpvotes?.some((vote) => vote.userId === currentUserId) ||
-      false;
+  const hasUpvoted = Boolean(comment.hasUpvoted);
   const upvoteCount = Math.max(0, comment._count?.commentUpvotes || 0);
+  const canReport = !isAuthor && !isDeleted;
+  const canAdminRemove = isAdmin && !isAuthor && !isDeleted;
 
   const isReplying =
     activeAction?.type === "reply" && activeAction?.commentId === comment.id;
@@ -97,7 +96,7 @@ const CommentItem = ({
     <div className="flex gap-3 mt-4">
       <div className="flex flex-col items-center shrink-0">
         <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500 text-xs uppercase overflow-hidden">
-          {isSoftDeleted ? "?" : getAuthorName(comment.author).charAt(0)}
+          {isDeleted ? "?" : getAuthorName(comment.author).charAt(0)}
         </div>
         <div className="w-0.5 h-full bg-slate-100 my-1 rounded-full"></div>
       </div>
@@ -105,13 +104,16 @@ const CommentItem = ({
       <div className="flex-1 pb-4">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-sm font-bold text-slate-800">
-            {isSoftDeleted
-              ? "[Komentar ini telah dihapus]"
-              : getAuthorName(comment.author)}
+            {isDeleted ? "[Komentar ini telah dihapus]" : getAuthorName(comment.author)}
           </span>
-          {isAuthor && !isSoftDeleted && (
+          {isAuthor && !isDeleted && (
             <span className="bg-blue-100 text-blue-600 text-[10px] font-bold px-1.5 py-0.5 rounded">
               Kamu
+            </span>
+          )}
+          {!isDeleted && isAdminAuthor(comment.author) && (
+            <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded">
+              Admin
             </span>
           )}
         </div>
@@ -146,13 +148,13 @@ const CommentItem = ({
           </div>
         ) : (
           <p
-            className={`text-sm leading-relaxed mb-2 ${isSoftDeleted ? "text-slate-400 italic" : "text-slate-700"}`}
+            className={`text-sm leading-relaxed mb-2 ${isDeleted ? "text-slate-400 italic" : "text-slate-700"}`}
           >
             {comment.content}
           </p>
         )}
 
-        {!isSoftDeleted && (
+        {!isDeleted && (
           <div className="flex items-center gap-4 text-xs font-bold text-slate-500">
             <button
               onClick={() => onUpvote(comment.id)}
@@ -160,13 +162,15 @@ const CommentItem = ({
             >
               <ImArrowUp className="text-sm" /> {upvoteCount}
             </button>
-            <button
-              onClick={handleReplyClick}
-              className={`flex items-center gap-1.5 transition hover:cursor-pointer ${isReplying ? "text-[#2682F9]" : isReplyable ? "hover:text-slate-800" : "text-slate-300 cursor-not-allowed"}`}
-            >
-              <FiMessageSquare /> {isReplying ? "Batal Balas" : "Balas"}
-            </button>
-            {isAuthor && (
+            {!readOnly && (
+              <button
+                onClick={handleReplyClick}
+                className={`flex items-center gap-1.5 transition hover:cursor-pointer ${isReplying ? "text-[#2682F9]" : isReplyable ? "hover:text-slate-800" : "text-slate-300 cursor-not-allowed"}`}
+              >
+                <FiMessageSquare /> {isReplying ? "Batal Balas" : "Balas"}
+              </button>
+            )}
+            {!readOnly && isAuthor && (
               <>
                 <button
                   onClick={() => handleActionToggle("edit")}
@@ -182,10 +186,26 @@ const CommentItem = ({
                 </button>
               </>
             )}
+            {canReport && (
+              <button
+                onClick={() => onReportClick(comment.id)}
+                className="flex items-center gap-1 hover:text-red-500 hover:cursor-pointer"
+              >
+                <FiFlag /> Laporkan
+              </button>
+            )}
+            {canAdminRemove && (
+              <button
+                onClick={() => onAdminRemove(comment.id)}
+                className="flex items-center gap-1 hover:text-red-500 hover:cursor-pointer"
+              >
+                <FiTrash2 /> Hapus (admin)
+              </button>
+            )}
           </div>
         )}
 
-        {isReplying && (
+        {!readOnly && isReplying && (
           <div className="flex gap-3 mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="w-8 h-8 rounded-full bg-slate-50 shrink-0 border border-slate-100 flex items-center justify-center">
               <FiMessageSquare className="text-slate-300 text-xs" />
@@ -220,12 +240,16 @@ const CommentItem = ({
                 key={reply.id}
                 comment={reply}
                 currentUserId={currentUserId}
+                isAdmin={isAdmin}
+                readOnly={readOnly}
                 activeAction={activeAction}
                 setActiveAction={setActiveAction}
                 onReply={onReply}
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onUpvote={onUpvote}
+                onAdminRemove={onAdminRemove}
+                onReportClick={onReportClick}
               />
             ))}
           </div>
@@ -239,18 +263,22 @@ export default function CommentSection({
   postId,
   policyId,
   title = "Diskusi Terbuka",
-  placeholder = "Bagaimana pendapatmu tentang wacana ini?"
+  placeholder = "Bagaimana pendapatmu tentang wacana ini?",
+  readOnly = false
 }: {
   postId?: string;
   policyId?: string;
   title?: string;
   placeholder?: string;
+  readOnly?: boolean;
 }) {
   const [comments, setComments] = useState<CommentData[]>([]);
   const [newCommentText, setNewCommentText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [activeAction, setActiveAction] = useState<ActiveAction>(null);
+  const [reportTargetId, setReportTargetId] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -260,6 +288,7 @@ export default function CommentSection({
       if (token) {
         const payload = JSON.parse(atob(token.split(".")[1]));
         setCurrentUserId(payload.userId);
+        setIsAdmin(payload.role === "ADMIN");
       }
     } catch (error) {
       console.error(error);
@@ -326,6 +355,7 @@ export default function CommentSection({
       setComments((prev) =>
         updateTree(prev, id, (c) => ({
           ...c,
+          isDeleted: true,
           content: "[Komentar ini telah dihapus]"
         }))
       );
@@ -336,14 +366,29 @@ export default function CommentSection({
     }
   };
 
+  const handleAdminRemove = async (id: string) => {
+    if (!confirm("Hapus komentar ini sebagai admin?")) return;
+    try {
+      setComments((prev) =>
+        updateTree(prev, id, (c) => ({
+          ...c,
+          isDeleted: true,
+          content: "[Komentar ini telah dihapus]"
+        }))
+      );
+      await apiFetch(`/api/admin/comments/${id}/remove`, { method: "POST" });
+      toast.success("Komentar berhasil dihapus.");
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Gagal menghapus komentar."));
+      loadData();
+    }
+  };
+
   const handleUpvote = async (id: string) => {
     try {
       setComments((prev) =>
         updateTree(prev, id, (c) => {
-          const currentHasUpvoted = c.hasOwnProperty("hasUpvoted")
-            ? c.hasUpvoted
-            : c.commentUpvotes?.some((vote) => vote.userId === currentUserId) ||
-              false;
+          const currentHasUpvoted = Boolean(c.hasUpvoted);
           const currentCount = c._count?.commentUpvotes || 0;
           return {
             ...c,
@@ -374,31 +419,37 @@ export default function CommentSection({
       <h3 className="text-lg font-black text-slate-800 mb-6">
         {title} ({comments.length})
       </h3>
-      <div className="flex gap-3 mb-8">
-        <div className="w-10 h-10 rounded-full bg-slate-100 shrink-0"></div>
-        <div className="flex-1">
-          <textarea
-            value={newCommentText}
-            onChange={(e) => {
-              setNewCommentText(e.target.value);
-              setActiveAction(null);
-            }}
-            rows={2}
-            placeholder={placeholder}
-            maxLength={COMMENT_MAX_LENGTH}
-            className="w-full bg-slate-50 border text-black border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm focus:ring-2 focus:ring-[#2682F9] focus:outline-none resize-none"
-          />
-          <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400">
-            <span>{newCommentText.length}/{COMMENT_MAX_LENGTH}</span>
-            <button
-              onClick={handleMainSubmit}
-              className="text-[#2682F9] hover:text-blue-700 p-1 transition-transform active:scale-95 hover:cursor-pointer"
-            >
-              <FiSend className="text-xl" />
-            </button>
+      {readOnly ? (
+        <div className="mb-8 p-4 bg-slate-50 border border-slate-100 rounded-xl text-sm text-slate-500 text-center font-medium">
+          🔒 Diskusi ditutup
+        </div>
+      ) : (
+        <div className="flex gap-3 mb-8">
+          <div className="w-10 h-10 rounded-full bg-slate-100 shrink-0"></div>
+          <div className="flex-1">
+            <textarea
+              value={newCommentText}
+              onChange={(e) => {
+                setNewCommentText(e.target.value);
+                setActiveAction(null);
+              }}
+              rows={2}
+              placeholder={placeholder}
+              maxLength={COMMENT_MAX_LENGTH}
+              className="w-full bg-slate-50 border text-black border-slate-200 rounded-xl px-4 py-3 pr-12 text-sm focus:ring-2 focus:ring-[#2682F9] focus:outline-none resize-none"
+            />
+            <div className="mt-2 flex items-center justify-between text-[10px] text-slate-400">
+              <span>{newCommentText.length}/{COMMENT_MAX_LENGTH}</span>
+              <button
+                onClick={handleMainSubmit}
+                className="text-[#2682F9] hover:text-blue-700 p-1 transition-transform active:scale-95 hover:cursor-pointer"
+              >
+                <FiSend className="text-xl" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
       <div className="space-y-2">
         {comments.length === 0 ? (
           <p className="text-center text-slate-400 text-sm italic py-4">
@@ -410,16 +461,27 @@ export default function CommentSection({
               key={comment.id}
               comment={comment}
               currentUserId={currentUserId}
+              isAdmin={isAdmin}
+              readOnly={readOnly}
               activeAction={activeAction}
               setActiveAction={setActiveAction}
               onReply={handleReply}
               onEdit={handleEdit}
               onDelete={handleDelete}
               onUpvote={handleUpvote}
+              onAdminRemove={handleAdminRemove}
+              onReportClick={setReportTargetId}
             />
           ))
         )}
       </div>
+
+      {reportTargetId && (
+        <ReportContentModal
+          target={{ commentId: reportTargetId }}
+          onClose={() => setReportTargetId(null)}
+        />
+      )}
     </div>
   );
 }

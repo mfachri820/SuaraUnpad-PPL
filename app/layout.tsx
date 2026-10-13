@@ -10,8 +10,8 @@ const myFont = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "SuaraUnpad",
-  description: "Sebuah one-stop platform untuk Unpad yang lebih UNGGUL"
+  title: "Suara MIPA",
+  description: "Sebuah one-stop platform untuk FMIPA yang lebih UNGGUL"
 };
 
 export default function RootLayout({

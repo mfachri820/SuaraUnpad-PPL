@@ -12,9 +12,11 @@ import {
   FiBriefcase
 } from "react-icons/fi";
 import AuthInput from "@/components/ui/AuthInput";
+import AuthSelect from "@/components/ui/AuthSelect";
 import Cookies from "js-cookie";
 import { GoogleLogin } from "@react-oauth/google";
 import { toast } from "react-hot-toast";
+import { FMIPA_MAJORS } from "@/lib/fmipa";
 
 // Import fungsi dan interface dari AuthFetch.ts
 import { verifyGoogleAuth, registerManual, RegisterPayload } from "./AuthFetch";
@@ -114,7 +116,7 @@ export default function RegisterForm() {
             </span>
           </h2>
           <p className="text-zinc-500 text-sm mt-2 leading-relaxed">
-            Silakan lengkapi data diri Anda untuk bergabung dalam SuaraUnpad
+            Silakan lengkapi data diri Anda untuk bergabung dalam Suara MIPA
           </p>
         </div>
 
@@ -149,18 +151,27 @@ export default function RegisterForm() {
             />
           )}
 
-          <AuthInput
-            label="Fakultas"
-            icon={FiBriefcase}
-            placeholder="FMIPA"
-            register={register("faculty", { required: true })}
-          />
+          <div className="mb-4 w-full text-left">
+            <label className="block text-zinc-700 font-bold text-sm mb-2">Fakultas</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#E8A34D]">
+                <FiBriefcase size={18} />
+              </div>
+              <input
+                value="FMIPA"
+                readOnly
+                {...register("faculty")}
+                className="w-full pl-10 pr-4 py-3 bg-zinc-100 border border-[#E8A34D]/30 rounded-xl text-sm text-zinc-500 cursor-not-allowed"
+              />
+            </div>
+          </div>
 
           {userRole === "STUDENT" && (
-            <AuthInput
+            <AuthSelect
               label="Program Studi"
               icon={FiBookOpen}
-              placeholder="Teknik Informatika"
+              placeholder="Pilih program studi"
+              options={FMIPA_MAJORS}
               register={register("major", { required: true })}
             />
           )}

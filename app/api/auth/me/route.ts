@@ -55,6 +55,7 @@ export async function PATCH(request: Request) {
     return successResponse(updatedProfile, 'Profil berhasil diperbarui', 200);
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan pada server';
-    return errorResponse(errorMessage, 500);
+    const statusCode = errorMessage.includes('tidak valid') ? 400 : 500;
+    return errorResponse(errorMessage, statusCode);
   }
 }

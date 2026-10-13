@@ -14,6 +14,7 @@ import {
 } from "react-icons/fi";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
+import { FMIPA_MAJORS } from "@/lib/fmipa";
 
 // --- 1. DEFINISI INTERFACES (LINTER FRIENDLY) ---
 interface StudentProfile {
@@ -249,7 +250,7 @@ export default function ProfilePage() {
           </div>
 
           <h2 className="text-2xl font-bold text-zinc-900 mb-1">
-            {userData?.studentProfile?.fullName || "Mahasiswa Unpad"}
+            {userData?.studentProfile?.fullName || "Mahasiswa MIPA"}
           </h2>
 
           <div className="px-4 py-1.5 bg-[#FFF8F0] rounded-full border border-[#E8A34D]/10 mb-8 inline-block">
@@ -450,18 +451,24 @@ export default function ProfilePage() {
                     Fakultas
                   </label>
                   <input
-                    {...register("faculty", { required: true })}
-                    className="w-full px-4 py-3 bg-zinc-50 border rounded-xl outline-none focus:border-[#E8A34D]"
+                    value="FMIPA"
+                    readOnly
+                    {...register("faculty")}
+                    className="w-full px-4 py-3 bg-zinc-100 border border-zinc-200 rounded-xl outline-none text-zinc-500 cursor-not-allowed"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-zinc-400 uppercase">
                     Program Studi
                   </label>
-                  <input
+                  <select
                     {...register("major", { required: true })}
                     className="w-full px-4 py-3 bg-zinc-50 border rounded-xl outline-none focus:border-[#E8A34D]"
-                  />
+                  >
+                    {FMIPA_MAJORS.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
                 </div>
                 <button
                   disabled={isUpdating}

@@ -1,25 +1,17 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
 import { toast } from 'react-hot-toast';
 import { fetchPolicies, updatePolicyStatus, createPolicy } from '@/components/features/policies/PolicyFetch';
 import { Policy } from '@/components/features/policies/types';
-
-interface AdminStats {
-  totalPosts: number;
-  totalPolicies: number;
-  totalReports: number;
-}
+import { apiFetch, getApiErrorMessage } from '@/lib/api/client';
+import { AdminStats } from '@/lib/api/types';
+import ModerationQueue from '@/components/features/admin/ModerationQueue';
+import AnnouncementForm from '@/components/features/admin/AnnouncementForm';
 
 interface ReportOption {
-  id: string;
-  title: string;
-  status: string;
-}
-
-interface ReportItem {
   id: string;
   title: string;
   status: string;
@@ -84,35 +76,21 @@ export default function AdminPage() {
 
     const loadStats = async () => {
       try {
-        const [postsRes, reportsRes] = await Promise.all([
-          fetch('/api/posts?limit=1', {
-            headers: { Authorization: `Bearer ${userToken}` },
-          }),
-          fetch('/api/reports?limit=100', {
-            headers: { Authorization: `Bearer ${userToken}` },
-          }),
+        const reportsRes = await fetch('/api/reports?limit=100', {
+          headers: { Authorization: `Bearer ${userToken}` },
+        });
+        const reportsJson = await reportsRes.json();
+
+        const [policiesData, statsData] = await Promise.all([
+          fetchPolicies(),
+          apiFetch<AdminStats>('/api/admin/stats'),
         ]);
-
-        const [postsJson, reportsJson] = await Promise.all([
-          postsRes.json(),
-          reportsRes.json(),
-        ]);
-
-        const policiesData = await fetchPolicies();
-
-        if (!postsRes.ok) {
-          throw new Error(postsJson.message || 'Gagal memuat total postingan');
-        }
 
         if (!reportsRes.ok) {
           throw new Error(reportsJson.message || 'Gagal memuat total laporan');
         }
 
-        setStats({
-          totalPosts: postsJson.data?.meta?.totalItems ?? 0,
-          totalPolicies: policiesData.length,
-          totalReports: reportsJson.data?.meta?.totalItems ?? 0,
-        });
+        setStats(statsData);
         setReports(
           Array.isArray(reportsJson.data?.data)
             ? reportsJson.data.data.map((report: { id: string; title: string; status: string }) => ({
@@ -127,8 +105,7 @@ export default function AdminPage() {
           setPolicyId(policiesData[0].id);
         }
       } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : 'Gagal memuat statistik admin';
-        setError(errorMessage);
+        setError(getApiErrorMessage(err, 'Gagal memuat statistik admin'));
       } finally {
         setLoading(false);
       }
@@ -138,6 +115,15 @@ export default function AdminPage() {
       loadStats();
     }
   }, [router, isAdmin]);
+
+  const refreshAdminStats = useCallback(async () => {
+    try {
+      const statsData = await apiFetch<AdminStats>('/api/admin/stats');
+      setStats(statsData);
+    } catch (err: unknown) {
+      console.error('Gagal memuat ulang statistik admin', err);
+    }
+  }, []);
 
   const [reportId, setReportId] = useState('');
   const [newStatus, setNewStatus] = useState('VERIFIED');
@@ -340,6 +326,10 @@ export default function AdminPage() {
             <p className="text-5xl font-bold text-[#2682F9]">{stats.totalPosts}</p>
           </div>
           <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-6 text-left shadow-sm">
+            <p className="text-sm uppercase tracking-[0.3em] text-zinc-500 mb-4">Total Pengumuman</p>
+            <p className="text-5xl font-bold text-blue-600">{stats.totalAnnouncements}</p>
+          </div>
+          <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-6 text-left shadow-sm">
             <p className="text-sm uppercase tracking-[0.3em] text-zinc-500 mb-4">Total Kebijakan</p>
             <p className="text-5xl font-bold text-[#E8A34D]">{stats.totalPolicies}</p>
           </div>
@@ -347,8 +337,16 @@ export default function AdminPage() {
             <p className="text-sm uppercase tracking-[0.3em] text-zinc-500 mb-4">Total Laporan</p>
             <p className="text-5xl font-bold text-[#4F9A4E]">{stats.totalReports}</p>
           </div>
+          <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-left shadow-sm">
+            <p className="text-sm uppercase tracking-[0.3em] text-red-500 mb-4">Laporan Konten Menunggu</p>
+            <p className="text-5xl font-bold text-red-500">{stats.pendingFlags.total}</p>
+          </div>
         </div>
       ) : null}
+
+      <ModerationQueue onActionDone={refreshAdminStats} />
+
+      <AnnouncementForm onCreated={refreshAdminStats} />
 
       <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm mb-8 text-left">
         <h2 className="text-2xl font-bold text-[#2682F9] mb-4">Perbarui Status Laporan</h2>
