@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Cookies from 'js-cookie';
-import { toast } from 'react-hot-toast';
 import { fetchPolicies, updatePolicyStatus, createPolicy } from '@/components/features/policies/PolicyFetch';
 import { Policy } from '@/components/features/policies/types';
 import { apiFetch, getApiErrorMessage } from '@/lib/api/client';
@@ -11,6 +10,15 @@ import { AdminStats } from '@/lib/api/types';
 import ModerationQueue from '@/components/features/admin/ModerationQueue';
 import AnnouncementForm from '@/components/features/admin/AnnouncementForm';
 import Select from '@/components/ui/Select';
+import { AdminPanel, AdminNotice, type AdminFeedback } from '@/components/features/admin/AdminUI';
+
+const REPORT_STATUS_LABELS: Record<string, string> = {
+  SUBMITTED: 'Diajukan',
+  VERIFIED: 'Terverifikasi',
+  IN_PROGRESS: 'Diproses',
+  RESOLVED: 'Selesai',
+};
+const POLICY_STATUS_LABELS = { DRAFT: 'Draft', ACTIVE: 'Aktif', CLOSED: 'Selesai' };
 
 interface ReportOption {
   id: string;
@@ -27,11 +35,11 @@ export default function AdminPage() {
   const [policyId, setPolicyId] = useState('');
   const [policyStatus, setPolicyStatus] = useState<'DRAFT' | 'ACTIVE' | 'CLOSED'>('ACTIVE');
   const [policyUpdateLoading, setPolicyUpdateLoading] = useState(false);
-  const [policyUpdateMessage, setPolicyUpdateMessage] = useState<string | null>(null);
+  const [policyUpdateMessage, setPolicyUpdateMessage] = useState<AdminFeedback | null>(null);
   const [policyTitle, setPolicyTitle] = useState('');
   const [policyContent, setPolicyContent] = useState('');
   const [policyCreateLoading, setPolicyCreateLoading] = useState(false);
-  const [policyCreateMessage, setPolicyCreateMessage] = useState<string | null>(null);
+  const [policyCreateMessage, setPolicyCreateMessage] = useState<AdminFeedback | null>(null);
 
   const [campaignTitle, setCampaignTitle] = useState('');
   const [campaignDescription, setCampaignDescription] = useState('');
@@ -39,7 +47,9 @@ export default function AdminPage() {
   const [campaignBannerFile, setCampaignBannerFile] = useState<File | null>(null);
   const [campaignBannerPreview, setCampaignBannerPreview] = useState<string | null>(null);
   const [campaignLoading, setCampaignLoading] = useState(false);
-  const [campaignMessage, setCampaignMessage] = useState<string | null>(null);
+  const [campaignMessage, setCampaignMessage] = useState<AdminFeedback | null>(null);
+
+  const campaignFileRef = useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     return () => {
@@ -129,13 +139,7 @@ export default function AdminPage() {
   const [reportId, setReportId] = useState('');
   const [newStatus, setNewStatus] = useState('VERIFIED');
   const [updateLoading, setUpdateLoading] = useState(false);
-  const [updateMessage, setUpdateMessage] = useState<string | null>(null);
-
-  const handleLogout = () => {
-    Cookies.remove('token', { path: '/' });
-    toast.success('Berhasil Logout!');
-    router.push('/login');
-  };
+  const [updateMessage, setUpdateMessage] = useState<AdminFeedback | null>(null);
 
   const handleUpdateStatus = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -144,7 +148,7 @@ export default function AdminPage() {
 
     const token = Cookies.get('token');
     if (!token) {
-      setUpdateMessage('Token tidak ditemukan. Silakan login ulang.');
+      setUpdateMessage({ type: 'error', message: 'Sesi berakhir. Silakan masuk kembali.' });
       setUpdateLoading(false);
       return;
     }
@@ -164,10 +168,10 @@ export default function AdminPage() {
         throw new Error(result.message || 'Gagal memperbarui status laporan');
       }
 
-      setUpdateMessage(`Berhasil: ${result.message}`);
+      setUpdateMessage({ type: 'success', message: result.message || 'Status laporan berhasil diperbarui.' });
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Gagal memperbarui status laporan';
-      setUpdateMessage(errorMessage);
+      setUpdateMessage({ type: 'error', message: errorMessage });
     } finally {
       setUpdateLoading(false);
     }
@@ -180,27 +184,27 @@ export default function AdminPage() {
 
     const token = Cookies.get('token');
     if (!token) {
-      setPolicyCreateMessage('Token tidak ditemukan. Silakan login ulang.');
+      setPolicyCreateMessage({ type: 'error', message: 'Sesi berakhir. Silakan masuk kembali.' });
       setPolicyCreateLoading(false);
       return;
     }
 
     if (!policyTitle || !policyContent) {
-      setPolicyCreateMessage('Semua field kebijakan wajib diisi.');
+      setPolicyCreateMessage({ type: 'error', message: 'Judul dan isi wacana wajib diisi.' });
       setPolicyCreateLoading(false);
       return;
     }
 
     try {
       await createPolicy(policyTitle, policyContent);
-      setPolicyCreateMessage('Kebijakan berhasil dibuat dan disimpan sebagai DRAFT.');
+      setPolicyCreateMessage({ type: 'success', message: 'Wacana berhasil disimpan sebagai draft. Aktifkan melalui Kelola status wacana.' });
       setPolicyTitle('');
       setPolicyContent('');
       const refreshedPolicies = await fetchPolicies();
       setPolicies(refreshedPolicies);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Gagal membuat kebijakan';
-      setPolicyCreateMessage(errorMessage);
+      const errorMessage = err instanceof Error ? err.message : 'Gagal membuat wacana';
+      setPolicyCreateMessage({ type: 'error', message: errorMessage });
     } finally {
       setPolicyCreateLoading(false);
     }
@@ -212,19 +216,19 @@ export default function AdminPage() {
     setPolicyUpdateMessage(null);
 
     if (!policyId) {
-      setPolicyUpdateMessage('Pilih kebijakan terlebih dahulu.');
+      setPolicyUpdateMessage({ type: 'error', message: 'Pilih wacana terlebih dahulu.' });
       setPolicyUpdateLoading(false);
       return;
     }
 
     try {
       await updatePolicyStatus(policyId, policyStatus);
-      setPolicyUpdateMessage('Status kebijakan berhasil diperbarui.');
+      setPolicyUpdateMessage({ type: 'success', message: 'Status wacana berhasil diperbarui.' });
       const refreshedPolicies = await fetchPolicies();
       setPolicies(refreshedPolicies);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Gagal memperbarui status kebijakan';
-      setPolicyUpdateMessage(errorMessage);
+      const errorMessage = err instanceof Error ? err.message : 'Gagal memperbarui status wacana';
+      setPolicyUpdateMessage({ type: 'error', message: errorMessage });
     } finally {
       setPolicyUpdateLoading(false);
     }
@@ -237,20 +241,20 @@ export default function AdminPage() {
 
     const token = Cookies.get('token');
     if (!token) {
-      setCampaignMessage('Token tidak ditemukan. Silakan login ulang.');
+      setCampaignMessage({ type: 'error', message: 'Sesi berakhir. Silakan masuk kembali.' });
       setCampaignLoading(false);
       return;
     }
 
     if (!campaignTitle || !campaignDescription || !campaignTargetAmount || !campaignBannerFile) {
-      setCampaignMessage('Semua field kampanye wajib diisi.');
+      setCampaignMessage({ type: 'error', message: 'Lengkapi judul, deskripsi, target donasi, dan banner kampanye.' });
       setCampaignLoading(false);
       return;
     }
 
     const targetAmountValue = Number(campaignTargetAmount);
     if (Number.isNaN(targetAmountValue) || targetAmountValue <= 0) {
-      setCampaignMessage('Target amount harus angka lebih besar dari 0.');
+      setCampaignMessage({ type: 'error', message: 'Target donasi harus lebih besar dari Rp 0.' });
       setCampaignLoading(false);
       return;
     }
@@ -293,252 +297,260 @@ export default function AdminPage() {
         throw new Error(result.message || 'Gagal membuat kampanye donasi');
       }
 
-      setCampaignMessage('Kampanye donasi berhasil dibuat.');
+      setCampaignMessage({ type: 'success', message: 'Kampanye donasi berhasil dibuat.' });
       setCampaignTitle('');
       setCampaignDescription('');
       setCampaignTargetAmount('');
       setCampaignBannerFile(null);
       setCampaignBannerPreview(null);
+      if (campaignFileRef.current) campaignFileRef.current.value = '';
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Terjadi kesalahan saat membuat kampanye';
-      setCampaignMessage(errorMessage);
+      setCampaignMessage({ type: 'error', message: errorMessage });
     } finally {
       setCampaignLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-white font-sans p-4 text-center">
-      <div className="flex flex-col items-center gap-4 w-full max-w-xl mb-6 text-center">
-        <div>
-          <h1 className="text-4xl font-bold text-[#2682F9] mb-2">Halaman Admin</h1>
-          <p className="text-zinc-600">Ringkasan jumlah postingan dan kebijakan.</p>
-        </div>
-      </div>
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <main className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
+        <header className="space-y-2">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Halaman admin</h1>
+          <p className="text-sm leading-relaxed text-slate-800">
+            Kelola moderasi, pengumuman, laporan fasilitas, wacana, dan kampanye donasi.
+          </p>
+        </header>
 
-      {loading ? (
-        <div className="text-zinc-500 mb-8">Memuat statistik...</div>
-      ) : error ? (
-        <div className="text-red-500 mb-8">{error}</div>
-      ) : stats ? (
-        <div className="grid gap-4 sm:grid-cols-3 w-full max-w-xl mb-8">
-          <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-6 text-left shadow-sm">
-            <p className="text-sm uppercase tracking-[0.3em] text-zinc-500 mb-4">Total Postingan</p>
-            <p className="text-5xl font-bold text-[#2682F9]">{stats.totalPosts}</p>
-          </div>
-          <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-6 text-left shadow-sm">
-            <p className="text-sm uppercase tracking-[0.3em] text-zinc-500 mb-4">Total Pengumuman</p>
-            <p className="text-5xl font-bold text-pengumuman-foreground">{stats.totalAnnouncements}</p>
-          </div>
-          <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-6 text-left shadow-sm">
-            <p className="text-sm uppercase tracking-[0.3em] text-zinc-500 mb-4">Total Kebijakan</p>
-            <p className="text-5xl font-bold text-wacana-foreground">{stats.totalPolicies}</p>
-          </div>
-          <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-6 text-left shadow-sm">
-            <p className="text-sm uppercase tracking-[0.3em] text-zinc-500 mb-4">Total Laporan</p>
-            <p className="text-5xl font-bold text-[#4F9A4E]">{stats.totalReports}</p>
-          </div>
-          <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-left shadow-sm">
-            <p className="text-sm uppercase tracking-[0.3em] text-red-500 mb-4">Laporan Konten Menunggu</p>
-            <p className="text-5xl font-bold text-red-500">{stats.pendingFlags.total}</p>
-          </div>
-        </div>
-      ) : null}
-
-      <ModerationQueue onActionDone={refreshAdminStats} />
-
-      <AnnouncementForm onCreated={refreshAdminStats} />
-
-      <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm mb-8 text-left">
-        <h2 className="text-2xl font-bold text-[#2682F9] mb-4">Perbarui Status Laporan</h2>
-        <form onSubmit={handleUpdateStatus} className="space-y-4">
-          <div>
-            <label htmlFor="admin-report" className="block text-sm font-medium text-zinc-700 mb-2">Laporan</label>
-            <Select
-              id="admin-report"
-              value={reportId}
-              onValueChange={setReportId}
-              options={reports.map(report => ({ value: report.id, label: `${report.title} (${report.status})` }))}
-              placeholder={reports.length > 0 ? 'Pilih laporan...' : 'Tidak ada laporan tersedia'}
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="admin-report-status" className="block text-sm font-medium text-zinc-700 mb-2">Status Baru</label>
-            <Select
-              id="admin-report-status"
-              value={newStatus}
-              onValueChange={setNewStatus}
-              options={['SUBMITTED', 'VERIFIED', 'IN_PROGRESS', 'RESOLVED'].map(status => ({ value: status, label: status }))}
-            />
-          </div>
-          {updateMessage ? (
-            <div className="text-black text-sm text-zinc-700">{updateMessage}</div>
+        <section aria-label="Ringkasan aktivitas">
+          {loading ? (
+            <p role="status" className="admin-empty">Memuat ringkasan aktivitas...</p>
+          ) : error ? (
+            <AdminNotice feedback={{ type: 'error', message: error }} />
+          ) : stats ? (
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {[
+                { label: 'Postingan', value: stats.totalPosts, color: 'text-aspirasi-foreground' },
+                { label: 'Pengumuman', value: stats.totalAnnouncements, color: 'text-pengumuman-foreground' },
+                { label: 'Wacana', value: stats.totalPolicies, color: 'text-wacana-foreground' },
+                { label: 'Laporan fasilitas', value: stats.totalReports, color: 'text-laporan-foreground' },
+                { label: 'Menunggu moderasi', value: stats.pendingFlags.total, color: 'text-red-700' },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm sm:p-5">
+                  <dt className="text-sm font-medium leading-5 text-slate-800">{label}</dt>
+                  <dd className={'mt-2 text-3xl font-bold tabular-nums ' + color}>{value}</dd>
+                </div>
+              ))}
+            </dl>
           ) : null}
-          <button
-            type="submit"
-            disabled={updateLoading}
-            className="w-full bg-[#2682F9] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50"
-          >
-            {updateLoading ? 'Memproses...' : 'Perbarui Status'}
-          </button>
-        </form>
-      </div>
+        </section>
 
-      <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm mb-8 text-left">
-        <h2 className="text-2xl font-bold text-wacana-foreground mb-4">Buat Kebijakan Baru</h2>
-        <form onSubmit={handleCreatePolicy} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-2">Judul Kebijakan</label>
-            <input
-              value={policyTitle}
-              onChange={(event) => setPolicyTitle(event.target.value)}
-              type="text"
-              placeholder="Contoh: Perpanjangan Jam Malam Perpustakaan"
-              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#E8A34D]"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-2">Isi Kebijakan</label>
-            <textarea
-              value={policyContent}
-              onChange={(event) => setPolicyContent(event.target.value)}
-              rows={5}
-              placeholder="Tuliskan detail kebijakan yang diusulkan..."
-              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#E8A34D] resize-none"
-              required
-            />
-          </div>
-          {policyCreateMessage ? (
-            <div className="text-black text-sm text-slate-700">{policyCreateMessage}</div>
-          ) : null}
-          <button
-            type="submit"
-            disabled={policyCreateLoading}
-            className="w-full bg-[#E8A34D] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50"
-          >
-            {policyCreateLoading ? 'Mengirim...' : 'Kirim Kebijakan'}
-          </button>
-        </form>
-      </div>
+        <ModerationQueue onActionDone={refreshAdminStats} />
 
-      <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm mb-8 text-left">
-        <h2 className="text-2xl font-bold text-[#4F9A4E] mb-4">Buat Kampanye Donasi Baru</h2>
-        <form onSubmit={handleCreateCampaign} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-2">Judul Kampanye</label>
-            <input
-              value={campaignTitle}
-              onChange={(event) => setCampaignTitle(event.target.value)}
-              type="text"
-              placeholder="Bantuan Pengobatan Bapak Slamet (Satpam Fakultas)"
-              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#4F9A4E]"
-              required
-            />
+        <div className="grid items-start gap-6 lg:grid-cols-2">
+          <AnnouncementForm onCreated={refreshAdminStats} />
+
+          <div className="min-w-0 space-y-6">
+            <AdminPanel
+              id="laporan-fasilitas"
+              title="Perbarui status laporan"
+              accent="orange"
+              description="Tentukan tindak lanjut laporan fasilitas dari mahasiswa."
+            >
+              <form onSubmit={handleUpdateStatus} className="space-y-4">
+                <div className="admin-field">
+                  <label htmlFor="admin-report" className="admin-label">Laporan</label>
+                  <Select
+                    id="admin-report"
+                    value={reportId}
+                    onValueChange={setReportId}
+                    options={reports.map(report => ({
+                      value: report.id,
+                      label: report.title + ' (' + (REPORT_STATUS_LABELS[report.status] || report.status) + ')',
+                    }))}
+                    placeholder={reports.length > 0 ? 'Pilih laporan' : 'Belum ada laporan'}
+                    disabled={updateLoading || reports.length === 0}
+                    required
+                  />
+                </div>
+                <div className="admin-field">
+                  <label htmlFor="admin-report-status" className="admin-label">Status baru</label>
+                  <Select
+                    id="admin-report-status"
+                    value={newStatus}
+                    onValueChange={setNewStatus}
+                    options={Object.entries(REPORT_STATUS_LABELS).map(([value, label]) => ({ value, label }))}
+                    disabled={updateLoading}
+                  />
+                </div>
+                <AdminNotice feedback={updateMessage} />
+                <button type="submit" disabled={updateLoading || reports.length === 0} className="admin-button admin-button-laporan w-full">
+                  {updateLoading ? 'Menyimpan...' : 'Simpan status laporan'}
+                </button>
+              </form>
+            </AdminPanel>
+
+            <AdminPanel
+              id="status-wacana"
+              title="Kelola status wacana"
+              accent="blue"
+              description="Aktifkan draft atau tandai wacana yang sudah selesai."
+            >
+              <form onSubmit={handleUpdatePolicyStatus} className="space-y-4">
+                <div className="admin-field">
+                  <label htmlFor="admin-policy" className="admin-label">Wacana</label>
+                  <Select
+                    id="admin-policy"
+                    value={policyId}
+                    onValueChange={setPolicyId}
+                    options={policies.map(policy => ({
+                      value: policy.id,
+                      label: policy.title + ' (' + POLICY_STATUS_LABELS[policy.status] + ')',
+                    }))}
+                    placeholder={policies.length > 0 ? 'Pilih wacana' : 'Belum ada wacana'}
+                    disabled={policyUpdateLoading || policies.length === 0}
+                    required
+                  />
+                </div>
+                <div className="admin-field">
+                  <label htmlFor="admin-policy-status" className="admin-label">Status baru</label>
+                  <Select
+                    id="admin-policy-status"
+                    value={policyStatus}
+                    onValueChange={value => setPolicyStatus(value as 'DRAFT' | 'ACTIVE' | 'CLOSED')}
+                    options={Object.entries(POLICY_STATUS_LABELS).map(([value, label]) => ({ value, label }))}
+                    disabled={policyUpdateLoading}
+                  />
+                </div>
+                <AdminNotice feedback={policyUpdateMessage} />
+                <button type="submit" disabled={policyUpdateLoading || policies.length === 0} className="admin-button admin-button-wacana w-full">
+                  {policyUpdateLoading ? 'Menyimpan...' : 'Simpan status wacana'}
+                </button>
+              </form>
+            </AdminPanel>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-2">Deskripsi</label>
-            <textarea
-              value={campaignDescription}
-              onChange={(event) => setCampaignDescription(event.target.value)}
-              rows={4}
-              placeholder="Mari bantu ringankan biaya operasi beliau."
-              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#4F9A4E] resize-none"
-              required
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-2">Target Donasi</label>
-              <input
-                value={campaignTargetAmount}
-                onChange={(event) => setCampaignTargetAmount(event.target.value)}
-                type="number"
-                placeholder="5000000"
-                className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#4F9A4E]"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-2">Banner Kampanye</label>
-              <label className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-sm text-zinc-500 hover:border-[#4F9A4E] hover:text-[#4F9A4E] transition">
+
+          <AdminPanel
+            id="wacana-baru"
+            title="Buat wacana"
+            accent="blue"
+            description="Wacana disimpan sebagai draft sebelum ditampilkan kepada pengguna."
+          >
+            <form onSubmit={handleCreatePolicy} className="space-y-4">
+              <div className="admin-field">
+                <label htmlFor="policy-title" className="admin-label">Judul wacana</label>
                 <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0] ?? null;
-                    setCampaignBannerFile(file);
-                    if (!file) {
-                      setCampaignBannerPreview(null);
-                      return;
-                    }
-                    setCampaignBannerPreview(URL.createObjectURL(file));
-                  }}
+                  id="policy-title"
+                  value={policyTitle}
+                  onChange={event => setPolicyTitle(event.target.value)}
+                  type="text"
+                  placeholder="Contoh: Perpanjangan jam buka perpustakaan"
+                  className="admin-input"
+                  disabled={policyCreateLoading}
+                  required
                 />
-                {campaignBannerPreview ? 'Ganti foto banner' : 'Pilih atau seret file gambar'}
-              </label>
-            </div>
-          </div>
-          {campaignBannerPreview ? (
-            <div className="rounded-2xl overflow-hidden border border-zinc-200 bg-slate-50">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={campaignBannerPreview} alt="Banner preview" className="w-full h-44 object-cover" />
-            </div>
-          ) : null}
-          {campaignMessage ? (
-            <div className="text-black text-sm text-slate-700">{campaignMessage}</div>
-          ) : null}
-          <button
-            type="submit"
-            disabled={campaignLoading}
-            className="w-full bg-[#4F9A4E] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50"
+              </div>
+              <div className="admin-field">
+                <label htmlFor="policy-content" className="admin-label">Isi wacana</label>
+                <textarea
+                  id="policy-content"
+                  value={policyContent}
+                  onChange={event => setPolicyContent(event.target.value)}
+                  rows={5}
+                  placeholder="Jelaskan usulan yang ingin didiskusikan."
+                  className="admin-input"
+                  disabled={policyCreateLoading}
+                  required
+                />
+              </div>
+              <AdminNotice feedback={policyCreateMessage} />
+              <button type="submit" disabled={policyCreateLoading} className="admin-button admin-button-wacana w-full">
+                {policyCreateLoading ? 'Menyimpan...' : 'Simpan draft wacana'}
+              </button>
+            </form>
+          </AdminPanel>
+
+          <AdminPanel
+            id="kampanye-donasi"
+            title="Buat kampanye donasi"
+            accent="orange"
+            description="Lengkapi informasi dan target dana untuk kampanye baru."
           >
-            {campaignLoading ? 'Memproses...' : 'Buat Kampanye Donasi'}
-          </button>
-        </form>
-      </div>
-
-      <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm mb-8 text-left">
-        <h2 className="text-2xl font-bold text-wacana-foreground mb-4">Kelola Status Kebijakan</h2>
-        <form onSubmit={handleUpdatePolicyStatus} className="space-y-4">
-          <div>
-            <label htmlFor="admin-policy" className="block text-sm font-medium text-zinc-700 mb-2">Pilih Kebijakan</label>
-            <Select
-              id="admin-policy"
-              value={policyId}
-              onValueChange={setPolicyId}
-              options={policies.map(policy => ({ value: policy.id, label: `${policy.title} (${policy.status})` }))}
-              placeholder={policies.length > 0 ? 'Pilih kebijakan...' : 'Tidak ada kebijakan tersedia'}
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="admin-policy-status" className="block text-sm font-medium text-zinc-700 mb-2">Status Baru</label>
-            <Select
-              id="admin-policy-status"
-              value={policyStatus}
-              onValueChange={value => setPolicyStatus(value as 'DRAFT' | 'ACTIVE' | 'CLOSED')}
-              options={['DRAFT', 'ACTIVE', 'CLOSED'].map(status => ({ value: status, label: status }))}
-            />
-          </div>
-
-          {policyUpdateMessage ? (
-            <div className="text-black text-sm text-zinc-700">{policyUpdateMessage}</div>
-          ) : null}
-
-          <button
-            type="submit"
-            disabled={policyUpdateLoading}
-            className="w-full bg-[#E8A34D] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50"
-          >
-            {policyUpdateLoading ? 'Memproses...' : 'Perbarui Status Kebijakan'}
-          </button>
-        </form>
-      </div>
-
+            <form onSubmit={handleCreateCampaign} className="space-y-4">
+              <div className="admin-field">
+                <label htmlFor="campaign-title" className="admin-label">Judul kampanye</label>
+                <input
+                  id="campaign-title"
+                  value={campaignTitle}
+                  onChange={event => setCampaignTitle(event.target.value)}
+                  type="text"
+                  placeholder="Contoh: Bantuan alat praktikum"
+                  className="admin-input"
+                  disabled={campaignLoading}
+                  required
+                />
+              </div>
+              <div className="admin-field">
+                <label htmlFor="campaign-description" className="admin-label">Deskripsi</label>
+                <textarea
+                  id="campaign-description"
+                  value={campaignDescription}
+                  onChange={event => setCampaignDescription(event.target.value)}
+                  rows={4}
+                  placeholder="Jelaskan tujuan dan penggunaan dana."
+                  className="admin-input"
+                  disabled={campaignLoading}
+                  required
+                />
+              </div>
+              <div className="admin-field">
+                <label htmlFor="campaign-target" className="admin-label">Target donasi (Rp)</label>
+                <input
+                  id="campaign-target"
+                  value={campaignTargetAmount}
+                  onChange={event => setCampaignTargetAmount(event.target.value)}
+                  type="number"
+                  min="1"
+                  placeholder="5000000"
+                  className="admin-input"
+                  disabled={campaignLoading}
+                  required
+                />
+              </div>
+              <div className="admin-field">
+                <label id="campaign-banner-label" htmlFor="campaign-banner" className="admin-label">Banner kampanye</label>
+                <label htmlFor="campaign-banner" className="admin-upload">
+                  <input
+                    ref={campaignFileRef}
+                    id="campaign-banner"
+                    aria-labelledby="campaign-banner-label"
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    disabled={campaignLoading}
+                    onChange={event => {
+                      const file = event.target.files?.[0] ?? null;
+                      setCampaignBannerFile(file);
+                      setCampaignBannerPreview(file ? URL.createObjectURL(file) : null);
+                    }}
+                  />
+                  <span className="min-w-0 break-all">
+                    {campaignBannerFile ? campaignBannerFile.name + ' · Ganti gambar' : 'Pilih gambar banner'}
+                  </span>
+                </label>
+              </div>
+              {campaignBannerPreview && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={campaignBannerPreview} alt="Pratinjau banner kampanye" className="h-44 w-full rounded-xl border border-slate-200 object-cover" />
+              )}
+              <AdminNotice feedback={campaignMessage} />
+              <button type="submit" disabled={campaignLoading} className="admin-button admin-button-laporan w-full">
+                {campaignLoading ? 'Mengirim...' : 'Buat kampanye donasi'}
+              </button>
+            </form>
+          </AdminPanel>
+        </div>
+      </main>
     </div>
   );
 }
