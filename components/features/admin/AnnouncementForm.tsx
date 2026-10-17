@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { apiFetch, getApiErrorMessage } from "@/lib/api/client";
 import { ANNOUNCEMENT_PIN_DAYS } from "@/lib/api/types";
+import Select from "@/components/ui/Select";
 
 export default function AnnouncementForm({ onCreated }: { onCreated?: () => void }) {
   const [title, setTitle] = useState("");
@@ -74,7 +75,7 @@ export default function AnnouncementForm({ onCreated }: { onCreated?: () => void
 
   return (
     <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm mb-8 text-left">
-      <h2 className="text-2xl font-bold text-blue-600 mb-4">Buat Pengumuman</h2>
+      <h2 className="text-2xl font-bold text-pengumuman-foreground mb-4">Buat Pengumuman</h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-zinc-700 mb-2">Judul</label>
@@ -83,7 +84,7 @@ export default function AnnouncementForm({ onCreated }: { onCreated?: () => void
             onChange={(e) => setTitle(e.target.value)}
             type="text"
             placeholder="Contoh: Pemeliharaan Jaringan Kampus"
-            className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-blue-500"
+            className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-pengumuman"
             required
           />
         </div>
@@ -94,13 +95,13 @@ export default function AnnouncementForm({ onCreated }: { onCreated?: () => void
             onChange={(e) => setContent(e.target.value)}
             rows={5}
             placeholder="Tuliskan isi pengumuman..."
-            className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-blue-500 resize-none"
+            className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-pengumuman resize-none"
             required
           />
         </div>
         <div>
           <label className="block text-sm font-medium text-zinc-700 mb-2">Gambar (opsional)</label>
-          <label className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-sm text-zinc-500 hover:border-blue-500 hover:text-blue-500 transition">
+          <label className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-sm text-zinc-500 hover:border-pengumuman hover:text-pengumuman-foreground transition">
             <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
             {imagePreview ? "Ganti gambar" : "Pilih atau seret file gambar"}
           </label>
@@ -114,24 +115,21 @@ export default function AnnouncementForm({ onCreated }: { onCreated?: () => void
           )}
         </div>
         <div>
-          <label className="block text-sm font-medium text-zinc-700 mb-2">Durasi Pin</label>
-          <select
-            value={pinDays}
-            onChange={(e) => setPinDays(e.target.value ? Number(e.target.value) : "")}
-            className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-blue-500"
-          >
-            <option value="">Tanpa pin</option>
-            {ANNOUNCEMENT_PIN_DAYS.map((days) => (
-              <option key={days} value={days}>
-                {days} hari
-              </option>
-            ))}
-          </select>
+          <label htmlFor="announcement-pin" className="block text-sm font-medium text-zinc-700 mb-2">Durasi Pin</label>
+          <Select
+            id="announcement-pin"
+            value={String(pinDays)}
+            onValueChange={value => setPinDays(value ? Number(value) : "")}
+            options={[
+              { value: "", label: "Tanpa pin" },
+              ...ANNOUNCEMENT_PIN_DAYS.map(days => ({ value: String(days), label: `${days} hari` }))
+            ]}
+          />
         </div>
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50 hover:cursor-pointer"
+          className="w-full bg-pengumuman text-slate-950 font-bold py-3 px-6 rounded-xl transition-colors hover:bg-pengumuman/90 disabled:opacity-50 hover:cursor-pointer"
         >
           {isSubmitting ? "Mengirim..." : "Buat Pengumuman"}
         </button>

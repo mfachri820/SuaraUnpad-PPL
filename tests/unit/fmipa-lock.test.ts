@@ -38,6 +38,28 @@ describe('Suara MIPA: kunci fakultas & program studi (authService.register)', ()
     expect(db.user.create).not.toHaveBeenCalled();
   });
 
+  it('tidak membuat akun jika JWT_SECRET terlalu pendek', async () => {
+    const originalSecret = process.env.JWT_SECRET;
+    process.env.JWT_SECRET = 'short';
+
+    try {
+      await expect(
+        authService.register({
+          email: 'mhs-baru@mail.unpad.ac.id',
+          password: 'Password123!',
+          role: 'STUDENT',
+          fullName: 'Mahasiswa Baru',
+          studentId: '1234567891',
+          major: 'Matematika'
+        })
+      ).rejects.toThrow(/JWT_SECRET/);
+
+      expect(db.user.create).not.toHaveBeenCalled();
+    } finally {
+      process.env.JWT_SECRET = originalSecret;
+    }
+  });
+
   it('mengunci faculty ke FMIPA meskipun client mengirim nilai lain', async () => {
     db.user.create.mockResolvedValue({
       id: 'u-1',

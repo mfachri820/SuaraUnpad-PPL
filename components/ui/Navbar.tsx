@@ -30,7 +30,6 @@ export default function Navbar() {
     checkUserRole();
   }, []);
 
-  // 🌟 Link "Aspirasi" sudah dibuang dari sini
   const navLinks = [
     { name: "Beranda", href: "/home" },
     { name: "Lapor", href: "/report" },
@@ -58,7 +57,7 @@ export default function Navbar() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link
             href="/home"
-            className="flex shrink-0 items-center text-xl sm:text-2xl font-black text-black tracking-tight hover:underline underline-offset-2"
+            className="flex shrink-0 items-center text-xl sm:text-2xl font-black text-black tracking-tight hover:underline underline-offset-3"
           >
             <span className="text-[#2682F9]">Suara</span>
             <span className="text-[#F99D26]">MIPA</span>
@@ -120,7 +119,11 @@ export default function Navbar() {
               onClick={() => setIsOpen(!isOpen)}
               className="flex items-center justify-center p-1 text-slate-600 transition hover:text-[#2682F9] focus:outline-none"
             >
-              {isOpen ? <FiX className="text-3xl" /> : <FiMenu className="text-3xl" />}
+              {isOpen ? (
+                <FiX className="text-3xl" />
+              ) : (
+                <FiMenu className="text-3xl" />
+              )}
             </button>
           </div>
         </div>
@@ -149,7 +152,9 @@ export default function Navbar() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-500">
                     <FaUserCircle className="text-[2.5rem]" />
                   </div>
-                  <span className="text-sm font-medium text-slate-700">Profil Saya</span>
+                  <span className="text-sm font-medium text-slate-700">
+                    Profil Saya
+                  </span>
                 </Link>
                 {isAdmin && (
                   <Link
@@ -157,7 +162,9 @@ export default function Navbar() {
                     onClick={() => setIsOpen(false)}
                     className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-50"
                   >
-                    <span className="text-sm font-medium text-slate-700">Admin</span>
+                    <span className="text-sm font-medium text-slate-700">
+                      Admin
+                    </span>
                   </Link>
                 )}
                 <button

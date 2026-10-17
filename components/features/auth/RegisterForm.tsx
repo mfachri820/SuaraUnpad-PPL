@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { Controller, useForm, SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import {
   FiUser,
@@ -17,16 +17,18 @@ import Cookies from "js-cookie";
 import { GoogleLogin } from "@react-oauth/google";
 import { toast } from "react-hot-toast";
 import { FMIPA_MAJORS } from "@/lib/fmipa";
+import RegistrationSuccessDialog from "./RegistrationSuccessDialog";
 
 // Import fungsi dan interface dari AuthFetch.ts
 import { verifyGoogleAuth, registerManual, RegisterPayload } from "./AuthFetch";
 
 export default function RegisterForm() {
   // 1. Tambahkan generic <RegisterPayload> pada useForm
-  const { register, handleSubmit, watch } = useForm<RegisterPayload>();
+  const { register, handleSubmit, watch, control } = useForm<RegisterPayload>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleRegistration] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
 
   // State untuk role dinamis
   const [userRole, setUserRole] = useState<"STUDENT" | "LECTURER">("STUDENT");
@@ -92,8 +94,7 @@ export default function RegisterForm() {
 
       await registerManual(finalData);
 
-      toast.success("Registrasi Berhasil! Silakan cek email Anda untuk verifikasi.");
-      router.push("/login");
+      setRegisteredEmail(data.email);
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : "Registrasi Gagal";
@@ -151,7 +152,7 @@ export default function RegisterForm() {
             />
           )}
 
-          <div className="mb-4 w-full text-left">
+          <div hidden className="mb-4 w-full text-left">
             <label className="block text-zinc-700 font-bold text-sm mb-2">Fakultas</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#E8A34D]">
@@ -167,12 +168,25 @@ export default function RegisterForm() {
           </div>
 
           {userRole === "STUDENT" && (
-            <AuthSelect
-              label="Program Studi"
-              icon={FiBookOpen}
-              placeholder="Pilih program studi"
-              options={FMIPA_MAJORS}
-              register={register("major", { required: true })}
+            <Controller
+              name="major"
+              control={control}
+              defaultValue=""
+              rules={{ required: true }}
+              render={({ field, fieldState }) => (
+                <AuthSelect
+                  label="Program Studi"
+                  icon={FiBookOpen}
+                  placeholder="Pilih program studi"
+                  options={FMIPA_MAJORS}
+                  name={field.name}
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  onBlur={field.onBlur}
+                  inputRef={field.ref}
+                  invalid={fieldState.invalid}
+                />
+              )}
             />
           )}
 
@@ -232,6 +246,12 @@ export default function RegisterForm() {
           </a>
         </div>
       </main>
+      {registeredEmail && (
+        <RegistrationSuccessDialog
+          email={registeredEmail}
+          onContinue={() => router.push("/login")}
+        />
+      )}
     </div>
   );
 }

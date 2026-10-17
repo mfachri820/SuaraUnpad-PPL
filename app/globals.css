@@ -3,11 +3,37 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Warna jenis konten: aspirasi netral, laporan oranye, wacana biru. */
+  --content-aspirasi: #64748b;
+  --content-aspirasi-foreground: #475569;
+  --content-aspirasi-subtle: #f8fafc;
+  --content-laporan: #f99d26;
+  --content-laporan-foreground: #9a5700;
+  --content-laporan-subtle: #fff7ed;
+  --content-wacana: #2682f9;
+  --content-wacana-foreground: #1d5db3;
+  --content-wacana-subtle: #eff6ff;
+  --content-pengumuman: #26b960;
+  --content-pengumuman-foreground: #14783e;
+  --content-pengumuman-subtle: #edf9f1;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-aspirasi: var(--content-aspirasi);
+  --color-aspirasi-foreground: var(--content-aspirasi-foreground);
+  --color-aspirasi-subtle: var(--content-aspirasi-subtle);
+  --color-laporan: var(--content-laporan);
+  --color-laporan-foreground: var(--content-laporan-foreground);
+  --color-laporan-subtle: var(--content-laporan-subtle);
+  --color-wacana: var(--content-wacana);
+  --color-wacana-foreground: var(--content-wacana-foreground);
+  --color-wacana-subtle: var(--content-wacana-subtle);
+  --color-pengumuman: var(--content-pengumuman);
+  --color-pengumuman-foreground: var(--content-pengumuman-foreground);
+  --color-pengumuman-subtle: var(--content-pengumuman-subtle);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -24,3 +50,59 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.select-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 46px;
+  padding: 0.75rem 1rem;
+  border: 1px solid #dbe1e8;
+  border-radius: 0.75rem;
+  background: #fff;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  cursor: pointer;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+
+.select-trigger:hover { border-color: #94a3b8; }
+.select-trigger:focus-visible,
+.select-trigger[aria-expanded="true"] {
+  outline: none;
+  border-color: var(--content-wacana);
+  box-shadow: 0 0 0 3px rgb(38 130 249 / 10%);
+}
+.select-trigger[aria-invalid="true"] { border-color: #ef4444; }
+.select-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.select-menu {
+  position: fixed;
+  z-index: 100;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0;
+  padding: 4px;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fff;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 10%);
+  list-style: none;
+}
+
+.select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  height: 40px;
+  padding: 0 0.75rem;
+  border-radius: 0.5rem;
+  color: #334155;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+.select-option[data-active="true"] { background: #f1f5f9; }
+.select-option[aria-selected="true"] { font-weight: 600; }
+.select-option[aria-disabled="true"] { opacity: 0.4; cursor: not-allowed; }

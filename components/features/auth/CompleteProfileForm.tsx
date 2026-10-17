@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { Controller, useForm, SubmitHandler } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { FiHash, FiBookOpen, FiBriefcase } from "react-icons/fi";
@@ -19,7 +19,7 @@ interface GoogleUserInfo {
 }
 
 export default function CompleteProfileForm() {
-  const { register, handleSubmit, setValue } = useForm<RegisterPayload>();
+  const { register, handleSubmit, setValue, control } = useForm<RegisterPayload>();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [googleInfo, setGoogleInfo] = useState<GoogleUserInfo | null>(null);
   
@@ -118,7 +118,7 @@ export default function CompleteProfileForm() {
             register={register("studentId", { required: true })}
           />
 
-          <div className="mb-4 w-full text-left">
+          <div hidden className="mb-4 w-full text-left">
             <label className="block text-zinc-700 font-bold text-sm mb-2">Fakultas</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#E8A34D]">
@@ -133,12 +133,25 @@ export default function CompleteProfileForm() {
             </div>
           </div>
 
-          <AuthSelect
-            label="Program Studi"
-            icon={FiBookOpen}
-            placeholder="Pilih program studi"
-            options={FMIPA_MAJORS}
-            register={register("major", { required: true })}
+          <Controller
+            name="major"
+            control={control}
+            defaultValue=""
+            rules={{ required: true }}
+            render={({ field, fieldState }) => (
+              <AuthSelect
+                label="Program Studi"
+                icon={FiBookOpen}
+                placeholder="Pilih program studi"
+                options={FMIPA_MAJORS}
+                name={field.name}
+                value={field.value}
+                onValueChange={field.onChange}
+                onBlur={field.onBlur}
+                inputRef={field.ref}
+                invalid={fieldState.invalid}
+              />
+            )}
           />
 
           <button

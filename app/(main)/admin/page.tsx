@@ -10,6 +10,7 @@ import { apiFetch, getApiErrorMessage } from '@/lib/api/client';
 import { AdminStats } from '@/lib/api/types';
 import ModerationQueue from '@/components/features/admin/ModerationQueue';
 import AnnouncementForm from '@/components/features/admin/AnnouncementForm';
+import Select from '@/components/ui/Select';
 
 interface ReportOption {
   id: string;
@@ -327,11 +328,11 @@ export default function AdminPage() {
           </div>
           <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-6 text-left shadow-sm">
             <p className="text-sm uppercase tracking-[0.3em] text-zinc-500 mb-4">Total Pengumuman</p>
-            <p className="text-5xl font-bold text-blue-600">{stats.totalAnnouncements}</p>
+            <p className="text-5xl font-bold text-pengumuman-foreground">{stats.totalAnnouncements}</p>
           </div>
           <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-6 text-left shadow-sm">
             <p className="text-sm uppercase tracking-[0.3em] text-zinc-500 mb-4">Total Kebijakan</p>
-            <p className="text-5xl font-bold text-[#E8A34D]">{stats.totalPolicies}</p>
+            <p className="text-5xl font-bold text-wacana-foreground">{stats.totalPolicies}</p>
           </div>
           <div className="rounded-3xl border border-zinc-200 bg-zinc-50 p-6 text-left shadow-sm">
             <p className="text-sm uppercase tracking-[0.3em] text-zinc-500 mb-4">Total Laporan</p>
@@ -352,35 +353,24 @@ export default function AdminPage() {
         <h2 className="text-2xl font-bold text-[#2682F9] mb-4">Perbarui Status Laporan</h2>
         <form onSubmit={handleUpdateStatus} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-2">Laporan</label>
-            <select
+            <label htmlFor="admin-report" className="block text-sm font-medium text-zinc-700 mb-2">Laporan</label>
+            <Select
+              id="admin-report"
               value={reportId}
-              onChange={(event) => setReportId(event.target.value)}
-              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#2682F9]"
+              onValueChange={setReportId}
+              options={reports.map(report => ({ value: report.id, label: `${report.title} (${report.status})` }))}
+              placeholder={reports.length > 0 ? 'Pilih laporan...' : 'Tidak ada laporan tersedia'}
               required
-            >
-              <option value="" disabled>
-                {reports.length > 0 ? 'Pilih laporan...' : 'Tidak ada laporan tersedia'}
-              </option>
-              {reports.map((report) => (
-                <option key={report.id} value={report.id} className="text-black">
-                  {report.title} ({report.status})
-                </option>
-              ))}
-            </select>
+            />
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-2">Status Baru</label>
-            <select
+            <label htmlFor="admin-report-status" className="block text-sm font-medium text-zinc-700 mb-2">Status Baru</label>
+            <Select
+              id="admin-report-status"
               value={newStatus}
-              onChange={(event) => setNewStatus(event.target.value)}
-              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#2682F9]"
-            >
-              <option className="text-black" value="SUBMITTED">SUBMITTED</option>
-              <option className="text-black" value="VERIFIED">VERIFIED</option>
-              <option className="text-black" value="IN_PROGRESS">IN_PROGRESS</option>
-              <option className="text-black" value="RESOLVED">RESOLVED</option>
-            </select>
+              onValueChange={setNewStatus}
+              options={['SUBMITTED', 'VERIFIED', 'IN_PROGRESS', 'RESOLVED'].map(status => ({ value: status, label: status }))}
+            />
           </div>
           {updateMessage ? (
             <div className="text-black text-sm text-zinc-700">{updateMessage}</div>
@@ -396,7 +386,7 @@ export default function AdminPage() {
       </div>
 
       <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm mb-8 text-left">
-        <h2 className="text-2xl font-bold text-[#E8A34D] mb-4">Buat Kebijakan Baru</h2>
+        <h2 className="text-2xl font-bold text-wacana-foreground mb-4">Buat Kebijakan Baru</h2>
         <form onSubmit={handleCreatePolicy} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-zinc-700 mb-2">Judul Kebijakan</label>
@@ -511,38 +501,28 @@ export default function AdminPage() {
       </div>
 
       <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm mb-8 text-left">
-        <h2 className="text-2xl font-bold text-[#E8A34D] mb-4">Kelola Status Kebijakan</h2>
+        <h2 className="text-2xl font-bold text-wacana-foreground mb-4">Kelola Status Kebijakan</h2>
         <form onSubmit={handleUpdatePolicyStatus} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-2">Pilih Kebijakan</label>
-            <select
+            <label htmlFor="admin-policy" className="block text-sm font-medium text-zinc-700 mb-2">Pilih Kebijakan</label>
+            <Select
+              id="admin-policy"
               value={policyId}
-              onChange={(event) => setPolicyId(event.target.value)}
-              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#2682F9]"
+              onValueChange={setPolicyId}
+              options={policies.map(policy => ({ value: policy.id, label: `${policy.title} (${policy.status})` }))}
+              placeholder={policies.length > 0 ? 'Pilih kebijakan...' : 'Tidak ada kebijakan tersedia'}
               required
-            >
-              <option value="" disabled>
-                {policies.length > 0 ? 'Pilih kebijakan...' : 'Tidak ada kebijakan tersedia'}
-              </option>
-              {policies.map((policy) => (
-                <option key={policy.id} value={policy.id} className="text-black">
-                  {policy.title} ({policy.status})
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-2">Status Baru</label>
-            <select
+            <label htmlFor="admin-policy-status" className="block text-sm font-medium text-zinc-700 mb-2">Status Baru</label>
+            <Select
+              id="admin-policy-status"
               value={policyStatus}
-              onChange={(event) => setPolicyStatus(event.target.value as 'DRAFT' | 'ACTIVE' | 'CLOSED')}
-              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-[#2682F9]"
-            >
-              <option className="text-black" value="DRAFT">DRAFT</option>
-              <option className="text-black" value="ACTIVE">ACTIVE</option>
-              <option className="text-black" value="CLOSED">CLOSED</option>
-            </select>
+              onValueChange={value => setPolicyStatus(value as 'DRAFT' | 'ACTIVE' | 'CLOSED')}
+              options={['DRAFT', 'ACTIVE', 'CLOSED'].map(status => ({ value: status, label: status }))}
+            />
           </div>
 
           {policyUpdateMessage ? (

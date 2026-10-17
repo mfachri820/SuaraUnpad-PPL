@@ -31,7 +31,7 @@ vi.mock('js-cookie', () => ({
   },
 }));
 
-import Navbar from '../components/ui/Navbar';
+import Navbar from '@/components/ui/Navbar';
 
 describe('Navigation usability', () => {
   let container: HTMLDivElement | null = null;

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Cookies from "js-cookie";
 import { toast } from "react-hot-toast";
-import { FiSend, FiMessageSquare, FiEdit2, FiTrash2, FiFlag } from "react-icons/fi";
+import { FiSend, FiMessageSquare, FiEdit2, FiTrash2, FiFlag, FiLock } from "react-icons/fi";
 import { ImArrowUp } from "react-icons/im";
 import {
   fetchComments,
@@ -15,12 +15,14 @@ import {
 import { CommentData, ActiveAction, getAuthorName, isAdminAuthor } from "./types";
 import ReportContentModal from "@/components/features/moderation/ReportContentModal";
 import { apiFetch, getApiErrorMessage } from "@/lib/api/client";
+import UserAvatar from "@/components/ui/UserAvatar";
 
 const COMMENT_MAX_LENGTH = 1000;
 
 interface CommentItemProps {
   comment: CommentData;
   currentUserId: string | null;
+  currentUserAvatar: string | null;
   isAdmin: boolean;
   readOnly: boolean;
   activeAction: ActiveAction;
@@ -36,6 +38,7 @@ interface CommentItemProps {
 const CommentItem = ({
   comment,
   currentUserId,
+  currentUserAvatar,
   isAdmin,
   readOnly,
   activeAction,
@@ -95,13 +98,14 @@ const CommentItem = ({
   return (
     <div className="flex gap-3 mt-4">
       <div className="flex flex-col items-center shrink-0">
-        <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500 text-xs uppercase overflow-hidden">
-          {isDeleted ? "?" : getAuthorName(comment.author).charAt(0)}
-        </div>
+        <UserAvatar
+          src={isDeleted ? null : comment.author?.avatarUrl}
+          name={isDeleted ? undefined : getAuthorName(comment.author)}
+        />
         <div className="w-0.5 h-full bg-slate-100 my-1 rounded-full"></div>
       </div>
 
-      <div className="flex-1 pb-4">
+      <div className="min-w-0 flex-1 pb-4">
         <div className="flex items-center gap-2 mb-1">
           <span className="text-sm font-bold text-slate-800">
             {isDeleted ? "[Komentar ini telah dihapus]" : getAuthorName(comment.author)}
@@ -155,7 +159,7 @@ const CommentItem = ({
         )}
 
         {!isDeleted && (
-          <div className="flex items-center gap-4 text-xs font-bold text-slate-500">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-slate-500">
             <button
               onClick={() => onUpvote(comment.id)}
               className={`flex items-center gap-1.5 transition hover:cursor-pointer ${hasUpvoted ? "text-[#F99D26]" : "hover:text-[#F99D26]"}`}
@@ -207,9 +211,7 @@ const CommentItem = ({
 
         {!readOnly && isReplying && (
           <div className="flex gap-3 mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="w-8 h-8 rounded-full bg-slate-50 shrink-0 border border-slate-100 flex items-center justify-center">
-              <FiMessageSquare className="text-slate-300 text-xs" />
-            </div>
+            <UserAvatar src={currentUserAvatar} />
             <div className="flex-1">
               <textarea
                 autoFocus
@@ -240,6 +242,7 @@ const CommentItem = ({
                 key={reply.id}
                 comment={reply}
                 currentUserId={currentUserId}
+                currentUserAvatar={currentUserAvatar}
                 isAdmin={isAdmin}
                 readOnly={readOnly}
                 activeAction={activeAction}
@@ -276,6 +279,7 @@ export default function CommentSection({
   const [newCommentText, setNewCommentText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserAvatar, setCurrentUserAvatar] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [activeAction, setActiveAction] = useState<ActiveAction>(null);
   const [reportTargetId, setReportTargetId] = useState<string | null>(null);
@@ -300,6 +304,16 @@ export default function CommentSection({
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    let active = true;
+    apiFetch<{ avatarUrl: string | null }>("/api/auth/me")
+      .then((user) => {
+        if (active) setCurrentUserAvatar(user.avatarUrl);
+      })
+      .catch((error) => console.error("Gagal memuat foto profil:", error));
+    return () => { active = false; };
+  }, []);
 
   const updateTree = (
     list: CommentData[],
@@ -420,12 +434,12 @@ export default function CommentSection({
         {title} ({comments.length})
       </h3>
       {readOnly ? (
-        <div className="mb-8 p-4 bg-slate-50 border border-slate-100 rounded-xl text-sm text-slate-500 text-center font-medium">
-          🔒 Diskusi ditutup
+        <div className="mb-8 p-4 bg-slate-50 border border-slate-100 rounded-xl text-sm text-slate-500 font-medium flex items-center justify-center gap-2">
+          <FiLock aria-hidden="true" /> Diskusi ditutup
         </div>
       ) : (
         <div className="flex gap-3 mb-8">
-          <div className="w-10 h-10 rounded-full bg-slate-100 shrink-0"></div>
+          <UserAvatar src={currentUserAvatar} size={40} />
           <div className="flex-1">
             <textarea
               value={newCommentText}
@@ -461,6 +475,7 @@ export default function CommentSection({
               key={comment.id}
               comment={comment}
               currentUserId={currentUserId}
+              currentUserAvatar={currentUserAvatar}
               isAdmin={isAdmin}
               readOnly={readOnly}
               activeAction={activeAction}

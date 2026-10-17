@@ -169,8 +169,8 @@ export default function AspirasiDetailPage() {
 
         <article className="p-4">
           {isAnnouncement && (
-            <div className="mb-4 inline-flex items-center gap-2 bg-blue-600 text-white text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-lg">
-              📢 Pengumuman Resmi
+            <div className="mb-4 inline-flex bg-pengumuman-subtle text-pengumuman-foreground text-sm font-semibold px-3 py-1.5 rounded-lg">
+              Pengumuman
             </div>
           )}
 
@@ -251,7 +251,7 @@ export default function AspirasiDetailPage() {
           </div>
 
           {isAnnouncement && post.title && (
-            <h1 className="text-2xl font-black text-blue-900 mb-3 tracking-tight leading-tight">
+            <h1 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight leading-tight">
               {post.title}
             </h1>
           )}

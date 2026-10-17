@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { FiMapPin, FiMail, FiPhone, FiClock } from "react-icons/fi";
 import { FaFacebookF, FaInstagram, FaTwitter } from "react-icons/fa";
 
@@ -9,9 +10,12 @@ export default function Footer() {
         <div className="flex flex-col gap-12 md:flex-row md:items-start md:justify-between">
           {/* KOLOM KIRI: Brand & Deskripsi */}
           <div className="flex flex-col items-center text-center md:items-start md:text-left">
-            <Link href="/" className="mb-2 text-3xl font-black tracking-tight">
-              <span className="text-[#2682F9]">Suara</span>
-              <span className="text-[#F99D26]">MIPA</span>
+            <Link href="/home" className="mb-3 flex items-center gap-3 text-3xl font-black tracking-tight">
+              <Image src="/logo.png" alt="" width={52} height={52} unoptimized className="shrink-0" />
+              <span>
+                <span className="text-[#2682F9]">Suara</span>
+                <span className="text-[#F99D26]">MIPA</span>
+              </span>
             </Link>
             <p className="text-base sm:text-lg text-slate-700 leading-snug">
               Sebuah <span className="italic">one-stop</span> platform{" "}
@@ -24,7 +28,7 @@ export default function Footer() {
           {/* FIX: Hapus md:min-w-75 yang tidak valid, pakai w-full md:w-auto */}
           <div className="flex flex-col gap-6 w-full md:w-auto">
             {/* List Kontak: Rata kiri secara teks, tapi block-nya rata tengah di HP */}
-            <div className="flex flex-col gap-3 w-max mx-auto md:mx-0">
+            <div className="flex flex-col gap-3 w-full max-w-sm mx-auto md:mx-0">
               <div className="flex items-center gap-3 text-slate-600">
                 <FiMapPin className="text-xl text-[#F99D26] shrink-0" />
                 <span className="text-sm">
@@ -33,7 +37,7 @@ export default function Footer() {
               </div>
               <div className="flex items-center gap-3 text-slate-600">
                 <FiMail className="text-xl text-[#F99D26] shrink-0" />
-                <span className="text-sm">suara@unpad.ac.id</span>
+                <a href="mailto:suaraunpad12@gmail.com" className="text-sm hover:underline">suaraunpad12@gmail.com</a>
               </div>
               <div className="flex items-center gap-3 text-slate-600">
                 <FiPhone className="text-xl text-[#F99D26] shrink-0" />
