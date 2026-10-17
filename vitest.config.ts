@@ -15,7 +15,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    exclude: [...configDefaults.exclude, 'tests/integration/**'],
+    exclude: [...configDefaults.exclude, 'tests/integration/**', 'tests/e2e/**', 'tests/results/**'],
     env: {
       JWT_SECRET: 'unit-test-secret-unit-test-secret-0123456789',
     },
