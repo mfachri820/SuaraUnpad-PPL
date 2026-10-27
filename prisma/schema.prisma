@@ -170,6 +170,10 @@ model Report {
   upvoteCount Int            @default(0) @map("upvote_count")
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
+  // Waktu tiap tahap pertama kali tercapai, untuk metrik SLA dashboard admin
+  verifiedAt   DateTime?     @map("verified_at")
+  inProgressAt DateTime?     @map("in_progress_at")
+  resolvedAt   DateTime?     @map("resolved_at")
 
   author        User           @relation(fields: [authorId], references: [id])
   reportUpvotes ReportUpvote[]
@@ -177,6 +181,7 @@ model Report {
 
   @@index([authorId])
   @@index([createdAt])
+  @@index([status, createdAt])
   @@map("reports")
 }
 

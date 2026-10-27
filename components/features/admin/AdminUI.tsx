@@ -19,7 +19,7 @@ export function AdminPanel({
 }: {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   children: ReactNode;
   accent?: keyof typeof ACCENT_CLASSES;
   className?: string;
@@ -28,7 +28,7 @@ export function AdminPanel({
     <section id={id} aria-labelledby={`${id}-title`} className={`admin-panel ${className}`}>
       <header className="mb-5 space-y-1">
         <h2 id={`${id}-title`} className={`text-lg font-bold ${accent ? ACCENT_CLASSES[accent] : "text-slate-900"}`}>{title}</h2>
-        <p className="text-sm leading-relaxed text-slate-800">{description}</p>
+        {description && <p className="text-sm leading-relaxed text-slate-800">{description}</p>}
       </header>
       {children}
     </section>

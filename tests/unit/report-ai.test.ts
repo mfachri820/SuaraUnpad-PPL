@@ -41,6 +41,9 @@ type ReportRecord = {
   imageUrl: string;
   upvoteCount: number;
   updatedAt: Date;
+  verifiedAt: Date | null;
+  inProgressAt: Date | null;
+  resolvedAt: Date | null;
 };
 
 const mockedCreateReport = vi.mocked(reportService.createReport);

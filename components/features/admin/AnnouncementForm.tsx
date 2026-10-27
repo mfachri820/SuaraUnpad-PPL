@@ -6,7 +6,7 @@ import { ANNOUNCEMENT_PIN_DAYS } from "@/lib/api/types";
 import Select from "@/components/ui/Select";
 import { AdminPanel, AdminNotice, type AdminFeedback } from "./AdminUI";
 
-export default function AnnouncementForm({ onCreated }: { onCreated?: () => void }) {
+export default function AnnouncementForm({ onCreated, className }: { onCreated?: () => void; className?: string }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [pinDays, setPinDays] = useState<number | "">("");
@@ -82,8 +82,8 @@ export default function AnnouncementForm({ onCreated }: { onCreated?: () => void
   };
 
   return (
-    <AdminPanel id="pengumuman-baru" title="Buat pengumuman" accent="green" description="Bagikan informasi resmi kepada pengguna Suara MIPA.">
-      <form onSubmit={handleSubmit} className="space-y-4">
+    <AdminPanel id="pengumuman-baru" className={className} title="Buat pengumuman" accent="green" description="Bagikan informasi resmi kepada pengguna Suara MIPA.">
+      <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4">
         <div className="admin-field">
           <label htmlFor="announcement-title" className="admin-label">Judul pengumuman</label>
           <input
@@ -145,7 +145,7 @@ export default function AnnouncementForm({ onCreated }: { onCreated?: () => void
         <button
           type="submit"
           disabled={isSubmitting}
-          className="admin-button admin-button-pengumuman w-full"
+          className="admin-button admin-button-pengumuman mt-auto w-full"
         >
           {isSubmitting ? "Mengirim..." : "Buat pengumuman"}
         </button>

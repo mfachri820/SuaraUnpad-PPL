@@ -35,8 +35,18 @@ function summarizeFlags(flags: { reason: FlagReason; note: string | null; create
     latestFlagAt: flags.reduce<Date | null>(
       (latest, flag) => (!latest || flag.createdAt > latest ? flag.createdAt : latest),
       null
+    ),
+    oldestFlagAt: flags.reduce<Date | null>(
+      (oldest, flag) => (!oldest || flag.createdAt < oldest ? flag.createdAt : oldest),
+      null
     )
   };
+}
+
+// Yang paling lama menunggu ditinjau di atas; jumlah laporan sebagai penentu bila sama.
+function byLongestWaiting(a: { oldestFlagAt: Date | null; flagCount: number }, b: { oldestFlagAt: Date | null; flagCount: number }) {
+  const diff = (a.oldestFlagAt?.getTime() ?? Infinity) - (b.oldestFlagAt?.getTime() ?? Infinity);
+  return diff !== 0 ? diff : b.flagCount - a.flagCount;
 }
 
 function reviewData(status: FlagStatus, adminId: string) {
@@ -219,7 +229,7 @@ export const moderationService = {
           createdAt: comment.createdAt,
           ...summarizeFlags(comment.flags)
         }))
-        .sort((a, b) => b.flagCount - a.flagCount)
+        .sort(byLongestWaiting)
         .slice(0, QUEUE_LIMIT);
     }
 
@@ -244,7 +254,7 @@ export const moderationService = {
         createdAt: post.createdAt,
         ...summarizeFlags(post.flags)
       }))
-      .sort((a, b) => b.flagCount - a.flagCount)
+      .sort(byLongestWaiting)
       .slice(0, QUEUE_LIMIT);
   },
 

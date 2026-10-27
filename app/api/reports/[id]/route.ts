@@ -36,7 +36,7 @@ export async function PATCH(
     const body = await request.json();
     const newStatus = body.status as ReportStatus | undefined;
 
-    if (!newStatus) {
+    if (!newStatus || !Object.values(ReportStatus).includes(newStatus)) {
       return errorResponse('Field status wajib diisi (SUBMITTED, VERIFIED, IN_PROGRESS, RESOLVED)', 400);
     }
 

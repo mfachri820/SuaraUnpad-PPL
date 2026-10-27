@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ReportCategory, ReportStatus } from "@prisma/client";
 import { uploadService } from '@/services/uploadService';
+import { authorSelect, toPublicAuthor } from '@/lib/author';
 
 // Interface biar ga type 'any'
 export interface CreateReportPayload {
@@ -16,6 +17,32 @@ export interface GetReportsFilter {
   limit?: number;
   category?: ReportCategory;
   status?: ReportStatus;
+}
+
+const ADMIN_QUEUE_LIMIT = 100;
+
+const STAGE_ORDER: ReportStatus[] = ["SUBMITTED", "VERIFIED", "IN_PROGRESS", "RESOLVED"];
+const STAGE_FIELD = {
+  VERIFIED: "verifiedAt",
+  IN_PROGRESS: "inProgressAt",
+  RESOLVED: "resolvedAt"
+} as const;
+
+type StageTimestamps = Partial<Record<(typeof STAGE_FIELD)[keyof typeof STAGE_FIELD], Date | null>>;
+
+// Tahap yang tercapai (termasuk yang dilompati) diberi waktu sekali saja;
+// tahap setelah status baru dikosongkan bila laporan dimundurkan.
+export function stageTimestamps(current: StageTimestamps, newStatus: ReportStatus, now: Date): StageTimestamps {
+  const target = STAGE_ORDER.indexOf(newStatus);
+  const data: StageTimestamps = {};
+  for (const [stage, field] of Object.entries(STAGE_FIELD) as [ReportStatus, keyof StageTimestamps][]) {
+    if (STAGE_ORDER.indexOf(stage) <= target) {
+      if (!current[field]) data[field] = now;
+    } else if (current[field]) {
+      data[field] = null;
+    }
+  }
+  return data;
 }
 
 export const reportService = {
@@ -121,21 +148,48 @@ export const reportService = {
     const existingReport = await prisma.report.findUnique({ where: { id } });
     if (!existingReport) throw new Error("Laporan tidak ditemukan");
 
-    const updatedReport = await prisma.report.update({
-      where: { id: id },
-      data: { status: newStatus }
-    });
+    return prisma.$transaction(async (tx) => {
+      const updatedReport = await tx.report.update({
+        where: { id: id },
+        data: { status: newStatus, ...stageTimestamps(existingReport, newStatus, new Date()) }
+      });
 
-    await prisma.notification.create({
-      data: {
-        recipientId: existingReport.authorId, // Kirim ke pembuat laporan
-        actorId: existingReport.authorId, // Karena sistem/admin yang ubah, kita bisa pakai ID authornya sendiri atau ID Admin (opsional)
-        type: "REPORT_STATUS_CHANGED", // Pastikan nama Enum ini sesuai di schema.prisma Anda!
-        reportId: id
+      await tx.notification.create({
+        data: {
+          recipientId: existingReport.authorId, // Kirim ke pembuat laporan
+          actorId: existingReport.authorId, // Karena sistem/admin yang ubah, kita bisa pakai ID authornya sendiri atau ID Admin (opsional)
+          type: "REPORT_STATUS_CHANGED", // Pastikan nama Enum ini sesuai di schema.prisma Anda!
+          reportId: id
+        }
+      });
+
+      return updatedReport;
+    });
+  },
+
+  // FUNGSI ANTREAN ADMIN: laporan per status, yang paling lama menunggu di atas
+  async getAdminQueue(status: ReportStatus) {
+    const reports = await prisma.report.findMany({
+      where: { status },
+      orderBy: status === "RESOLVED" ? { resolvedAt: { sort: "desc", nulls: "last" } } : { createdAt: "asc" },
+      take: ADMIN_QUEUE_LIMIT,
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        category: true,
+        location: true,
+        imageUrl: true,
+        status: true,
+        upvoteCount: true,
+        createdAt: true,
+        verifiedAt: true,
+        inProgressAt: true,
+        resolvedAt: true,
+        author: { select: authorSelect }
       }
     });
-
-    return updatedReport;
+    return reports.map((report) => ({ ...report, author: toPublicAuthor(report.author) }));
   },
 
   // FUNGSI DELETE (Hapus Laporan)
