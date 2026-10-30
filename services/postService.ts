@@ -2,6 +2,7 @@ import type { PostKind, Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { authorSelect, toPublicAuthor } from '@/lib/author';
 import {
+  adminReadOnlyError,
   badRequest,
   forbidden,
   isUniqueViolation,
@@ -108,6 +109,7 @@ export const postService = {
     if (isAnnouncement && role !== 'ADMIN') {
       throw forbidden('Akses ditolak. Hanya Admin yang dapat membuat pengumuman.');
     }
+    if (!isAnnouncement && role === 'ADMIN') throw adminReadOnlyError();
     if (isAnnouncement && data.policyId) {
       throw badRequest('Pengumuman tidak dapat dikaitkan dengan kebijakan.');
     }

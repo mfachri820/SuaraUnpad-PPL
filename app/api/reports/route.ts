@@ -1,5 +1,6 @@
 import { reportService, CreateReportPayload, GetReportsFilter } from '@/services/reportService';
 import { successResponse, errorResponse } from '@/lib/apiResponse';
+import { ADMIN_READ_ONLY_MESSAGE } from '@/lib/http';
 import { ReportCategory, ReportStatus } from '@prisma/client';
 import { uploadService } from '@/services/uploadService';
 import { detectDamage, evaluateAiResult, AiDamageType } from '@/services/reportAiService';
@@ -57,6 +58,9 @@ export async function POST(request: Request) {
     const authorId = request.headers.get('x-user-id');
     if (!authorId) {
       return errorResponse('Akses ditolak. Silakan login terlebih dahulu.', 401);
+    }
+    if (request.headers.get('x-user-role') === 'ADMIN') {
+      return errorResponse(ADMIN_READ_ONLY_MESSAGE, 403);
     }
 
     // B. Tangkap data JSON yang dikirim Frontend

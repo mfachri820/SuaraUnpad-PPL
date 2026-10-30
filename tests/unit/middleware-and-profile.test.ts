@@ -149,3 +149,46 @@ describe('Middleware and profile validation', () => {
     expect(mockedTransaction).not.toHaveBeenCalled();
   });
 });
+
+describe('Pemisahan halaman admin dan user (proxy UI)', () => {
+  const pageRequest = async (path: string, role: 'STUDENT' | 'LECTURER' | 'ADMIN') => {
+    mockedJwtVerify.mockResolvedValue({
+      payload: { isVerified: true, userId: 'user-1', role },
+      protectedHeader: {}
+    } as unknown as JWTVerifyResult<unknown> & ResolvedKey);
+    const { NextRequest } = await import('next/server');
+    return middleware(new NextRequest(`http://localhost${path}`, { headers: { cookie: 'token=fake-token' } }));
+  };
+
+  const redirectPath = (response: Response) => {
+    const location = response.headers.get('location');
+    return location ? new URL(location).pathname : null;
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('non-admin yang membuka /admin/* dialihkan ke /home', async () => {
+    expect(redirectPath(await pageRequest('/admin', 'STUDENT'))).toBe('/home');
+    expect(redirectPath(await pageRequest('/admin/moderation', 'LECTURER'))).toBe('/home');
+  });
+
+  it('admin bisa membuka panel admin dan halaman lihat-saja user', async () => {
+    expect(redirectPath(await pageRequest('/admin/content', 'ADMIN'))).toBeNull();
+    expect(redirectPath(await pageRequest('/home', 'ADMIN'))).toBeNull();
+    expect(redirectPath(await pageRequest('/aspirasi/abc', 'ADMIN'))).toBeNull();
+  });
+
+  it('admin dialihkan ke /admin dari halaman pembuatan laporan dan dari halaman login', async () => {
+    expect(redirectPath(await pageRequest('/report', 'ADMIN'))).toBe('/admin');
+    expect(redirectPath(await pageRequest('/profil/my-report', 'ADMIN'))).toBe('/admin');
+    expect(redirectPath(await pageRequest('/login', 'ADMIN'))).toBe('/admin');
+    expect(redirectPath(await pageRequest('/login', 'STUDENT'))).toBe('/home');
+  });
+
+  it('halaman yang hanya berawalan sama tidak ikut diblokir', async () => {
+    expect(redirectPath(await pageRequest('/reports-archive', 'ADMIN'))).toBeNull();
+    expect(redirectPath(await pageRequest('/administrasi', 'STUDENT'))).toBeNull();
+  });
+});

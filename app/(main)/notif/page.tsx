@@ -183,6 +183,16 @@ export default function NotifikasiPage() {
     const reportTitle = notif.report?.title ? `"${notif.report.title}"` : 'Anda';
     const reportStatus = notif.report?.status; // Will be undefined without backend changes
     const commentContent = notif.comment?.content ? `"${notif.comment.content.substring(0, 50)}${notif.comment.content.length > 50 ? '...' : ''}"` : 'Silakan cek balasan terbaru.';
+    const discussionColor = notif.policyId
+      ? 'text-wacana-foreground border border-wacana/30'
+      : notif.post?.kind === 'ANNOUNCEMENT'
+        ? 'text-pengumuman-foreground border border-pengumuman/30'
+        : 'text-aspirasi-foreground border border-aspirasi/30';
+    const discussionLabelColor = notif.policyId
+      ? 'text-wacana-foreground'
+      : notif.post?.kind === 'ANNOUNCEMENT'
+        ? 'text-pengumuman-foreground'
+        : 'text-aspirasi-foreground';
 
     if (notif.type === 'REPORT_STATUS_CHANGED') {
       let icon = <FiClock />;
@@ -238,32 +248,32 @@ export default function NotifikasiPage() {
       'COMMENT_ON_POST': {
         title: notif.post?.title ? `Seseorang mengomentari aspirasi ${postTitle}` : "Seseorang mengomentari aspirasi Anda",
         message: notif.comment?.content ? `${actorName}: ${commentContent}` : `${actorName} memberikan komentar.`,
-        icon: <FiMessageSquare />, colorClass: 'text-blue-500 border border-blue-200', labelClass: 'text-blue-500', label: 'ASPIRASI'
+        icon: <FiMessageSquare />, colorClass: discussionColor, labelClass: discussionLabelColor, label: notif.post?.kind === 'ANNOUNCEMENT' ? 'PENGUMUMAN' : 'ASPIRASI'
       },
       'COMMENT_ON_POLICY': {
         title: notif.policy?.title ? `Seseorang mengomentari kebijakan ${policyTitle}` : "Seseorang mengomentari kebijakan Anda",
         message: notif.comment?.content ? `${actorName}: ${commentContent}` : `${actorName} memberikan komentar.`,
-        icon: <FiMessageSquare />, colorClass: 'text-blue-500 border border-blue-200', labelClass: 'text-blue-500', label: 'WACANA'
+        icon: <FiMessageSquare />, colorClass: 'text-wacana-foreground border border-wacana/30', labelClass: 'text-wacana-foreground', label: 'WACANA'
       },
       'REPLY_ON_COMMENT': {
         title: "Seseorang membalas komentar Anda",
         message: notif.comment?.content ? `${actorName}: ${commentContent}` : `${actorName} membalas komentar Anda.`,
-        icon: <FiMessageSquare />, colorClass: 'text-blue-500 border border-blue-200', labelClass: 'text-blue-500', label: 'ASPIRASI'
+        icon: <FiMessageSquare />, colorClass: discussionColor, labelClass: discussionLabelColor, label: 'BALASAN'
       },
       'UPVOTE_POST': {
         title: notif.post?.title ? `Seseorang mendukung aspirasi ${postTitle}` : "Seseorang mendukung aspirasi Anda",
         message: `${actorName} memberikan dukungan pada aspirasi tersebut.`,
-        icon: <FiArrowUp />, colorClass: 'text-[#F99D26] border border-[#F99D26]/30', labelClass: 'text-[#F99D26]', label: 'DUKUNGAN'
+        icon: <FiArrowUp />, colorClass: 'text-aspirasi-foreground border border-aspirasi/30', labelClass: 'text-aspirasi-foreground', label: 'DUKUNGAN'
       },
       'UPVOTE_REPORT': {
         title: notif.report?.title ? `Seseorang mendukung laporan ${reportTitle}` : "Seseorang mendukung laporan Anda",
         message: `${actorName} memberikan dukungan pada laporan tersebut.`,
-        icon: <FiArrowUp />, colorClass: 'text-[#F99D26] border border-[#F99D26]/30', labelClass: 'text-[#F99D26]', label: 'DUKUNGAN'
+        icon: <FiArrowUp />, colorClass: 'text-laporan-foreground border border-laporan/30', labelClass: 'text-laporan-foreground', label: 'DUKUNGAN'
       },
       'UPVOTE_COMMENT': {
         title: "Seseorang mendukung komentar Anda",
         message: `${actorName} memberikan dukungan pada komentar Anda.`,
-        icon: <FiArrowUp />, colorClass: 'text-[#F99D26] border border-[#F99D26]/30', labelClass: 'text-[#F99D26]', label: 'DUKUNGAN'
+        icon: <FiArrowUp />, colorClass: discussionColor, labelClass: discussionLabelColor, label: 'DUKUNGAN'
       },
       'REPORT_STATUS_CHANGED': {
         title: "Pemberitahuan status laporan",
@@ -283,7 +293,7 @@ export default function NotifikasiPage() {
       'NEW_ANNOUNCEMENT': {
         title: notif.post?.title ? `Pengumuman baru: ${postTitle}` : "Ada pengumuman baru",
         message: `${actorName} membagikan pengumuman resmi. Tap untuk membaca selengkapnya.`,
-        icon: <FiSpeaker />, colorClass: 'text-blue-600 border border-blue-200', labelClass: 'text-blue-600', label: 'PENGUMUMAN'
+        icon: <FiSpeaker />, colorClass: 'text-pengumuman-foreground border border-pengumuman/30', labelClass: 'text-pengumuman-foreground', label: 'PENGUMUMAN'
       }
     };
 

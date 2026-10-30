@@ -57,6 +57,17 @@ export function requireAdmin(request: Request): AuthContext {
   return auth;
 }
 
+// Admin hanya bisa melihat sisi user; aksi partisipasi (posting, komentar, vote, dll.) khusus non-admin.
+export const ADMIN_READ_ONLY_MESSAGE = 'Akses ditolak. Admin tidak dapat melakukan aksi ini.';
+
+export const adminReadOnlyError = () => forbidden(ADMIN_READ_ONLY_MESSAGE, 'ADMIN_READ_ONLY');
+
+export function requireUser(request: Request): AuthContext {
+  const auth = requireAuth(request);
+  if (auth.role === 'ADMIN') throw adminReadOnlyError();
+  return auth;
+}
+
 function toIssues(error: z.ZodError) {
   return error.issues.map((issue) => ({
     path: issue.path.map(String).join('.'),

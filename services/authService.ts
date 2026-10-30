@@ -55,6 +55,9 @@ export const authService = {
       throw new Error('Program studi tidak valid. Pilih salah satu program studi FMIPA.');
     }
 
+    // Validate the signing key before creating a user that needs email verification.
+    const verificationSecret = isGoogleAuth ? undefined : getJwtSecret();
+
     // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
@@ -85,13 +88,13 @@ export const authService = {
       }
     });
     // --- LOGIKA PENGIRIMAN EMAIL VERIFIKASI (HANYA UNTUK MANUAL REGISTER) ---
-    if (!isGoogleAuth) {
+    if (verificationSecret) {
       // 1. Buat Token Verifikasi khusus (berlaku 1 jam)
       const verifyToken = await new SignJWT({ userId: newUser.id, action: 'verify_email' })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
-        .sign(getJwtSecret());
+        .sign(verificationSecret);
 
       // 2. Buat URL Verifikasi
       const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;

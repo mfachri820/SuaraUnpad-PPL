@@ -1,17 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { toast } from "react-hot-toast";
+import { useEffect, useRef, useState } from "react";
 import { apiFetch, getApiErrorMessage } from "@/lib/api/client";
 import { ANNOUNCEMENT_PIN_DAYS } from "@/lib/api/types";
+import Select from "@/components/ui/Select";
+import { AdminPanel, AdminNotice, type AdminFeedback } from "./AdminUI";
 
-export default function AnnouncementForm({ onCreated }: { onCreated?: () => void }) {
+export default function AnnouncementForm({ onCreated, className }: { onCreated?: () => void; className?: string }) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [pinDays, setPinDays] = useState<number | "">("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState<AdminFeedback | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => () => {
+    if (imagePreview) URL.revokeObjectURL(imagePreview);
+  }, [imagePreview]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
@@ -25,12 +32,13 @@ export default function AnnouncementForm({ onCreated }: { onCreated?: () => void
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setFeedback(null);
     if (title.trim().length < 5) {
-      toast.error("Judul pengumuman minimal 5 karakter.");
+      setFeedback({ type: "error", message: "Judul pengumuman minimal 5 karakter." });
       return;
     }
     if (!content.trim()) {
-      toast.error("Isi pengumuman wajib diisi.");
+      setFeedback({ type: "error", message: "Isi pengumuman wajib diisi." });
       return;
     }
     setIsSubmitting(true);
@@ -58,84 +66,90 @@ export default function AnnouncementForm({ onCreated }: { onCreated?: () => void
         })
       });
 
-      toast.success("Pengumuman berhasil dibuat.");
+      setFeedback({ type: "success", message: "Pengumuman berhasil dibuat." });
       setTitle("");
       setContent("");
       setPinDays("");
       setImageFile(null);
       setImagePreview(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       onCreated?.();
     } catch (error) {
-      toast.error(getApiErrorMessage(error, "Gagal membuat pengumuman."));
+      setFeedback({ type: "error", message: getApiErrorMessage(error, "Gagal membuat pengumuman.") });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="w-full max-w-xl rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm mb-8 text-left">
-      <h2 className="text-2xl font-bold text-blue-600 mb-4">Buat Pengumuman</h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 mb-2">Judul</label>
+    <AdminPanel id="pengumuman-baru" className={className} title="Buat pengumuman" accent="green" description="Bagikan informasi resmi kepada pengguna Suara MIPA.">
+      <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4">
+        <div className="admin-field">
+          <label htmlFor="announcement-title" className="admin-label">Judul pengumuman</label>
           <input
+            id="announcement-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             type="text"
-            placeholder="Contoh: Pemeliharaan Jaringan Kampus"
-            className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-blue-500"
+            placeholder="Contoh: Pemeliharaan jaringan kampus"
+            className="admin-input"
+            minLength={5}
+            disabled={isSubmitting}
             required
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 mb-2">Isi Pengumuman</label>
+        <div className="admin-field">
+          <label htmlFor="announcement-content" className="admin-label">Isi pengumuman</label>
           <textarea
+            id="announcement-content"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={5}
             placeholder="Tuliskan isi pengumuman..."
-            className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-blue-500 resize-none"
+            className="admin-input"
+            disabled={isSubmitting}
             required
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 mb-2">Gambar (opsional)</label>
-          <label className="flex cursor-pointer items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-6 text-sm text-zinc-500 hover:border-blue-500 hover:text-blue-500 transition">
-            <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
-            {imagePreview ? "Ganti gambar" : "Pilih atau seret file gambar"}
+        <div className="admin-field">
+          <label id="announcement-image-label" htmlFor="announcement-image" className="admin-label">Gambar (opsional)</label>
+          <label htmlFor="announcement-image" className="admin-upload">
+            <input ref={fileInputRef} id="announcement-image" aria-labelledby="announcement-image-label" type="file" accept="image/*" className="sr-only" onChange={handleImageChange} disabled={isSubmitting} />
+            <span className="min-w-0 break-all">{imageFile ? imageFile.name + " · Ganti gambar" : "Pilih gambar pengumuman"}</span>
           </label>
           {imagePreview && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={imagePreview}
-              alt="Preview"
-              className="w-full h-44 object-cover rounded-2xl mt-2 border border-zinc-200"
+              alt="Pratinjau gambar pengumuman"
+              className="w-full h-44 object-cover rounded-xl border border-slate-200"
             />
           )}
         </div>
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 mb-2">Durasi Pin</label>
-          <select
-            value={pinDays}
-            onChange={(e) => setPinDays(e.target.value ? Number(e.target.value) : "")}
-            className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm text-black outline-none focus:border-blue-500"
-          >
-            <option value="">Tanpa pin</option>
-            {ANNOUNCEMENT_PIN_DAYS.map((days) => (
-              <option key={days} value={days}>
-                {days} hari
-              </option>
-            ))}
-          </select>
+        <div className="admin-field">
+          <label htmlFor="announcement-pin" className="admin-label">Durasi pin</label>
+          <Select
+            id="announcement-pin"
+            value={String(pinDays)}
+            disabled={isSubmitting}
+            aria-describedby="announcement-pin-hint"
+            onValueChange={value => setPinDays(value ? Number(value) : "")}
+            options={[
+              { value: "", label: "Tanpa pin" },
+              ...ANNOUNCEMENT_PIN_DAYS.map(days => ({ value: String(days), label: `${days} hari` }))
+            ]}
+          />
+          <p id="announcement-pin-hint" className="text-sm leading-relaxed text-slate-700">Pengumuman yang dipin tampil di bagian atas beranda.</p>
         </div>
+        <AdminNotice feedback={feedback} />
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg active:scale-95 disabled:opacity-50 hover:cursor-pointer"
+          className="admin-button admin-button-pengumuman mt-auto w-full"
         >
-          {isSubmitting ? "Mengirim..." : "Buat Pengumuman"}
+          {isSubmitting ? "Mengirim..." : "Buat pengumuman"}
         </button>
       </form>
-    </div>
+    </AdminPanel>
   );
 }

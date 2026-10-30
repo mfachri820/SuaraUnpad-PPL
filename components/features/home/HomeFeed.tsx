@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import {
@@ -56,6 +57,14 @@ const getReportAuthorName = (author: ReportAuthor | null | undefined) => {
 
 type Tab = "ALL" | "ASPIRASI" | "LAPORAN" | "WACANA" | "PENGUMUMAN";
 
+const TAB_COLORS: Record<Tab, string> = {
+  ALL: "text-slate-900 border-slate-900",
+  ASPIRASI: "text-aspirasi-foreground border-aspirasi",
+  LAPORAN: "text-laporan-foreground border-laporan",
+  WACANA: "text-wacana-foreground border-wacana",
+  PENGUMUMAN: "text-pengumuman-foreground border-pengumuman"
+};
+
 // 🌟 Tipe Data Gabungan untuk Super Feed Timeline
 type FeedItem =
   | { type: "POST"; data: Post; date: number }
@@ -82,6 +91,8 @@ export default function HomeFeed() {
 
   // --- STATE DATA ---
   const [userData, setUserData] = useState<UserData | null>(null);
+  // Admin hanya melihat feed: tanpa posting aspirasi maupun upvote.
+  const isAdmin = userData?.role === "ADMIN";
   const [reports, setReports] = useState<Report[]>([]);
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -424,12 +435,12 @@ export default function HomeFeed() {
       <div
         key={`post-${post.id}-${index}`}
         onClick={() => router.push(`/aspirasi/${post.id}`)}
-        className={`p-4 sm:p-6 hover:bg-slate-50/50 transition cursor-pointer flex gap-3 sm:gap-4 ${isAnnouncement ? "border-l-4 border-l-blue-600 bg-blue-50/30" : ""}`}
+        className={`p-4 sm:p-6 hover:bg-slate-50/50 transition cursor-pointer flex gap-3 sm:gap-4 border-l-4 ${isAnnouncement ? "border-l-pengumuman bg-pengumuman-subtle/50" : "border-l-aspirasi"}`}
       >
         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-100 shrink-0 flex items-center justify-center font-bold text-slate-400 uppercase">
           {authorName.charAt(0)}
         </div>
-        <div className="grow">
+        <div className="min-w-0 grow">
           <div className="font-bold text-slate-900 flex flex-wrap items-center gap-2 mb-1">
             {authorName}
             {isAdminAuthor(post.author) && (
@@ -437,7 +448,7 @@ export default function HomeFeed() {
                 Admin
               </span>
             )}
-            <span className="font-medium text-slate-400 text-sm">
+            <span className={`font-medium text-sm ${isAnnouncement ? "text-pengumuman-foreground" : "text-aspirasi-foreground"}`}>
               · {isAnnouncement ? "Pengumuman" : "Aspirasi"}
             </span>
             {post.isClosed && (
@@ -446,24 +457,25 @@ export default function HomeFeed() {
               </span>
             )}
           </div>
-          {isAnnouncement && (
-            <div className="text-blue-700 text-xs font-black uppercase tracking-widest mb-2">
-              📢 Pengumuman
-            </div>
-          )}
           {isAnnouncement && post.title && (
-            <h3 className="text-lg font-black text-blue-900 mb-2">{post.title}</h3>
+            <h3 className="text-lg font-bold text-slate-900 mb-2">{post.title}</h3>
           )}
           {renderPostContent(post.content, post.imageUrl)}
           <div className="flex items-center gap-8 mt-4 text-slate-400">
             <button className="hover:cursor-pointer flex items-center gap-1.5 hover:text-[#2682F9] transition">
               <FiMessageCircle size={18} />
             </button>
-            {!isAnnouncement && (
+            {!isAnnouncement && isAdmin && (
+              <span className="flex items-center gap-1.5" title="Jumlah upvote">
+                <FiArrowUp size={18} />
+                <span className="text-sm font-bold">{post._count?.postUpvotes || 0}</span>
+              </span>
+            )}
+            {!isAnnouncement && !isAdmin && (
               <button
                 onClick={(e) => handlePostUpvote(e, post)}
                 disabled={post.isClosed}
-                className={`hover:cursor-pointer flex items-center gap-1.5 transition ${post.isClosed ? "opacity-40 cursor-not-allowed" : "hover:text-[#F99D26]"} ${post.hasUpvoted ? "text-[#F99D26]" : ""}`}
+                className={`hover:cursor-pointer flex items-center gap-1.5 transition ${post.isClosed ? "opacity-40 cursor-not-allowed" : "hover:text-aspirasi-foreground"} ${post.hasUpvoted ? "text-aspirasi-foreground" : ""}`}
               >
                 <FiArrowUp size={18} />
                 <span className="text-sm font-bold">
@@ -503,9 +515,9 @@ export default function HomeFeed() {
 
   return (
     /* 🌟 SOLUSI LAYOUT: Diubah jadi 1 kolom besar terpusat (justify-center) */
-    <div className="mx-auto flex w-full justify-center px-4 py-6 sm:px-6 lg:px-8">
+    <div className="mx-auto w-full">
       {/* 🚀 MAIN FEED (Super Feed Terpadu) */}
-      <main className="w-full max-w-2xl bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
+      <section aria-label="Aktivitas FMIPA" className="w-full bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
         {/* 1. CAROUSEL DONASI (Paling Atas) */}
         <div className="border-b border-slate-100 pb-4 p-4 bg-slate-50/50">
           <CampaignCarousel />
@@ -513,15 +525,15 @@ export default function HomeFeed() {
 
         {/* 1b. STRIP PENGUMUMAN TER-PIN */}
         {pinnedAnnouncements.length > 0 && (
-          <div className="border-b border-slate-100 p-4 space-y-3 bg-blue-50/40">
+          <div className="border-b border-slate-100 p-4 space-y-3 bg-pengumuman-subtle">
             {pinnedAnnouncements.map((announcement) => (
               <div
                 key={announcement.id}
                 onClick={() => router.push(`/aspirasi/${announcement.id}`)}
-                className="cursor-pointer bg-white rounded-2xl border border-blue-200 p-4 hover:shadow-md transition"
+                className="cursor-pointer bg-white rounded-2xl border border-pengumuman/30 p-4 hover:border-pengumuman transition"
               >
-                <div className="text-blue-700 text-xs font-black uppercase tracking-widest mb-1 flex items-center gap-1">
-                  📌 Pengumuman
+                <div className="text-pengumuman-foreground text-xs font-semibold mb-1">
+                  Pengumuman
                 </div>
                 <h3 className="font-black text-slate-900 mb-1">{announcement.title}</h3>
                 <p className="text-sm text-slate-600 line-clamp-2">{announcement.content}</p>
@@ -530,7 +542,13 @@ export default function HomeFeed() {
           </div>
         )}
 
-        {/* 2. KOTAK INPUT ASPIRASI */}
+        {/* 2. KOTAK INPUT ASPIRASI (khusus user; admin hanya melihat) */}
+        {isAdmin ? (
+          <p className="px-4 py-3 sm:px-6 border-b border-slate-100 bg-slate-50 text-sm text-slate-600">
+            Mode admin: hanya melihat. Buat pengumuman lewat{" "}
+            <Link href="/admin/content" className="font-bold text-[#2682F9] hover:underline">Panel Admin</Link>.
+          </p>
+        ) : (
         <div className="p-4 sm:p-6 border-b border-slate-100 flex gap-4">
           <div className="w-12 h-12 rounded-full bg-orange-50 shrink-0 flex items-center justify-center font-bold text-[#F99D26] uppercase text-xl">
             {userData?.studentProfile?.fullName?.charAt(0) || "U"}
@@ -596,6 +614,7 @@ export default function HomeFeed() {
             </div>
           </div>
         </div>
+        )}
 
         {/* 3. STICKY TABS */}
         <div className="flex border-b border-slate-100 sticky top-16 md:top-20 bg-white/95 backdrop-blur-md z-20 overflow-x-auto">
@@ -603,7 +622,8 @@ export default function HomeFeed() {
             <button
               key={tab.key}
               onClick={() => handleTabChange(tab.key)}
-              className={`flex-1 py-4 px-2 text-xs sm:text-sm font-bold transition border-b-4 whitespace-nowrap ${activeTab === tab.key ? "text-[#F99D26] border-[#F99D26] hover:cursor-pointer" : "text-slate-400 border-transparent hover:cursor-pointer hover:bg-slate-50"}`}
+              aria-pressed={activeTab === tab.key}
+              className={`flex-1 py-4 px-3 text-xs sm:text-sm font-bold transition border-b-4 whitespace-nowrap cursor-pointer ${activeTab === tab.key ? TAB_COLORS[tab.key] : "text-slate-500 border-transparent hover:bg-slate-50"}`}
             >
               {tab.label}
             </button>
@@ -630,14 +650,14 @@ export default function HomeFeed() {
                   <div
                     key={`report-${report.id}-${index}`}
                     onClick={() => setSelectedReport(report)}
-                    className="p-4 sm:p-6 hover:bg-slate-50/50 transition cursor-pointer flex flex-col gap-3 border-l-4 border-l-[#F99D26]"
+                    className="p-4 sm:p-6 hover:bg-slate-50/50 transition cursor-pointer flex flex-col gap-3 border-l-4 border-l-laporan"
                   >
-                    <div className="font-bold text-[#F99D26] text-xs uppercase tracking-widest mb-3 flex items-center gap-1">
+                    <div className="font-bold text-laporan-foreground text-xs uppercase tracking-widest mb-3 flex items-center gap-1">
                       <FiAlertCircle /> LAPORAN SIVITAS
                     </div>
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-orange-50 shrink-0 flex items-center justify-center font-bold text-[#F99D26] uppercase border border-orange-100">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-laporan-subtle shrink-0 flex items-center justify-center font-bold text-laporan-foreground uppercase border border-laporan/20">
                           {getReportAuthorName(report.author).charAt(0)}
                         </div>
                         <div>
@@ -671,7 +691,7 @@ export default function HomeFeed() {
                       <h3 className="text-base font-bold text-slate-900 leading-tight mb-1">
                         {report.title}
                       </h3>
-                      <div className="flex items-center gap-1 text-xs text-[#F99D26] mb-2 font-medium uppercase tracking-wider">
+                      <div className="flex items-center gap-1 text-xs text-laporan-foreground mb-2 font-medium uppercase tracking-wider">
                         <FiMapPin /> {report.location}
                       </div>
                       <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">
@@ -693,19 +713,26 @@ export default function HomeFeed() {
                       )}
 
                     <div className="mt-2 pt-3 border-t border-slate-50 flex items-center text-slate-400">
+                      {isAdmin ? (
+                        <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold bg-slate-100 text-slate-600" title="Jumlah dukungan">
+                          <ImArrowUp />
+                          {report.upvoteCount}
+                        </span>
+                      ) : (
                       <button
                         onClick={(e) => handleReportUpvote(e, report.id)}
                         className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold transition ${
                           report.hasUpvoted
-                            ? "bg-orange-100 text-[#F99D26] hover:cursor-pointer"
+                            ? "bg-laporan-subtle text-laporan-foreground hover:cursor-pointer"
                             : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:cursor-pointer"
                         }`}
                       >
                         <ImArrowUp
-                          className={report.hasUpvoted ? "text-[#F99D26]" : ""}
+                          className={report.hasUpvoted ? "text-laporan-foreground" : ""}
                         />
                         {report.upvoteCount}
                       </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -716,9 +743,9 @@ export default function HomeFeed() {
                 return (
                   <div
                     key={`policy-${item.data.id}-${index}`}
-                    className="p-4 sm:p-6 hover:bg-slate-50/50 border-l-4 border-l-[#2682F9]"
+                    className="p-4 sm:p-6 hover:bg-slate-50/50 border-l-4 border-l-wacana"
                   >
-                    <div className="font-bold text-[#2682F9] text-xs uppercase tracking-widest mb-3 flex items-center gap-1">
+                    <div className="font-bold text-wacana-foreground text-xs uppercase tracking-widest mb-3 flex items-center gap-1">
                       <FiAlertCircle /> WACANA KEBIJAKAN
                     </div>
                     <PolicyCard policy={item.data} />
@@ -729,7 +756,7 @@ export default function HomeFeed() {
             })
           )}
         </div>
-      </main>
+      </section>
 
       {/* 🚀 MODAL DETAIL LAPORAN */}
       {selectedReport && (
@@ -773,7 +800,7 @@ export default function HomeFeed() {
               <h2 className="text-2xl font-black text-slate-900 leading-tight mb-2">
                 {selectedReport.title}
               </h2>
-              <div className="flex items-center gap-2 text-sm text-[#F99D26] font-bold mb-6">
+              <div className="flex items-center gap-2 text-sm text-laporan-foreground font-bold mb-6">
                 <FiMapPin className="text-lg" /> {selectedReport.location}
               </div>
               <div className="bg-slate-50 rounded-2xl p-5 mb-6 border border-slate-100">
@@ -781,18 +808,19 @@ export default function HomeFeed() {
                   {selectedReport.description}
                 </p>
               </div>
-              <div className="bg-orange-50 rounded-2xl p-4 flex items-center justify-between border border-orange-100 mb-6">
-                <span className="text-sm font-bold text-orange-600 uppercase tracking-wider">
+              <div className="bg-laporan-subtle rounded-2xl p-4 flex items-center justify-between border border-laporan/20 mb-6">
+                <span className="text-sm font-bold text-laporan-foreground uppercase tracking-wider">
                   Total Dukungan
                 </span>
-                <span className="text-2xl font-black text-[#F99D26]">
+                <span className="text-2xl font-black text-laporan-foreground">
                   {selectedReport.upvoteCount}
                 </span>
               </div>
+              {!isAdmin && (
               <button
                 onClick={(e) => handleReportUpvote(e, selectedReport.id)}
                 disabled={isUpvotingReport}
-                className={`w-full py-4 rounded-2xl font-bold transition ${selectedReport.hasUpvoted ? "bg-slate-200 text-slate-600 hover:bg-slate-300 hover:cursor-pointer" : "hover:cursor-pointer bg-[#F99D26] text-white hover:bg-[#ec9626]"}`}
+                className={`w-full py-4 rounded-2xl font-bold transition ${selectedReport.hasUpvoted ? "bg-slate-200 text-slate-600 hover:bg-slate-300 hover:cursor-pointer" : "hover:cursor-pointer bg-laporan text-slate-900 hover:bg-laporan/90"}`}
               >
                 {isUpvotingReport ? (
                   <FiLoader className="animate-spin mx-auto" size={24} />
@@ -802,6 +830,7 @@ export default function HomeFeed() {
                   "Dukung Isu Ini"
                 )}
               </button>
+              )}
             </div>
           </div>
         </div>

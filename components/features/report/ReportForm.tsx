@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
+import Select from "@/components/ui/Select";
 import { FaCamera } from "react-icons/fa";
 import { IoMdInformationCircle } from "react-icons/io";
 import Image from "next/image";
@@ -27,11 +28,12 @@ interface ReportFormData {
 export default function ReportForm() {
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
     reset,
     trigger
-  } = useForm<ReportFormData>();
+  } = useForm<ReportFormData>({ defaultValues: { category: "" } });
 
   // States
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -153,7 +155,7 @@ export default function ReportForm() {
       {/* BAGIAN 1: FOTO */}
       <section id="section-foto">
         <div className="flex items-center gap-2 mb-3">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F99D26] text-xs font-bold text-white">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-laporan text-xs font-bold text-slate-900">
             1
           </span>
           <h2 className="font-bold text-slate-800">Ambil Foto</h2>
@@ -207,32 +209,37 @@ export default function ReportForm() {
       {/* BAGIAN 2: KATEGORI */}
       <section id="section-kategori">
         <div className="flex items-center gap-2 mb-3">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F99D26] text-xs font-bold text-white">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-laporan text-xs font-bold text-slate-900">
             2
           </span>
           <h2 className="font-bold text-slate-800">Pilih Kategori</h2>
         </div>
 
         <div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-100">
-          <select
-            id="input-category"
+          <Controller
+            name="category"
+            control={control}
             defaultValue=""
-            {...register("category", { required: true })}
-            className={`w-full rounded-lg border p-3 text-sm focus:outline-none focus:ring-1 bg-white cursor-pointer ${errors.category ? "border-red-400 focus:border-red-500 focus:ring-red-500 text-red-500" : "border-slate-300 focus:border-[#2682F9] focus:ring-[#2682F9] text-slate-700"}`}
-          >
-            <option value="" disabled>
-              Pilih Kategori Kerusakan Laporan
-            </option>
-
-            {/* Render data menggunakan konstanta */}
-            {REPORT_CATEGORIES.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.label}
-              </option>
-            ))}
-          </select>
+            rules={{ required: true }}
+            render={({ field }) => (
+              <Select
+                id="input-category"
+                name={field.name}
+                value={field.value}
+                onValueChange={field.onChange}
+                onBlur={field.onBlur}
+                inputRef={field.ref}
+                options={REPORT_CATEGORIES.map(cat => ({ value: cat.id, label: cat.label }))}
+                placeholder="Pilih kategori kerusakan"
+                aria-label="Kategori kerusakan"
+                aria-required
+                aria-describedby={errors.category ? "category-error" : undefined}
+                invalid={Boolean(errors.category)}
+              />
+            )}
+          />
           {errors.category && (
-            <span className="text-xs text-red-500 mt-2 block">
+            <span id="category-error" className="text-xs text-red-500 mt-2 block">
               *Kategori wajib dipilih
             </span>
           )}
@@ -242,7 +249,7 @@ export default function ReportForm() {
       {/* BAGIAN 3: DETAIL LAPORAN */}
       <section id="section-detail">
         <div className="flex items-center gap-2 mb-3">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F99D26] text-xs font-bold text-white">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-laporan text-xs font-bold text-slate-900">
             3
           </span>
           <h2 className="font-bold text-slate-800">Detail Laporan</h2>
@@ -304,8 +311,8 @@ export default function ReportForm() {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-3 rounded-xl bg-orange-50 p-4 border border-orange-100">
-          <span className="text-[#F99D26]">
+        <div className="mt-4 flex items-center gap-3 rounded-xl bg-laporan-subtle p-4 border border-laporan/20">
+          <span className="text-laporan-foreground">
             <IoMdInformationCircle />
           </span>
           <p className="text-xs text-slate-600 leading-relaxed">
@@ -319,7 +326,7 @@ export default function ReportForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full rounded-xl bg-[#ffb656] py-4 text-sm font-bold text-white transition hover:bg-[#F99D26] hover:cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+        className="w-full rounded-xl bg-laporan py-4 text-sm font-bold text-slate-900 transition hover:bg-laporan/90 hover:cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
       >
         {isSubmitting ? "MENGIRIM LAPORAN..." : "LAPOR"}
       </button>

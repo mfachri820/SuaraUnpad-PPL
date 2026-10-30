@@ -152,7 +152,9 @@ export default function AspirasiDetailPage() {
   const username = authorName.toLowerCase().replace(/\s/g, "");
   const isAnnouncement = post.kind === "ANNOUNCEMENT";
   const isOwner = currentUserId === post.authorId;
-  const canReport = !isOwner;
+  // Admin memoderasi langsung (tutup/hapus), bukan melaporkan; admin juga tidak ikut upvote.
+  const canReport = !isOwner && !isAdmin;
+  const canUpvote = !post.isClosed && !isAdmin;
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900">
@@ -169,8 +171,8 @@ export default function AspirasiDetailPage() {
 
         <article className="p-4">
           {isAnnouncement && (
-            <div className="mb-4 inline-flex items-center gap-2 bg-blue-600 text-white text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-lg">
-              📢 Pengumuman Resmi
+            <div className="mb-4 inline-flex bg-pengumuman-subtle text-pengumuman-foreground text-sm font-semibold px-3 py-1.5 rounded-lg">
+              Pengumuman
             </div>
           )}
 
@@ -251,7 +253,7 @@ export default function AspirasiDetailPage() {
           </div>
 
           {isAnnouncement && post.title && (
-            <h1 className="text-2xl font-black text-blue-900 mb-3 tracking-tight leading-tight">
+            <h1 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight leading-tight">
               {post.title}
             </h1>
           )}
@@ -297,8 +299,8 @@ export default function AspirasiDetailPage() {
             <div className="flex justify-start gap-12 py-2 border-b border-slate-50 text-slate-300">
               <button
                 onClick={handleUpvote}
-                disabled={post.isClosed}
-                className={`flex items-center gap-2 transition-all p-2 ${post.isClosed ? "cursor-not-allowed opacity-50" : "hover:cursor-pointer hover:text-[#F99D26]"} ${post.hasUpvoted ? "text-[#F99D26]" : ""}`}
+                disabled={!canUpvote}
+                className={`flex items-center gap-2 transition-all p-2 ${!canUpvote ? "cursor-not-allowed opacity-50" : "hover:cursor-pointer hover:text-[#F99D26]"} ${post.hasUpvoted ? "text-[#F99D26]" : ""}`}
               >
                 <FiArrowUp size={24} />
                 <span className="font-bold text-slate-600">

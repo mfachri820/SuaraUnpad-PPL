@@ -11,7 +11,8 @@ const myFont = localFont({
 
 export const metadata: Metadata = {
   title: "Suara MIPA",
-  description: "Sebuah one-stop platform untuk FMIPA yang lebih UNGGUL"
+  description: "Sebuah one-stop platform untuk FMIPA yang lebih UNGGUL",
+  icons: { icon: "/favicon.ico", shortcut: "/favicon.ico" }
 };
 
 export default function RootLayout({

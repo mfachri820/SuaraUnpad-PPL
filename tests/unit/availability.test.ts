@@ -6,8 +6,8 @@ vi.mock('@/lib/prisma', () => ({
   },
 }));
 
-import { validateDatabaseUrl } from '../lib/health';
-import { GET as healthGET } from '../app/api/health/route';
+import { validateDatabaseUrl } from '@/lib/health';
+import { GET as healthGET } from '@/app/api/health/route';
 import { prisma } from '@/lib/prisma';
 
 const mockedQueryRaw = vi.mocked(prisma.$queryRaw);

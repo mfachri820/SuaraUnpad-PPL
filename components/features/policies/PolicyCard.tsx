@@ -7,6 +7,7 @@ import { BiCommentDetail } from "react-icons/bi";
 import { FiCheckCircle } from "react-icons/fi";
 import { submitVotePolicy, removeVotePolicy } from "./PolicyFetch";
 import { Policy } from "@/components/features/policies/types";
+import { useIsAdmin } from "@/lib/clientAuth";
 
 export default function PolicyCard({
   policy,
@@ -21,6 +22,7 @@ export default function PolicyCard({
   const [agreeCount, setAgreeCount] = useState(policy.agreeCount || 0);
   const [disagreeCount, setDisagreeCount] = useState(policy.disagreeCount || 0);
   const [isVoting, setIsVoting] = useState(false);
+  const isAdmin = useIsAdmin();
 
   const totalVotes = agreeCount + disagreeCount;
 
@@ -39,7 +41,7 @@ export default function PolicyCard({
   ) => {
     e.preventDefault();
 
-    if (policy.status !== "ACTIVE") return;
+    if (policy.status !== "ACTIVE" || isAdmin) return;
 
     const prevVote = userVote;
     const prevAgree = agreeCount;
@@ -95,15 +97,29 @@ export default function PolicyCard({
   };
 
   const CardWrapper = isDetail ? "div" : Link;
-  const isVotingDisabled = policy.status !== "ACTIVE";
+  const isClosed = policy.status === "CLOSED";
+  // Admin hanya melihat hasil voting.
+  const isVotingDisabled = policy.status !== "ACTIVE" || isAdmin;
+  const agreeTextClass = isClosed
+    ? "text-slate-600"
+    : userVote === "AGREE"
+      ? "text-wacana-foreground"
+      : "text-slate-700";
+  const disagreeTextClass = isClosed
+    ? "text-slate-600"
+    : userVote === "DISAGREE"
+      ? "text-red-700"
+      : "text-slate-700";
 
   return (
     <CardWrapper
       href={isDetail ? "#" : `/policies/${policy.id}`}
-      className={`block bg-white rounded-3xl border shadow-sm ${
+      className={`block rounded-3xl border ${isClosed ? "bg-slate-50 shadow-none" : "bg-white shadow-sm"} ${
         isDetail
           ? "border-transparent"
-          : "border-slate-100 hover:bg-slate-50/50 hover:border-slate-200 hover:shadow-sm"
+          : isClosed
+            ? "border-slate-200 hover:bg-slate-100/50"
+            : "border-slate-100 hover:bg-slate-50/50 hover:border-slate-200 hover:shadow-sm"
       } p-5 transition`}
     >
       <div className="flex flex-col ">
@@ -112,7 +128,7 @@ export default function PolicyCard({
           <span
             className={`px-3 py-1 rounded-md text-xs font-bold tracking-wide ${
               policy.status === "ACTIVE"
-                ? "bg-blue-500 text-white"
+                ? "bg-wacana-subtle text-wacana-foreground"
                 : policy.status === "CLOSED"
                   ? "bg-red-500 text-white"
                   : "bg-slate-100 text-slate-600"
@@ -130,12 +146,12 @@ export default function PolicyCard({
         </div>
 
         {/* Konten Judul & Deskripsi */}
-        <h3 className="text-xl font-black text-slate-900 leading-tight mb-2">
+        <h3 className={`text-xl font-black leading-tight mb-2 ${isClosed ? "text-slate-600" : "text-slate-900"}`}>
           {policy.title}
         </h3>
 
         <p
-          className={`text-sm text-slate-700 leading-relaxed mb-5 ${
+          className={`text-sm leading-relaxed mb-5 ${isClosed ? "text-slate-600" : "text-slate-700"} ${
             !isDetail && "line-clamp-2"
           }`}
         >
@@ -149,15 +165,17 @@ export default function PolicyCard({
             onClick={(e) => handleVote(e, "AGREE")}
             disabled={isVotingDisabled || isVoting}
             className={`relative w-full h-10 overflow-hidden rounded-xl border text-left transition ${
-              userVote === "AGREE"
-                ? "border-blue-500 font-bold" // Terpilih
-                : "border-slate-200 font-medium hover:bg-slate-50" // Tidak terpilih
+              isClosed
+                ? "border-slate-200 font-medium"
+                : userVote === "AGREE"
+                  ? "border-wacana font-bold" // Terpilih
+                  : "border-slate-200 font-medium hover:bg-slate-50" // Tidak terpilih
             } ${isVotingDisabled || isVoting ? "cursor-not-allowed" : "cursor-pointer"}`}
           >
             {/* Background Bar */}
             <div
               className={`absolute top-0 left-0 h-full transition-all duration-500 ease-out ${
-                userVote === "AGREE" ? "bg-blue-100" : "bg-slate-300"
+                isClosed ? "bg-slate-200" : userVote === "AGREE" ? "bg-wacana-subtle" : "bg-slate-300"
               }`}
               style={{ width: `${agreePercentage}%` }}
             ></div>
@@ -165,24 +183,12 @@ export default function PolicyCard({
             {/* Konten Text di atas Bar */}
             <div className="absolute inset-0 flex justify-between items-center px-4 z-10 text-sm">
               <div className="flex items-center gap-2">
-                <span
-                  className={
-                    userVote === "AGREE" ? "text-blue-700" : "text-slate-700"
-                  }
-                >
-                  Setuju
-                </span>
+                <span className={agreeTextClass}>Setuju</span>
                 {userVote === "AGREE" && (
-                  <FiCheckCircle className="text-blue-600 text-base" />
+                  <FiCheckCircle className={`${agreeTextClass} text-base`} />
                 )}
               </div>
-              <span
-                className={
-                  userVote === "AGREE" ? "text-blue-700" : "text-slate-700"
-                }
-              >
-                {agreePercentage}%
-              </span>
+              <span className={agreeTextClass}>{agreePercentage}%</span>
             </div>
           </button>
 
@@ -191,15 +197,17 @@ export default function PolicyCard({
             onClick={(e) => handleVote(e, "DISAGREE")}
             disabled={isVotingDisabled || isVoting}
             className={`relative w-full h-10 overflow-hidden rounded-xl border text-left transition ${
-              userVote === "DISAGREE"
-                ? "border-red-500 font-bold"
-                : "border-slate-200 font-medium hover:bg-slate-50"
+              isClosed
+                ? "border-slate-200 font-medium"
+                : userVote === "DISAGREE"
+                  ? "border-red-500 font-bold"
+                  : "border-slate-200 font-medium hover:bg-slate-50"
             } ${isVotingDisabled || isVoting ? "cursor-not-allowed" : "cursor-pointer"}`}
           >
             {/* Background Bar */}
             <div
               className={`absolute top-0 left-0 h-full transition-all duration-500 ease-out ${
-                userVote === "DISAGREE" ? "bg-red-100" : "bg-slate-100"
+                !isClosed && userVote === "DISAGREE" ? "bg-red-100" : "bg-slate-100"
               }`}
               style={{ width: `${disagreePercentage}%` }}
             ></div>
@@ -207,30 +215,19 @@ export default function PolicyCard({
             {/* Konten Text di atas Bar */}
             <div className="absolute inset-0 flex justify-between items-center px-4 z-10 text-sm">
               <div className="flex items-center gap-2">
-                <span
-                  className={
-                    userVote === "DISAGREE" ? "text-red-700" : "text-slate-700"
-                  }
-                >
-                  Tidak Setuju
-                </span>
+                <span className={disagreeTextClass}>Tidak Setuju</span>
                 {userVote === "DISAGREE" && (
-                  <FiCheckCircle className="text-red-600 text-base" />
+                  <FiCheckCircle className={`${isClosed ? "text-slate-600" : "text-red-600"} text-base`} />
                 )}
               </div>
-              <span
-                className={
-                  userVote === "DISAGREE" ? "text-red-700" : "text-slate-700"
-                }
-              >
-                {disagreePercentage}%
-              </span>
+              <span className={disagreeTextClass}>{disagreePercentage}%</span>
             </div>
           </button>
 
           {/* Total Suara */}
           <div className="text-xs text-slate-500 text-right mt-1 font-medium">
             Total partisipasi: {totalVotes} suara
+            {isAdmin && " · Mode admin: hanya melihat"}
           </div>
         </div>
         {/* --- AKHIR AREA POLING --- */}

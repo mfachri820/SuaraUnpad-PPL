@@ -52,7 +52,7 @@ export interface Comment {
 export interface FlagSummary {
   id: string; author: PublicAuthor; postId: string | null; createdAt: string; contentSnippet: string;
   flagCount: number; reasons: Partial<Record<FlagReason, number>>;
-  notes: { note: string; createdAt: string }[]; latestFlagAt: string | null;
+  notes: { note: string; createdAt: string }[]; latestFlagAt: string | null; oldestFlagAt: string | null;
 }
 export type FlagQueueItem =
   | (FlagSummary & { type: 'comment'; isDeleted: boolean; policyId: string | null; contextTitle: string | null })
@@ -61,6 +61,43 @@ export type FlagQueueItem =
 export interface AdminStats {
   totalPosts: number; totalAnnouncements: number; totalPolicies: number; totalReports: number;
   pendingFlags: { posts: number; comments: number; total: number };
+  sla: SlaSummary;
+}
+
+export type ReportStatus = 'SUBMITTED' | 'VERIFIED' | 'IN_PROGRESS' | 'RESOLVED';
+export type ReportCategory = 'POTHOLE' | 'CRACK' | 'CORROSION' | 'SAMPAH' | 'OTHER';
+
+export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
+  SUBMITTED: 'Diajukan',
+  VERIFIED: 'Terverifikasi',
+  IN_PROGRESS: 'Diproses',
+  RESOLVED: 'Selesai'
+};
+
+export const REPORT_CATEGORY_LABELS: Record<ReportCategory, string> = {
+  POTHOLE: 'Jalan berlubang',
+  CRACK: 'Retakan',
+  CORROSION: 'Korosi',
+  SAMPAH: 'Sampah',
+  OTHER: 'Lainnya'
+};
+
+export interface SlaSummary {
+  windowDays: number;
+  reports: {
+    byStatus: Record<ReportStatus, number>; open: number; oldestOpenAt: string | null;
+    resolvedLast7Days: number; avgVerifyMs: number | null; avgResolveMs: number | null; resolvedSample: number;
+    daily: { day: string; created: number; resolved: number }[];
+    byCategory: Partial<Record<ReportCategory, number>>;
+    openAge: { under1d: number; d1to3: number; d3to7: number; over7d: number };
+  };
+  flags: { pending: number; oldestPendingAt: string | null; avgReviewMs: number | null; reviewedSample: number };
+}
+
+export interface AdminReportItem {
+  id: string; title: string; description: string; category: ReportCategory; location: string;
+  imageUrl: string; status: ReportStatus; upvoteCount: number; author: PublicAuthor;
+  createdAt: string; verifiedAt: string | null; inProgressAt: string | null; resolvedAt: string | null;
 }
 
 export type NotificationType =

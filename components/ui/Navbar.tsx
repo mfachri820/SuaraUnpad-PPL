@@ -30,14 +30,14 @@ export default function Navbar() {
     checkUserRole();
   }, []);
 
-  // 🌟 Link "Aspirasi" sudah dibuang dari sini
+  const isAdmin = userRole === "ADMIN";
+
+  // Admin hanya melihat sisi user, jadi menu Lapor disembunyikan.
   const navLinks = [
     { name: "Beranda", href: "/home" },
-    { name: "Lapor", href: "/report" },
+    ...(isAdmin ? [] : [{ name: "Lapor", href: "/report" }]),
     { name: "Notifikasi", href: "/notif" }
   ];
-
-  const isAdmin = userRole === "ADMIN";
 
   const handleLogout = async () => {
     try {
@@ -57,8 +57,8 @@ export default function Navbar() {
       <nav className="sticky top-0 z-50 w-full border-b border-slate-300 bg-white shadow-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
           <Link
-            href="/home"
-            className="flex shrink-0 items-center text-xl sm:text-2xl font-black text-black tracking-tight hover:underline underline-offset-2"
+            href={isAdmin ? "/admin" : "/home"}
+            className="flex shrink-0 items-center text-xl sm:text-2xl font-black text-black tracking-tight hover:underline underline-offset-3"
           >
             <span className="text-[#2682F9]">Suara</span>
             <span className="text-[#F99D26]">MIPA</span>
@@ -81,7 +81,7 @@ export default function Navbar() {
                   href="/admin"
                   className="text-sm font-medium text-slate-600 transition hover:text-[#2682F9]"
                 >
-                  Admin
+                  Panel Admin
                 </Link>
               )}
             </div>
@@ -109,18 +109,24 @@ export default function Navbar() {
 
           {/* MENU MOBILE */}
           <div className="flex shrink-0 items-center gap-3 sm:gap-4 md:hidden">
-            <Link
-              href="/report"
-              onClick={() => setIsOpen(false)}
-              className="rounded-lg bg-[#F99D26] px-3 sm:px-4 py-1.5 text-xs font-bold text-white transition hover:bg-orange-500"
-            >
-              LAPOR
-            </Link>
+            {!isAdmin && (
+              <Link
+                href="/report"
+                onClick={() => setIsOpen(false)}
+                className="rounded-lg bg-[#F99D26] px-3 sm:px-4 py-1.5 text-xs font-bold text-white transition hover:bg-orange-500"
+              >
+                LAPOR
+              </Link>
+            )}
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="flex items-center justify-center p-1 text-slate-600 transition hover:text-[#2682F9] focus:outline-none"
             >
-              {isOpen ? <FiX className="text-3xl" /> : <FiMenu className="text-3xl" />}
+              {isOpen ? (
+                <FiX className="text-3xl" />
+              ) : (
+                <FiMenu className="text-3xl" />
+              )}
             </button>
           </div>
         </div>
@@ -149,7 +155,9 @@ export default function Navbar() {
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-500">
                     <FaUserCircle className="text-[2.5rem]" />
                   </div>
-                  <span className="text-sm font-medium text-slate-700">Profil Saya</span>
+                  <span className="text-sm font-medium text-slate-700">
+                    Profil Saya
+                  </span>
                 </Link>
                 {isAdmin && (
                   <Link
@@ -157,7 +165,9 @@ export default function Navbar() {
                     onClick={() => setIsOpen(false)}
                     className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-slate-50"
                   >
-                    <span className="text-sm font-medium text-slate-700">Admin</span>
+                    <span className="text-sm font-medium text-slate-700">
+                      Panel Admin
+                    </span>
                   </Link>
                 )}
                 <button

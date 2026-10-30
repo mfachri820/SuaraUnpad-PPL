@@ -4,6 +4,7 @@ import React, { useState, Suspense } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { useRouter, useSearchParams } from "next/navigation";
 import AuthInput from "@/components/ui/AuthInput";
+import { decodeToken, homePathFor } from "@/lib/clientAuth";
 import Cookies from "js-cookie";
 import { GoogleLogin } from "@react-oauth/google";
 import { toast } from "react-hot-toast";
@@ -34,7 +35,7 @@ function LoginFormContent() {
         }
 
         toast.success(result.message || "Login Berhasil!");
-        router.push("/home");
+        router.push(homePathFor(decodeToken(token)?.role));
       }
     } catch (error: unknown) {
       const errorMessage =
@@ -71,7 +72,7 @@ function LoginFormContent() {
             Cookies.set("token", token, { expires: 7, path: "/" });
           }
           toast.success("Selamat datang kembali!");
-          router.push("/home");
+          router.push(homePathFor(decodeToken(token)?.role));
         }
       }
     } catch (error: unknown) {

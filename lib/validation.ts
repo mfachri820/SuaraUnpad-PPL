@@ -112,6 +112,12 @@ export const flagQueueQuerySchema = z.object({
   type: z.enum(['post', 'comment']).default('comment')
 });
 
+export const REPORT_STATUSES = ['SUBMITTED', 'VERIFIED', 'IN_PROGRESS', 'RESOLVED'] as const;
+
+export const adminReportQuerySchema = z.object({
+  status: z.enum(REPORT_STATUSES, { message: 'Status laporan tidak valid.' }).default('SUBMITTED')
+});
+
 export const majorSchema = z.enum(FMIPA_MAJORS, {
   message: 'Program studi tidak valid. Pilih salah satu program studi FMIPA.'
 });

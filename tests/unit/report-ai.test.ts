@@ -15,8 +15,8 @@ vi.mock('@/services/uploadService', () => ({
 }));
 
 vi.mock('@/services/reportAiService', async () => {
-  const actual = await vi.importActual<typeof import('../services/reportAiService')>(
-    '../services/reportAiService'
+  const actual = await vi.importActual<typeof import('@/services/reportAiService')>(
+    '@/services/reportAiService'
   );
   return {
     ...actual,
@@ -41,6 +41,9 @@ type ReportRecord = {
   imageUrl: string;
   upvoteCount: number;
   updatedAt: Date;
+  verifiedAt: Date | null;
+  inProgressAt: Date | null;
+  resolvedAt: Date | null;
 };
 
 const mockedCreateReport = vi.mocked(reportService.createReport);

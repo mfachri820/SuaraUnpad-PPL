@@ -251,7 +251,24 @@ async function seedContent(u: Record<string, string>) {
       imageUrl: IMG.sample4,
       status: "IN_PROGRESS",
       upvoteCount: 2,
-      createdAt: ago(5)
+      createdAt: ago(5),
+      verifiedAt: ago(4, 18),
+      inProgressAt: ago(3)
+    }
+  });
+  await prisma.report.create({
+    data: {
+      authorId: u.andi,
+      title: "Tumpukan sampah di belakang kantin",
+      description: "Sampah menumpuk di belakang kantin FMIPA dan mulai menimbulkan bau.",
+      category: "SAMPAH",
+      location: "Belakang Kantin FMIPA",
+      imageUrl: IMG.sample2,
+      status: "RESOLVED",
+      createdAt: ago(9),
+      verifiedAt: ago(8, 20),
+      inProgressAt: ago(8),
+      resolvedAt: ago(6)
     }
   });
   await prisma.report.create({

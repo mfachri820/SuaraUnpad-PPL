@@ -23,7 +23,7 @@ const mockPrismaRecords = Array.from({ length: 100 }, (_, index) => ({
   },
 }));
 
-vi.mock('../lib/prisma', () => ({
+vi.mock('@/lib/prisma', () => ({
   prisma: {
     post: {
       findMany: vi.fn(async ({ take = 100 }) => mockPrismaRecords.slice(0, take)),
@@ -32,7 +32,7 @@ vi.mock('../lib/prisma', () => ({
   },
 }));
 
-import { postService } from '../services/postService';
+import { postService } from '@/services/postService';
 
 describe('Performance test for getAllAspirations', () => {
   it('fails if getAllAspirations takes longer than 500ms for 100 mock records', async () => {

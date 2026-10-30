@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { Controller, useForm, SubmitHandler } from "react-hook-form";
+import Select from "@/components/ui/Select";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
@@ -58,7 +59,7 @@ export default function ProfilePage() {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const router = useRouter();
-  const { register, handleSubmit, setValue } = useForm<EditProfileInputs>();
+  const { register, handleSubmit, setValue, control } = useForm<EditProfileInputs>();
 
   const handleOpenEdit = () => {
     setSelectedAvatarFile(null);
@@ -253,13 +254,7 @@ export default function ProfilePage() {
             {userData?.studentProfile?.fullName || "Mahasiswa MIPA"}
           </h2>
 
-          <div className="px-4 py-1.5 bg-[#FFF8F0] rounded-full border border-[#E8A34D]/10 mb-8 inline-block">
-            <p className="text-[#E8A34D] text-[10px] font-extrabold uppercase tracking-widest">
-              Mahasiswa Terverifikasi
-            </p>
-          </div>
-
-          <div className="flex gap-3 justify-center">
+          <div className="mt-6 flex gap-3 justify-center">
             <button
               onClick={handleOpenEdit}
               className="flex items-center gap-2 px-6 py-3 bg-slate-50 hover:bg-slate-100 rounded-full hover:cursor-pointer border border-[#e8a34d] text-sm font-bold text-zinc-700 active:scale-95 transition-all"
@@ -446,7 +441,7 @@ export default function ProfilePage() {
                     className="w-full px-4 py-3 bg-zinc-100 border border-zinc-200 rounded-xl outline-none text-zinc-500 cursor-not-allowed"
                   />
                 </div>
-                <div className="space-y-1">
+                <div hidden className="space-y-1">
                   <label className="text-xs font-bold text-zinc-400 uppercase">
                     Fakultas
                   </label>
@@ -458,17 +453,28 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-zinc-400 uppercase">
+                  <label htmlFor="profile-major" className="text-xs font-bold text-zinc-400 uppercase">
                     Program Studi
                   </label>
-                  <select
-                    {...register("major", { required: true })}
-                    className="w-full px-4 py-3 bg-zinc-50 border rounded-xl outline-none focus:border-[#E8A34D]"
-                  >
-                    {FMIPA_MAJORS.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
+                  <Controller
+                    name="major"
+                    control={control}
+                    defaultValue=""
+                    rules={{ required: true }}
+                    render={({ field, fieldState }) => (
+                      <Select
+                        id="profile-major"
+                        name={field.name}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        onBlur={field.onBlur}
+                        inputRef={field.ref}
+                        invalid={fieldState.invalid}
+                        options={FMIPA_MAJORS.map(option => ({ value: option, label: option }))}
+                        aria-required
+                      />
+                    )}
+                  />
                 </div>
                 <button
                   disabled={isUpdating}
