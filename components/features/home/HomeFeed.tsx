@@ -23,7 +23,6 @@ import { toast } from "react-hot-toast";
 // 🌟 Import Komponen External
 import { Policy, getAuthorName, isAdminAuthor } from "@/components/features/policies/types";
 import PolicyCard from "@/components/features/policies/PolicyCard";
-import CampaignCarousel from "@/components/features/donations/CampaignCarousel";
 import {
   Report,
   Author as ReportAuthor,
@@ -518,11 +517,6 @@ export default function HomeFeed() {
     <div className="mx-auto w-full">
       {/* 🚀 MAIN FEED (Super Feed Terpadu) */}
       <section aria-label="Aktivitas FMIPA" className="w-full bg-white border border-slate-100 rounded-3xl overflow-hidden shadow-sm">
-        {/* 1. CAROUSEL DONASI (Paling Atas) */}
-        <div className="border-b border-slate-100 pb-4 p-4 bg-slate-50/50">
-          <CampaignCarousel />
-        </div>
-
         {/* 1b. STRIP PENGUMUMAN TER-PIN */}
         {pinnedAnnouncements.length > 0 && (
           <div className="border-b border-slate-100 p-4 space-y-3 bg-pengumuman-subtle">

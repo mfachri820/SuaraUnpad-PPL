@@ -47,7 +47,6 @@ jobs:
             ${{ steps.ecr.outputs.registry }}/suara-mipa:staging
           build-args: |
             NEXT_PUBLIC_GOOGLE_CLIENT_ID=${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
-            NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=${{ vars.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY }}
             GIT_SHA=${{ github.sha }}
           cache-from: type=gha,scope=runner
           cache-to: type=gha,mode=max,scope=runner

@@ -103,10 +103,11 @@ export interface AdminReportItem {
 export type NotificationType =
   | 'COMMENT_ON_POST' | 'COMMENT_ON_POLICY' | 'REPLY_ON_COMMENT'
   | 'UPVOTE_POST' | 'UPVOTE_REPORT' | 'UPVOTE_COMMENT' | 'REPORT_STATUS_CHANGED'
-  | 'POST_CLOSED' | 'CONTENT_REMOVED' | 'NEW_ANNOUNCEMENT';
+  | 'POST_CLOSED' | 'CONTENT_REMOVED' | 'NEW_ANNOUNCEMENT'
+  | 'NEW_REPORT' | 'NEW_CONTENT_FLAG';
 
 export const ANNOUNCEMENT_PIN_DAYS = [1, 3, 7, 30] as const;
 export type AnnouncementPinDays = (typeof ANNOUNCEMENT_PIN_DAYS)[number];
 
-export const UPLOAD_FOLDERS = ['posts', 'announcements', 'reports', 'avatars', 'campaigns', 'general'] as const;
+export const UPLOAD_FOLDERS = ['posts', 'announcements', 'reports', 'avatars', 'general'] as const;
 export type UploadFolder = (typeof UPLOAD_FOLDERS)[number];

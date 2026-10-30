@@ -4,12 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchPolicies } from '@/components/features/policies/PolicyFetch';
 import type { Policy } from '@/components/features/policies/types';
 import AnnouncementForm from '@/components/features/admin/AnnouncementForm';
-import CampaignForm from '@/components/features/admin/CampaignForm';
 import PolicyStatusForm from '@/components/features/admin/PolicyStatusForm';
 import PolicyCreateForm from '@/components/features/admin/PolicyCreateForm';
 import { useAdminStats } from '@/components/features/admin/AdminStatsContext';
 
-// Kartu sebaris sama tinggi (pengumuman + kampanye, lalu dua kartu wacana); tombol kirim menempel di bawah.
+// Kartu sebaris sama tinggi (pengumuman + status wacana, lalu buat wacana); tombol kirim menempel di bawah.
 const CONTENT_PANEL = 'flex h-full flex-col';
 
 export default function AdminContentPage() {
@@ -37,11 +36,10 @@ export default function AdminContentPage() {
     <>
       <header className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">Kelola konten</h1>
-        <p className="text-sm leading-relaxed text-slate-800">Buat pengumuman, kampanye donasi, dan wacana kebijakan.</p>
+        <p className="text-sm leading-relaxed text-slate-800">Buat pengumuman dan wacana kebijakan.</p>
       </header>
       <div className="grid gap-6 lg:grid-cols-2">
         <AnnouncementForm onCreated={refresh} className={CONTENT_PANEL} />
-        <CampaignForm className={CONTENT_PANEL} />
         <PolicyStatusForm policies={policies} onUpdated={loadPolicies} className={CONTENT_PANEL} />
         <PolicyCreateForm onCreated={handlePolicyCreated} className={CONTENT_PANEL} />
       </div>
