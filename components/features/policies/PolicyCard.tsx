@@ -7,6 +7,7 @@ import { BiCommentDetail } from "react-icons/bi";
 import { FiCheckCircle } from "react-icons/fi";
 import { submitVotePolicy, removeVotePolicy } from "./PolicyFetch";
 import { Policy } from "@/components/features/policies/types";
+import { useIsAdmin } from "@/lib/clientAuth";
 
 export default function PolicyCard({
   policy,
@@ -21,6 +22,7 @@ export default function PolicyCard({
   const [agreeCount, setAgreeCount] = useState(policy.agreeCount || 0);
   const [disagreeCount, setDisagreeCount] = useState(policy.disagreeCount || 0);
   const [isVoting, setIsVoting] = useState(false);
+  const isAdmin = useIsAdmin();
 
   const totalVotes = agreeCount + disagreeCount;
 
@@ -39,7 +41,7 @@ export default function PolicyCard({
   ) => {
     e.preventDefault();
 
-    if (policy.status !== "ACTIVE") return;
+    if (policy.status !== "ACTIVE" || isAdmin) return;
 
     const prevVote = userVote;
     const prevAgree = agreeCount;
@@ -96,7 +98,8 @@ export default function PolicyCard({
 
   const CardWrapper = isDetail ? "div" : Link;
   const isClosed = policy.status === "CLOSED";
-  const isVotingDisabled = policy.status !== "ACTIVE";
+  // Admin hanya melihat hasil voting.
+  const isVotingDisabled = policy.status !== "ACTIVE" || isAdmin;
   const agreeTextClass = isClosed
     ? "text-slate-600"
     : userVote === "AGREE"
@@ -224,6 +227,7 @@ export default function PolicyCard({
           {/* Total Suara */}
           <div className="text-xs text-slate-500 text-right mt-1 font-medium">
             Total partisipasi: {totalVotes} suara
+            {isAdmin && " · Mode admin: hanya melihat"}
           </div>
         </div>
         {/* --- AKHIR AREA POLING --- */}

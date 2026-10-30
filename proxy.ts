@@ -20,6 +20,12 @@ const publicUIPaths = [
   "/complete-profile",
 ];
 
+// Halaman UI khusus user (membuat laporan) yang tidak relevan untuk ADMIN
+const adminBlockedUIPaths = [
+  "/report",
+  "/profil/my-report",
+];
+
 const IDENTITY_HEADERS = ["x-user-id", "x-user-role"];
 
 function withoutIdentityHeaders(request: NextRequest) {
@@ -54,11 +60,13 @@ export async function proxy(request: NextRequest) {
         // Kita BONGKAR tokennya di sini untuk mengecek status isVerified
         const { payload } = await jwtVerify(tokenCookie, secret);
         const isVerified = payload.isVerified as boolean;
+        const isAdmin = payload.role === "ADMIN";
+        const homeUrl = request.nextUrl.clone();
+        homeUrl.pathname = isAdmin ? "/admin" : "/home";
+        homeUrl.search = "";
 
-        // B1. Jika user mengakses halaman Public UI (seperti /login) saat sudah login -> Tendang ke Home
+        // B1. Jika user mengakses halaman Public UI (seperti /login) saat sudah login -> Tendang ke Home (admin ke panel admin)
         if (isPublicUI) {
-          const homeUrl = request.nextUrl.clone();
-          homeUrl.pathname = "/home";
           return NextResponse.redirect(homeUrl);
         }
 
@@ -71,8 +79,13 @@ export async function proxy(request: NextRequest) {
 
         // B3. CEK VERIFIKASI: Jika SUDAH verified tapi iseng buka /verify-notice -> Tendang ke Home
         if (isVerified && pathname.startsWith("/verify-notice")) {
-          const homeUrl = request.nextUrl.clone();
-          homeUrl.pathname = "/home";
+          return NextResponse.redirect(homeUrl);
+        }
+
+        // B4. PEMISAHAN ROLE: Panel admin khusus ADMIN; admin tidak membuka halaman yang isinya hanya untuk membuat laporan
+        const isAdminArea = pathname === "/admin" || pathname.startsWith("/admin/");
+        const isUserOnlyPage = adminBlockedUIPaths.some((path) => pathname === path || pathname.startsWith(path + "/"));
+        if ((isAdminArea && !isAdmin) || (isUserOnlyPage && isAdmin)) {
           return NextResponse.redirect(homeUrl);
         }
       } catch {

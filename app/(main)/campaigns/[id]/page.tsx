@@ -9,11 +9,13 @@ import { useParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link"
 import { FiLoader, FiArrowLeft } from "react-icons/fi";
+import { useIsAdmin } from "@/lib/clientAuth";
 
 export default function CampaignDetailPage() {
   const { id } = useParams();
   const [campaign, setCampaign] = useState<DonationCampaign | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const isAdmin = useIsAdmin();
 
   useEffect(() => {
     if (id) fetchCampaignById(id as string).then(setCampaign);
@@ -81,12 +83,16 @@ export default function CampaignDetailPage() {
 
           {/* 🌟 REVISI: Tombol Donasi di dalam Card sesuai kodinganmu */}
           <div className="flex justify-center pt-6 border-t border-slate-100">
-            <button
-              onClick={() => setShowModal(true)}
-              className="w-full max-w-md bg-[#ffb656] hover:bg-[#F99D26] hover:cursor-pointer text-white font-black py-4 rounded-2xl active:scale-95 transition"
-            >
-              DONASI SEKARANG
-            </button>
+            {isAdmin ? (
+              <p className="text-sm text-slate-500">Mode admin: hanya melihat. Admin tidak dapat berdonasi.</p>
+            ) : (
+              <button
+                onClick={() => setShowModal(true)}
+                className="w-full max-w-md bg-[#ffb656] hover:bg-[#F99D26] hover:cursor-pointer text-white font-black py-4 rounded-2xl active:scale-95 transition"
+              >
+                DONASI SEKARANG
+              </button>
+            )}
           </div>
         </div>
       </div>

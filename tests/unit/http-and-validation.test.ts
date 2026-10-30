@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { conflict, handleRouteError, parseWith, withErrorHandling } from '@/lib/http';
+import { HttpError, conflict, handleRouteError, parseWith, requireUser, withErrorHandling } from '@/lib/http';
 import { buildPostsWhere } from '@/services/postService';
 import { closePostSchema, createFlagSchema, createPostSchema } from '@/lib/validation';
 
@@ -56,5 +56,26 @@ describe('buildPostsWhere', () => {
     expect(buildPostsWhere({ pinned: true }, now)).toEqual({
       AND: [{ kind: 'ANNOUNCEMENT', pinnedUntil: { gt: now } }]
     });
+  });
+});
+
+describe('requireUser', () => {
+  const withRole = (role: string) =>
+    new Request('http://localhost/api/comments', { headers: { 'x-user-id': 'u-1', 'x-user-role': role } });
+
+  it('STUDENT dan LECTURER lolos, ADMIN ditolak 403 ADMIN_READ_ONLY', () => {
+    expect(requireUser(withRole('STUDENT'))).toEqual({ userId: 'u-1', role: 'STUDENT' });
+    expect(requireUser(withRole('LECTURER')).role).toBe('LECTURER');
+    try {
+      requireUser(withRole('ADMIN'));
+      expect.fail('admin seharusnya ditolak');
+    } catch (error) {
+      expect(error).toBeInstanceOf(HttpError);
+      expect(error).toMatchObject({ status: 403, code: 'ADMIN_READ_ONLY' });
+    }
+  });
+
+  it('tanpa identitas tetap 401', () => {
+    expect(() => requireUser(new Request('http://localhost/x'))).toThrow(expect.objectContaining({ status: 401 }));
   });
 });

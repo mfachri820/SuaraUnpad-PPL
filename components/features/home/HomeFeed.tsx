@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
 import {
@@ -90,6 +91,8 @@ export default function HomeFeed() {
 
   // --- STATE DATA ---
   const [userData, setUserData] = useState<UserData | null>(null);
+  // Admin hanya melihat feed: tanpa posting aspirasi maupun upvote.
+  const isAdmin = userData?.role === "ADMIN";
   const [reports, setReports] = useState<Report[]>([]);
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
@@ -462,7 +465,13 @@ export default function HomeFeed() {
             <button className="hover:cursor-pointer flex items-center gap-1.5 hover:text-[#2682F9] transition">
               <FiMessageCircle size={18} />
             </button>
-            {!isAnnouncement && (
+            {!isAnnouncement && isAdmin && (
+              <span className="flex items-center gap-1.5" title="Jumlah upvote">
+                <FiArrowUp size={18} />
+                <span className="text-sm font-bold">{post._count?.postUpvotes || 0}</span>
+              </span>
+            )}
+            {!isAnnouncement && !isAdmin && (
               <button
                 onClick={(e) => handlePostUpvote(e, post)}
                 disabled={post.isClosed}
@@ -533,7 +542,13 @@ export default function HomeFeed() {
           </div>
         )}
 
-        {/* 2. KOTAK INPUT ASPIRASI */}
+        {/* 2. KOTAK INPUT ASPIRASI (khusus user; admin hanya melihat) */}
+        {isAdmin ? (
+          <p className="px-4 py-3 sm:px-6 border-b border-slate-100 bg-slate-50 text-sm text-slate-600">
+            Mode admin: hanya melihat. Buat pengumuman lewat{" "}
+            <Link href="/admin/content" className="font-bold text-[#2682F9] hover:underline">Panel Admin</Link>.
+          </p>
+        ) : (
         <div className="p-4 sm:p-6 border-b border-slate-100 flex gap-4">
           <div className="w-12 h-12 rounded-full bg-orange-50 shrink-0 flex items-center justify-center font-bold text-[#F99D26] uppercase text-xl">
             {userData?.studentProfile?.fullName?.charAt(0) || "U"}
@@ -599,6 +614,7 @@ export default function HomeFeed() {
             </div>
           </div>
         </div>
+        )}
 
         {/* 3. STICKY TABS */}
         <div className="flex border-b border-slate-100 sticky top-16 md:top-20 bg-white/95 backdrop-blur-md z-20 overflow-x-auto">
@@ -697,6 +713,12 @@ export default function HomeFeed() {
                       )}
 
                     <div className="mt-2 pt-3 border-t border-slate-50 flex items-center text-slate-400">
+                      {isAdmin ? (
+                        <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold bg-slate-100 text-slate-600" title="Jumlah dukungan">
+                          <ImArrowUp />
+                          {report.upvoteCount}
+                        </span>
+                      ) : (
                       <button
                         onClick={(e) => handleReportUpvote(e, report.id)}
                         className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold transition ${
@@ -710,6 +732,7 @@ export default function HomeFeed() {
                         />
                         {report.upvoteCount}
                       </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -793,6 +816,7 @@ export default function HomeFeed() {
                   {selectedReport.upvoteCount}
                 </span>
               </div>
+              {!isAdmin && (
               <button
                 onClick={(e) => handleReportUpvote(e, selectedReport.id)}
                 disabled={isUpvotingReport}
@@ -806,6 +830,7 @@ export default function HomeFeed() {
                   "Dukung Isu Ini"
                 )}
               </button>
+              )}
             </div>
           </div>
         </div>

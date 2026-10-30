@@ -12,6 +12,7 @@ import {
   FiBriefcase
 } from "react-icons/fi";
 import AuthInput from "@/components/ui/AuthInput";
+import { decodeToken, homePathFor } from "@/lib/clientAuth";
 import AuthSelect from "@/components/ui/AuthSelect";
 import Cookies from "js-cookie";
 import { GoogleLogin } from "@react-oauth/google";
@@ -71,7 +72,7 @@ export default function RegisterForm() {
             Cookies.set("token", token, { expires: 7, path: "/" });
           }
           toast.success("Selamat datang kembali!");
-          router.push("/home");
+          router.push(homePathFor(decodeToken(token)?.role));
         }
       }
     } catch (error: unknown) {

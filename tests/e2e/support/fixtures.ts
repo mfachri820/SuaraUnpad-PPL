@@ -74,7 +74,7 @@ export async function screenshot(page: Page, info: TestInfo, name: string, targe
 }
 
 export async function publishAnnouncement(admin: Actor, title: string, content: string, pinDays?: number) {
-  await admin.page.goto('/admin');
+  await admin.page.goto('/admin/content');
   await admin.page.getByLabel('Judul pengumuman', { exact: true }).fill(title);
   await admin.page.getByLabel('Isi pengumuman', { exact: true }).fill(content);
   if (pinDays) {

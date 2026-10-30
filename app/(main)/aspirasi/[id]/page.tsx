@@ -152,7 +152,9 @@ export default function AspirasiDetailPage() {
   const username = authorName.toLowerCase().replace(/\s/g, "");
   const isAnnouncement = post.kind === "ANNOUNCEMENT";
   const isOwner = currentUserId === post.authorId;
-  const canReport = !isOwner;
+  // Admin memoderasi langsung (tutup/hapus), bukan melaporkan; admin juga tidak ikut upvote.
+  const canReport = !isOwner && !isAdmin;
+  const canUpvote = !post.isClosed && !isAdmin;
 
   return (
     <div className="min-h-screen bg-white font-sans text-slate-900">
@@ -297,8 +299,8 @@ export default function AspirasiDetailPage() {
             <div className="flex justify-start gap-12 py-2 border-b border-slate-50 text-slate-300">
               <button
                 onClick={handleUpvote}
-                disabled={post.isClosed}
-                className={`flex items-center gap-2 transition-all p-2 ${post.isClosed ? "cursor-not-allowed opacity-50" : "hover:cursor-pointer hover:text-[#F99D26]"} ${post.hasUpvoted ? "text-[#F99D26]" : ""}`}
+                disabled={!canUpvote}
+                className={`flex items-center gap-2 transition-all p-2 ${!canUpvote ? "cursor-not-allowed opacity-50" : "hover:cursor-pointer hover:text-[#F99D26]"} ${post.hasUpvoted ? "text-[#F99D26]" : ""}`}
               >
                 <FiArrowUp size={24} />
                 <span className="font-bold text-slate-600">

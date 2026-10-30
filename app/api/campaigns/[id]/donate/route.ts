@@ -1,5 +1,6 @@
 import { donationService } from '@/services/donationService';
 import { successResponse, errorResponse } from '@/lib/apiResponse';
+import { ADMIN_READ_ONLY_MESSAGE } from '@/lib/http';
 
 export async function POST(
   request: Request,
@@ -12,6 +13,9 @@ export async function POST(
     const currentUserId = request.headers.get('x-user-id');
     if (!currentUserId) {
       return errorResponse('Akses ditolak. Silakan login terlebih dahulu.', 401);
+    }
+    if (request.headers.get('x-user-role') === 'ADMIN') {
+      return errorResponse(ADMIN_READ_ONLY_MESSAGE, 403);
     }
 
     const body = await request.json();

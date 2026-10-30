@@ -1,5 +1,6 @@
 import { policyService } from '@/services/policyService';
 import { successResponse, errorResponse } from '@/lib/apiResponse';
+import { ADMIN_READ_ONLY_MESSAGE } from '@/lib/http';
 import { VoteChoice } from '@prisma/client';
 
 // 1. POST: Submit atau Ganti Pilihan Vote (Semua User Login)
@@ -14,6 +15,9 @@ export async function POST(
     const currentUserId = request.headers.get('x-user-id');
     if (!currentUserId) {
       return errorResponse('Akses ditolak. Silakan login terlebih dahulu untuk melakukan voting.', 401);
+    }
+    if (request.headers.get('x-user-role') === 'ADMIN') {
+      return errorResponse(ADMIN_READ_ONLY_MESSAGE, 403);
     }
 
     const body = await request.json();
@@ -53,6 +57,9 @@ export async function DELETE(
     const currentUserId = request.headers.get('x-user-id');
     if (!currentUserId) {
       return errorResponse('Akses ditolak. Silakan login terlebih dahulu.', 401);
+    }
+    if (request.headers.get('x-user-role') === 'ADMIN') {
+      return errorResponse(ADMIN_READ_ONLY_MESSAGE, 403);
     }
 
     await policyService.removeVote(id, currentUserId);

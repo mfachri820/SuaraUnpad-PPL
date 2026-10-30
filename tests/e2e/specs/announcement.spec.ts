@@ -45,7 +45,7 @@ test('E2E-ANN-02 pin tampil di beranda dan lepas pin tidak menghapus pengumuman'
 
 test('E2E-ANN-03 validasi judul gagal menampilkan error dan mempertahankan input', async ({ actors }, info) => {
   const page = actors.admin.page;
-  await page.goto('/admin');
+  await page.goto('/admin/content');
   await page.getByLabel('Judul pengumuman', { exact: true }).fill('a'.repeat(151));
   await page.getByLabel('Isi pengumuman', { exact: true }).fill('Isi tetap tersimpan ketika server menolak judul.');
   const response = page.waitForResponse(res => res.url().endsWith('/api/posts') && res.request().method() === 'POST');

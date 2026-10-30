@@ -57,7 +57,8 @@ const CommentItem = ({
   const isReplyable = !comment.parentId;
   const hasUpvoted = Boolean(comment.hasUpvoted);
   const upvoteCount = Math.max(0, comment._count?.commentUpvotes || 0);
-  const canReport = !isAuthor && !isDeleted;
+  // Admin boleh membalas (jawaban resmi), tapi tidak upvote/lapor; konten melanggar dihapus lewat canAdminRemove.
+  const canReport = !isAuthor && !isDeleted && !isAdmin;
   const canAdminRemove = isAdmin && !isAuthor && !isDeleted;
 
   const isReplying =
@@ -160,12 +161,18 @@ const CommentItem = ({
 
         {!isDeleted && (
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold text-slate-500">
-            <button
-              onClick={() => onUpvote(comment.id)}
-              className={`flex items-center gap-1.5 transition hover:cursor-pointer ${hasUpvoted ? "text-[#F99D26]" : "hover:text-[#F99D26]"}`}
-            >
-              <ImArrowUp className="text-sm" /> {upvoteCount}
-            </button>
+            {isAdmin ? (
+              <span className="flex items-center gap-1.5" title="Jumlah upvote">
+                <ImArrowUp className="text-sm" /> {upvoteCount}
+              </span>
+            ) : (
+              <button
+                onClick={() => onUpvote(comment.id)}
+                className={`flex items-center gap-1.5 transition hover:cursor-pointer ${hasUpvoted ? "text-[#F99D26]" : "hover:text-[#F99D26]"}`}
+              >
+                <ImArrowUp className="text-sm" /> {upvoteCount}
+              </button>
+            )}
             {!readOnly && (
               <button
                 onClick={handleReplyClick}

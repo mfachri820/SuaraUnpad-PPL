@@ -13,7 +13,7 @@ test('E2E-MOD-01 laporan komentar ditindak admin, isi disamarkan dan penulis men
   const flagResponse = actors.reporter.page.waitForResponse(res => res.url().endsWith('/api/flags') && res.request().method() === 'POST');
   await actors.reporter.page.getByRole('button', { name: 'Kirim Laporan', exact: true }).click();
   expect((await flagResponse).status()).toBe(201);
-  await actors.admin.page.goto('/admin');
+  await actors.admin.page.goto('/admin/moderation');
   const queue = actors.admin.page.locator('#moderasi').getByRole('listitem').filter({ hasText: text });
   await expect(queue).toBeVisible();
   await screenshot(actors.admin.page, info, 'MOD-01-antrean-admin', actors.admin.page.locator('#moderasi'));
@@ -36,7 +36,7 @@ test('E2E-MOD-01 laporan komentar ditindak admin, isi disamarkan dan penulis men
 test('E2E-MOD-02 postingan ditutup menjadi read-only dan dapat dibuka kembali', async ({ actors }, info) => {
   const post = await aspiration(actors.author, 'MOD E2E02 Informasi kampus');
   await reportPost(actors.reporter, post.id);
-  await actors.admin.page.goto('/admin');
+  await actors.admin.page.goto('/admin/moderation');
   await actors.admin.page.getByRole('button', { name: 'Postingan', exact: true }).click();
   const queue = actors.admin.page.locator('#moderasi').getByRole('listitem').filter({ hasText: post.title });
   await queue.getByRole('button', { name: 'Tutup postingan', exact: true }).click();
@@ -77,7 +77,7 @@ test('E2E-MOD-02 postingan ditutup menjadi read-only dan dapat dibuka kembali', 
 test('E2E-MOD-03 mengabaikan laporan membersihkan antrean tanpa menutup konten', async ({ actors }, info) => {
   const post = await aspiration(actors.author, 'MOD E2E03 Usulan kegiatan mahasiswa');
   await reportPost(actors.reporter, post.id);
-  await actors.admin.page.goto('/admin');
+  await actors.admin.page.goto('/admin/moderation');
   await actors.admin.page.getByRole('button', { name: 'Postingan', exact: true }).click();
   const queue = actors.admin.page.locator('#moderasi').getByRole('listitem').filter({ hasText: post.title });
   await expect(queue).toBeVisible();
@@ -100,7 +100,7 @@ test('E2E-MOD-04 dialog hapus mobile dapat dibatalkan tanpa mengubah komentar', 
   expect((await api(actors.reporter, 'POST', '/api/flags', { commentId: entry.id, reason: 'SPAM' })).status()).toBe(201);
   const page = actors.admin.page;
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/admin');
+  await page.goto('/admin/moderation');
   const queue = page.locator('#moderasi').getByRole('listitem').filter({ hasText: entry.content });
   await queue.getByRole('button', { name: 'Hapus komentar', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Hapus komentar?' });
