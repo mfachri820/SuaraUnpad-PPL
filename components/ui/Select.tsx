@@ -43,6 +43,7 @@ export default function Select({
   const [activeIndex, setActiveIndex] = useState(-1);
   const [validationFailed, setValidationFailed] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0, maxHeight: 280 });
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const selected = options.find(option => option.value === value);
 
   const getPosition = useCallback(() => {
@@ -67,6 +68,8 @@ export default function Select({
     const selectedIndex = options.findIndex(option => option.value === value && !option.disabled);
     setActiveIndex(index ?? (selectedIndex >= 0 ? selectedIndex : options.findIndex(option => !option.disabled)));
     setPosition(getPosition());
+    // Modal <dialog> berada di top layer, jadi menu harus dirender di dalamnya agar tidak tertutup.
+    setPortalTarget(triggerRef.current?.closest<HTMLElement>("dialog[open]") ?? document.body);
     setOpen(true);
     searchRef.current = { text: "", time: 0 };
   };
@@ -181,7 +184,7 @@ export default function Select({
         <span className={`min-w-0 flex-1 truncate text-left ${selected ? "text-slate-800" : "text-slate-400"}`}>{selected?.label ?? placeholder}</span>
         <FiChevronDown aria-hidden="true" className={`shrink-0 text-slate-400 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && createPortal(
+      {open && portalTarget && createPortal(
         <ul ref={menuRef} id={menuId} role="listbox" aria-labelledby={triggerId} className="select-menu" style={position}>
           {options.length === 0 && <li className="px-3 py-2.5 text-sm text-slate-400">Tidak ada pilihan tersedia</li>}
           {options.map((option, index) => (
@@ -202,7 +205,7 @@ export default function Select({
               {option.value === value && <FiCheck className="shrink-0 text-slate-600" aria-hidden="true" />}
             </li>
           ))}
-        </ul>, document.body
+        </ul>, portalTarget
       )}
     </div>
   );
