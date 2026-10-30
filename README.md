@@ -48,7 +48,7 @@ Aplikasi ini menghubungkan warga dan pihak berwenang dalam satu ekosistem digita
 
 # 🧭 Peta Navigasi (Sitemap)
 
-Aplikasi menggunakan **Bottom Navigation** dengan 5 pilar utama:
+Aplikasi menggunakan **Bottom Navigation** dengan 4 pilar utama:
 
 1. **Beranda (Home)**  
    Ringkasan aktivitas dan laporan di sekitar pengguna.
@@ -59,10 +59,7 @@ Aplikasi menggunakan **Bottom Navigation** dengan 5 pilar utama:
 3. **Kebijakan (Policy)**  
    Modul siaran kebijakan dan voting warga.
 
-4. **Donasi**  
-   Penggalangan dana (misal: bantuan banjir/longsor, program sosial, kolaborasi produk).
-
-5. **Profil (Profile)**  
+4. **Profil (Profile)**  
    Riwayat laporan, status verifikasi, dan pengaturan akun.
 
 # 🎨 Prinsip Desain & UX

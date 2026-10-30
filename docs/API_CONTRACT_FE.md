@@ -23,7 +23,7 @@
 ## 1. Konvensi umum
 
 ### Auth
-Tidak berubah: header `Authorization: Bearer <token>`, token diambil dari cookie `token` (auth nanti diganti SSO kampus). Semua `/api/*` wajib token **kecuali**: `/api/auth/login`, `/api/auth/register`, `/api/auth/verify`, `/api/auth/google`, `/api/webhooks/midtrans`, `/api/health`. Semua `/api/admin/*` hanya untuk role `ADMIN`; role lain mendapat 403.
+Tidak berubah: header `Authorization: Bearer <token>`, token diambil dari cookie `token` (auth nanti diganti SSO kampus). Semua `/api/*` wajib token **kecuali**: `/api/auth/login`, `/api/auth/register`, `/api/auth/verify`, `/api/auth/google`, `/api/health`. Semua `/api/admin/*` hanya untuk role `ADMIN`; role lain mendapat 403.
 
 ### Envelope response
 ```jsonc
@@ -79,7 +79,7 @@ Pakai **`author.displayName`**. Ini sekaligus memperbaiki bug nama "Anonim" untu
 
 ## 2. Perubahan yang berdampak ke FE yang sudah ada
 
-Tidak ada endpoint lama yang dihapus, dan FE yang sekarang **tetap jalan**. Poin-poin berikut perlu diperhatikan atau dimanfaatkan:
+Satu-satunya fitur yang dihapus adalah **donasi** (poin 15); FE donasi sudah ikut dihapus di backend PR yang sama. Selain itu FE yang sekarang **tetap jalan**. Poin-poin berikut perlu diperhatikan atau dimanfaatkan:
 
 | # | Perubahan | Dampak ke FE sekarang | Yang perlu dilakukan |
 |---|---|---|---|
@@ -93,12 +93,14 @@ Tidak ada endpoint lama yang dihapus, dan FE yang sekarang **tetap jalan**. Poin
 | 8 | Author **tidak bisa menghapus** postingan yang sudah ditutup admin (403 `POST_CLOSED`) | - | Sembunyikan tombol hapus untuk non-admin kalau `isClosed` |
 | 9 | `PATCH /api/notifications/:id/read` sekarang **benar-benar menandai 1 notif** (dulu semua) | Perilaku FE jadi benar tanpa perubahan | - |
 | 10 | Tipe notifikasi baru: `POST_CLOSED`, `CONTENT_REMOVED`, `NEW_ANNOUNCEMENT` | `notif/page.tsx` jatuh ke fallback "Pemberitahuan" | Tambahkan ke union type + `Record` (§7) |
-| 11 | Upload: `folder` wajib salah satu dari allowlist | Kiriman yang ada (`avatars`, `campaigns`, tanpa folder) tetap valid | Kirim `posts` / `announcements` / `reports` sesuai konteks (§8) |
+| 11 | Upload: `folder` wajib salah satu dari allowlist | Kiriman yang ada (`avatars`, tanpa folder) tetap valid | Kirim `posts` / `announcements` / `reports` sesuai konteks (§8) |
 | 12 | `GET /api/users/:id` hanya untuk diri sendiri atau admin | Tidak dipakai FE | - |
 | 13 | Input tidak valid sekarang dijawab **400 + `errors[]`**, bukan 500 | Pesan error jadi lebih jelas | Tampilkan `errors[i].message` di form (opsional) |
 | 14 | `GET /api/health` publik: `{ status, database, version }` | - | Bisa dipakai untuk halaman status/footer versi (opsional) |
+| 15 | **Fitur donasi dihapus total.** `GET/POST /api/campaigns`, `POST /api/campaigns/:id/donate`, `PATCH /api/campaigns/:id/archive`, dan `POST /api/webhooks/midtrans` sekarang **404**. Tabel `donation_campaigns`/`transactions` dan folder upload `campaigns` juga dihapus | Halaman `/campaigns/[id]`, `CampaignCarousel`, `DonateModal`, `CampaignForm`, `DonationFetch`, dan script Snap Midtrans di `app/layout.tsx` **sudah dihapus** | Jangan menambahkan lagi UI/fetch donasi. Kirim `folder=campaigns` ke `/api/uploads` → 400 |
+| 16 | Tipe notifikasi baru **khusus admin**: `NEW_REPORT` (laporan fasilitas baru) dan `NEW_CONTENT_FLAG` (laporan konten baru). Dikirim ke semua akun `ADMIN` | Di `notif/page.tsx` keduanya jatuh ke fallback "Pemberitahuan"; klik `NEW_REPORT` mengarah ke `/profil/my-report` yang diblokir untuk admin sehingga admin dilempar ke `/admin` | Tambahkan ke union + `Record`, dan perbaiki navigasi klik (§7 "Khusus admin") |
 
-Endpoint auth, laporan fasilitas (`/api/reports`), kebijakan (`/api/policies`), donasi, dan kategori **tidak berubah**.
+Endpoint auth, laporan fasilitas (`/api/reports`), kebijakan (`/api/policies`), dan kategori **tidak berubah**. Fitur donasi (`/api/campaigns/*`, webhook Midtrans) sudah **dihapus**.
 
 ---
 
@@ -119,7 +121,7 @@ Pemakaian yang disarankan:
 
 | Tempat | Query |
 |---|---|
-| Strip pengumuman di bawah carousel donasi | `/api/posts?kind=ANNOUNCEMENT&pinned=true` |
+| Strip pengumuman di atas feed | `/api/posts?kind=ANNOUNCEMENT&pinned=true` |
 | Tab **Semua** | `/api/posts?excludePinned=true` |
 | Tab **Aspirasi** | `/api/posts?kind=ASPIRASI` |
 | Tab **Pengumuman** (baru) | `/api/posts?kind=ANNOUNCEMENT` |
@@ -316,6 +318,59 @@ Admin juga bisa bertindak **langsung tanpa menunggu laporan**: tombol "Hapus (ad
 | `CONTENT_REMOVED` | `commentId`, `postId` atau `policyId` | "Komentarmu dihapus oleh admin karena melanggar aturan" | `/aspirasi/{postId}` atau `/policies/{policyId}` |
 | `NEW_ANNOUNCEMENT` | `postId`, `post.title`, `post.kind = ANNOUNCEMENT` | "Pengumuman baru: {post.title}" | `/aspirasi/{postId}` |
 
+**Khusus admin.** Selain notifikasi interaksi biasa, setiap akun `ADMIN` menerima notifikasi saat user mengirim laporan. `actor` = user pelapor.
+
+| Type (admin) | Kapan dikirim | Field terisi | Teks yang disarankan | Klik → |
+|---|---|---|---|---|
+| `NEW_REPORT` | User membuat laporan fasilitas (`POST /api/reports`) | `reportId`, `report.title`, `report.status` | "Laporan fasilitas baru: {report.title}" | `/admin/reports` (halaman `/profil/my-report` diblokir untuk admin) |
+| `NEW_CONTENT_FLAG` | User melaporkan postingan/komentar (`POST /api/flags`) | `postId` (+ `post.title`) atau `commentId` + `postId`/`policyId` tempat komentar berada | "{actor} melaporkan sebuah postingan/komentar" | `/admin/moderation` |
+
+Aturan detail (supaya implementasinya tidak perlu menebak):
+- Hanya akun `ADMIN` yang pernah menerima dua tipe ini. Tidak ada endpoint/query baru: tetap `GET /api/notifications`.
+- `NEW_CONTENT_FLAG` untuk **postingan** → `commentId === null`, `postId` terisi, `post.title` + `post.kind` tersedia.
+- `NEW_CONTENT_FLAG` untuk **komentar** → `commentId` terisi, `comment.content` berisi isi komentar (sudah disamarkan kalau dihapus), dan salah satu dari `postId` (+ `post.title`) atau `policyId` (+ `policy.title`) menunjuk tempat komentar itu.
+- Alasan laporan (`reason`/`note`) **tidak** ada di notifikasi; tampilkan dari antrean `GET /api/admin/flags` (§6).
+- `actor` = user pelapor (`studentProfile`/`lecturerProfile.fullName`). Nama pelapor hanya terlihat oleh admin.
+- Satu laporan = satu notifikasi per admin. Laporan dobel yang ditolak 409 tidak membuat notifikasi.
+- Navigasi klik untuk admin harus dicek **sebelum** aturan umum `postId → /aspirasi/{postId}` / `reportId → /profil/my-report` yang sekarang ada di `handleNotificationClick`:
+
+```ts
+if (notif.type === 'NEW_REPORT') return router.push('/admin/reports');
+if (notif.type === 'NEW_CONTENT_FLAG') return router.push('/admin/moderation');
+```
+
+Contoh item `data.data[]` (id dipersingkat):
+
+```jsonc
+// NEW_REPORT
+{
+  "id": "…", "type": "NEW_REPORT", "isRead": false, "createdAt": "2026-10-30T14:40:59.129Z",
+  "recipientId": "<admin>", "actorId": "<pelapor>",
+  "reportId": "…", "postId": null, "commentId": null, "policyId": null,
+  "actor": { "id": "<pelapor>", "avatarUrl": null, "studentProfile": { "fullName": "Siti Rahma" }, "lecturerProfile": null, "adminProfile": null },
+  "report": { "title": "AC ruang baca perpustakaan mati", "status": "SUBMITTED" },
+  "post": null, "policy": null, "comment": null
+}
+// NEW_CONTENT_FLAG pada komentar
+{
+  "id": "…", "type": "NEW_CONTENT_FLAG", "isRead": false, "createdAt": "…",
+  "recipientId": "<admin>", "actorId": "<pelapor>",
+  "reportId": null, "postId": "…", "commentId": "…", "policyId": null,
+  "actor": { "id": "<pelapor>", "avatarUrl": null, "studentProfile": { "fullName": "Budi Santoso" }, "lecturerProfile": null, "adminProfile": null },
+  "post": { "title": "Parkiran motor penuh", "kind": "ASPIRASI" },
+  "comment": { "content": "Promo joki tugas murah, hubungi 08xx-xxxx-xxxx" },
+  "report": null, "policy": null
+}
+```
+
+Teks yang disarankan untuk `Record` di `notif/page.tsx`:
+
+| Type | label | title | message |
+|---|---|---|---|
+| `NEW_REPORT` | `LAPORAN BARU` | `Laporan fasilitas baru: "{report.title}"` | `{actorName} mengirim laporan. Tap untuk meninjau.` |
+| `NEW_CONTENT_FLAG` (post) | `LAPORAN KONTEN` | `Aspirasi "{post.title}" dilaporkan` | `{actorName} melaporkan postingan ini. Tap untuk meninjau.` |
+| `NEW_CONTENT_FLAG` (komentar) | `LAPORAN KONTEN` | `Komentar dilaporkan di "{post.title ?? policy.title}"` | `{actorName}: "{comment.content (50 karakter)}"` |
+
 Perbaikan lain: `COMMENT_ON_POST` dan `REPLY_ON_COMMENT` sekarang juga membawa `postId` (dan `commentId`), sehingga balasan komentar bisa diklik menuju postingannya. `COMMENT_ON_POLICY` membawa `policyId` + `policy.title`.
 
 `PATCH /api/notifications/:id/read` menandai **satu** notifikasi (403 kalau bukan milik sendiri). `PATCH /api/notifications/read-all` tetap menandai semua.
@@ -332,10 +387,9 @@ Perbaikan lain: `COMMENT_ON_POST` dan `REPLY_ON_COMMENT` sekarang juga membawa `
 | `announcements` | gambar pengumuman |
 | `reports` | laporan fasilitas |
 | `avatars` | foto profil |
-| `campaigns` | banner donasi |
 | `general` | default kalau `folder` tidak dikirim |
 
-Folder lain → 400. Response: `{ "url": "https://res.cloudinary.com/…" }`. Kirim `url` ini apa adanya sebagai `imageUrl` / `bannerUrl`.
+Folder lain → 400. Response: `{ "url": "https://res.cloudinary.com/…" }`. Kirim `url` ini apa adanya sebagai `imageUrl`.
 
 ---
 
@@ -344,6 +398,7 @@ Folder lain → 400. Response: `{ "url": "https://res.cloudinary.com/…" }`. Ki
 ```ts
 export type Role = 'STUDENT' | 'LECTURER' | 'ADMIN';
 export type PostKind = 'ASPIRASI' | 'ANNOUNCEMENT';
+export type ReportStatus = 'SUBMITTED' | 'VERIFIED' | 'IN_PROGRESS' | 'RESOLVED';
 export type FlagReason = 'SPAM' | 'UJARAN_KEBENCIAN' | 'PELECEHAN' | 'HOAKS' | 'TIDAK_RELEVAN' | 'LAINNYA';
 
 export interface ApiSuccess<T> { status: 'success'; message: string; data: T }
@@ -398,7 +453,25 @@ export interface AdminStats {
 export type NotificationType =
   | 'COMMENT_ON_POST' | 'COMMENT_ON_POLICY' | 'REPLY_ON_COMMENT'
   | 'UPVOTE_POST' | 'UPVOTE_REPORT' | 'UPVOTE_COMMENT' | 'REPORT_STATUS_CHANGED'
-  | 'POST_CLOSED' | 'CONTENT_REMOVED' | 'NEW_ANNOUNCEMENT';
+  | 'POST_CLOSED' | 'CONTENT_REMOVED' | 'NEW_ANNOUNCEMENT'
+  | 'NEW_REPORT' | 'NEW_CONTENT_FLAG';
+
+// Item dari GET /api/notifications
+export interface AppNotification {
+  id: string; type: NotificationType; isRead: boolean; createdAt: string;
+  recipientId: string; actorId: string;
+  postId: string | null; commentId: string | null; reportId: string | null; policyId: string | null;
+  actor: {
+    id: string; avatarUrl: string | null;
+    studentProfile: { fullName: string } | null;
+    lecturerProfile: { fullName: string } | null;
+    adminProfile: { fullName: string } | null;
+  };
+  post: { title: string; kind: PostKind } | null;
+  report: { title: string; status: ReportStatus } | null;
+  policy: { title: string } | null;
+  comment: { content: string } | null;
+}
 ```
 
 ---
@@ -412,7 +485,7 @@ Mengacu ke `PLAN.md` §3–§5. Backend untuk semua poin di bawah **sudah siap**
 - [ ] Buat satu helper fetch bersama (header auth + baca `message`/`code` error). Saat ini logika `getAuthHeaders` disalin di ±12 tempat.
 
 **Feed (`HomeFeed.tsx`)**
-- [ ] Strip pengumuman ter-pin di bawah carousel donasi (`?kind=ANNOUNCEMENT&pinned=true`).
+- [ ] Strip pengumuman ter-pin di atas feed (`?kind=ANNOUNCEMENT&pinned=true`).
 - [ ] Tab baru **Pengumuman** (`?kind=ANNOUNCEMENT`). Tab Aspirasi `?kind=ASPIRASI`. Tab Semua `?excludePinned=true`.
 - [ ] Kartu pengumuman (biru, label "PENGUMUMAN", judul tampil, **tanpa upvote**).
 - [ ] Badge **"DITUTUP"** kalau `isClosed`; upvote dinonaktifkan.
@@ -437,6 +510,7 @@ Mengacu ke `PLAN.md` §3–§5. Backend untuk semua poin di bawah **sudah siap**
 
 **Notifikasi (`notif/page.tsx`)**
 - [ ] Tambah `POST_CLOSED`, `CONTENT_REMOVED`, `NEW_ANNOUNCEMENT` ke union + `Record` (wajib, supaya TypeScript tidak error) beserta teks dan navigasinya (§7).
+- [ ] Tambah `NEW_REPORT` dan `NEW_CONTENT_FLAG` (khusus admin) ke union + `Record`, arahkan klik ke `/admin/reports` dan `/admin/moderation` (§7). Selama belum ditambah, keduanya tampil sebagai fallback "Pemberitahuan".
 
 ---
 
@@ -446,11 +520,11 @@ Jalankan backend lokal (`docs/DEVELOPMENT.md`) lalu `npm run db:seed`. Password 
 
 | Role | Email | Catatan |
 |---|---|---|
-| ADMIN | `admin@unpad.ac.id` | Antrean moderasi sudah berisi 1 postingan + 2 komentar yang dilaporkan |
+| ADMIN | `admin@unpad.ac.id` | Antrean moderasi sudah berisi 1 postingan + 2 komentar yang dilaporkan. Notifikasi berisi 1 `NEW_REPORT` + 2 `NEW_CONTENT_FLAG` (post & komentar) |
 | LECTURER | `dosen@unpad.ac.id` | |
 | STUDENT | `budi@mail.unpad.ac.id` | Punya aspirasi dengan komentar + notifikasi |
 | STUDENT | `siti@mail.unpad.ac.id` | |
 | STUDENT | `andi@mail.unpad.ac.id` | Punya postingan yang **ditutup** admin + komentar yang **dihapus** admin (cek notifikasinya) |
 | STUDENT | `belumverif@mail.unpad.ac.id` | Belum terverifikasi → diarahkan ke `/verify-notice` |
 
-Data contoh yang tersedia: 1 pengumuman ter-pin + 1 yang pin-nya sudah lewat, aspirasi dengan dan tanpa gambar, 1 postingan ditutup, komentar + balasan + komentar terhapus, laporan konten PENDING/ACTIONED, 3 kebijakan (DRAFT/ACTIVE/CLOSED) dengan vote, 2 laporan fasilitas, 2 kampanye donasi, dan notifikasi setiap tipe baru.
+Data contoh yang tersedia: 1 pengumuman ter-pin + 1 yang pin-nya sudah lewat, aspirasi dengan dan tanpa gambar, 1 postingan ditutup, komentar + balasan + komentar terhapus, laporan konten PENDING/ACTIONED, 3 kebijakan (DRAFT/ACTIVE/CLOSED) dengan vote, 2 laporan fasilitas, dan notifikasi setiap tipe baru.

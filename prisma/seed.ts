@@ -290,37 +290,6 @@ async function seedContent(u: Record<string, string>) {
     ]
   });
 
-  const campaign = await prisma.donationCampaign.create({
-    data: {
-      title: "Bantuan Alat Praktikum Lab Kimia",
-      description: "Penggalangan dana untuk mengganti alat praktikum yang rusak di Lab Kimia Dasar.",
-      targetAmount: BigInt(5_000_000),
-      collectedAmount: BigInt(150_000),
-      bannerUrl: IMG.sample5,
-      createdAt: ago(7)
-    }
-  });
-  await prisma.donationCampaign.create({
-    data: {
-      title: "Donasi Korban Banjir Jatinangor",
-      description: "Kampanye sudah selesai. Terima kasih atas partisipasinya!",
-      targetAmount: BigInt(2_000_000),
-      collectedAmount: BigInt(2_000_000),
-      bannerUrl: IMG.sample,
-      status: "COMPLETED",
-      createdAt: ago(30)
-    }
-  });
-  await prisma.transaction.create({
-    data: {
-      userId: u.budi,
-      campaignId: campaign.id,
-      orderId: `DON-SEED-${campaign.id.slice(0, 8).toUpperCase()}`,
-      amount: BigInt(150_000),
-      paymentStatus: "SUCCESS"
-    }
-  });
-
   const notif = (recipientId: string, actorId: string, type: NotificationType, extra: Partial<Prisma.NotificationCreateManyInput> = {}) => ({
     recipientId,
     actorId,
@@ -335,6 +304,9 @@ async function seedContent(u: Record<string, string>) {
       notif(u.andi, u.admin, "POST_CLOSED", { postId: postClosed.id, isRead: true }),
       notif(u.andi, u.admin, "CONTENT_REMOVED", { commentId: cRemoved.id, postId: postPerpus.id }),
       notif(u.siti, u.admin, "REPORT_STATUS_CHANGED", { reportId: reportAc.id }),
+      notif(u.admin, u.siti, "NEW_REPORT", { reportId: reportAc.id }),
+      notif(u.admin, u.budi, "NEW_CONTENT_FLAG", { commentId: cSpam.id, postId: postParkir.id }),
+      notif(u.admin, u.siti, "NEW_CONTENT_FLAG", { postId: postFlagged.id }),
       ...verifiedUsers.map((id) => notif(id, u.admin, "NEW_ANNOUNCEMENT", { postId: announcementPinned.id }))
     ]
   });
@@ -351,7 +323,7 @@ async function main() {
     console.log(`• Konten contoh dilewati: database sudah berisi ${existingPosts} postingan (pakai npm run db:reset untuk mulai dari awal)`);
   } else {
     await seedContent(ids);
-    console.log("✔ Konten contoh dibuat (aspirasi, pengumuman, komentar, laporan konten, wacana, laporan fasilitas, donasi, notifikasi)");
+    console.log("✔ Konten contoh dibuat (aspirasi, pengumuman, komentar, laporan konten, wacana, laporan fasilitas, notifikasi)");
   }
 
   console.log("\nAkun untuk login:");

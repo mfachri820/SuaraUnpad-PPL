@@ -40,18 +40,6 @@ enum VoteChoice {
   DISAGREE
 }
 
-enum CampaignStatus {
-  ACTIVE
-  COMPLETED
-}
-
-enum PaymentStatus {
-  PENDING
-  SUCCESS
-  FAILED
-  EXPIRED
-}
-
 enum NotificationType {
   COMMENT_ON_POST
   COMMENT_ON_POLICY
@@ -63,6 +51,8 @@ enum NotificationType {
   POST_CLOSED
   CONTENT_REMOVED
   NEW_ANNOUNCEMENT
+  NEW_REPORT
+  NEW_CONTENT_FLAG
 }
 
 enum PostKind {
@@ -111,7 +101,6 @@ model User {
   comments         Comment[]        @relation("CommentAuthor")
   deletedComments  Comment[]        @relation("CommentDeletedBy")
   commentMentions  CommentMention[]
-  transactions     Transaction[]
   postUpvotes      PostUpvote[]
   commentUpvotes   CommentUpvote[]
   notificationsRec Notification[]   @relation("NotificationRecipient")
@@ -304,41 +293,6 @@ model CommentMention {
   @@unique([commentId, mentionedUserId])
   @@index([mentionedUserId])
   @@map("comment_mentions")
-}
-
-model DonationCampaign {
-  id              String         @id @default(uuid()) @db.Uuid
-  title           String         @db.VarChar
-  description     String         @db.Text
-  targetAmount    BigInt         @map("target_amount")
-  bannerUrl       String         @map("banner_url") @db.VarChar
-  collectedAmount BigInt         @default(0) @map("collected_amount")
-  status          CampaignStatus @default(ACTIVE)
-  createdAt       DateTime       @default(now()) @map("created_at")
-  updatedAt       DateTime       @updatedAt @map("updated_at")
-
-  transactions Transaction[]
-
-  @@map("donation_campaigns")
-}
-
-model Transaction {
-  id            String        @id @default(uuid()) @db.Uuid
-  userId        String        @map("user_id") @db.Uuid
-  campaignId    String        @map("campaign_id") @db.Uuid
-  orderId       String        @unique @map("order_id") @db.VarChar
-  amount        BigInt
-  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
-  paymentUrl    String?       @map("payment_url") @db.VarChar
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-
-  user     User             @relation(fields: [userId], references: [id])
-  campaign DonationCampaign @relation(fields: [campaignId], references: [id])
-
-  @@index([campaignId])
-  @@index([userId])
-  @@map("transactions")
 }
 
 model PostUpvote {

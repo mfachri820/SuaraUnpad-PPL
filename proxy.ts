@@ -9,7 +9,6 @@ const publicApiPaths = new Set([
   "/api/auth/register",
   "/api/auth/verify",
   "/api/auth/google",
-  "/api/webhooks/midtrans",
   "/api/health",
 ]);
 
