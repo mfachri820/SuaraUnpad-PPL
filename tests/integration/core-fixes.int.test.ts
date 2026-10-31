@@ -1,4 +1,3 @@
-import crypto from 'crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { apiRequest, createUser, ctx, prisma, readJson, resetDatabase, type TestUser } from './helpers';
 import { GET as listComments, POST as createComment } from '@/app/api/comments/route';
@@ -9,7 +8,6 @@ import { GET as getPost } from '@/app/api/posts/[id]/route';
 import { PATCH as readOne } from '@/app/api/notifications/[id]/read/route';
 import { GET as getUser } from '@/app/api/users/[id]/route';
 import { GET as health } from '@/app/api/health/route';
-import { POST as midtransWebhook } from '@/app/api/webhooks/midtrans/route';
 
 describe('Perbaikan inti (DB asli)', () => {
   let alice: TestUser;
@@ -133,38 +131,6 @@ describe('Perbaikan inti (DB asli)', () => {
       const { status, body } = await readJson(await health());
       expect(status).toBe(200);
       expect(body).toMatchObject({ status: 'ok', database: 'connected' });
-    });
-  });
-
-  describe('webhook Midtrans', () => {
-    it('notifikasi settlement paralel hanya menambah saldo kampanye sekali', async () => {
-      process.env.MIDTRANS_SERVER_KEY = 'integration-server-key';
-      const campaign = await prisma.donationCampaign.create({
-        data: { title: 'Kampanye', description: 'd', targetAmount: BigInt(1_000_000), bannerUrl: 'https://res.cloudinary.com/x/y.jpg' }
-      });
-      await prisma.transaction.create({
-        data: { userId: alice.id, campaignId: campaign.id, orderId: 'ORDER-INT-1', amount: BigInt(50_000) }
-      });
-
-      const payload = { order_id: 'ORDER-INT-1', status_code: '200', gross_amount: '50000.00', transaction_status: 'settlement' };
-      const signature_key = crypto
-        .createHash('sha512')
-        .update(`${payload.order_id}${payload.status_code}${payload.gross_amount}${process.env.MIDTRANS_SERVER_KEY}`)
-        .digest('hex');
-      const send = () =>
-        midtransWebhook(new Request('http://localhost/api/webhooks/midtrans', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payload, signature_key })
-        }));
-
-      const responses = await Promise.all(Array.from({ length: 5 }, send));
-      expect(responses.every((r) => r.status === 200)).toBe(true);
-
-      const updated = await prisma.donationCampaign.findUniqueOrThrow({ where: { id: campaign.id } });
-      expect(updated.collectedAmount).toBe(BigInt(50_000));
-      const trx = await prisma.transaction.findUniqueOrThrow({ where: { orderId: 'ORDER-INT-1' } });
-      expect(trx.paymentStatus).toBe('SUCCESS');
     });
   });
 });

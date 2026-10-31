@@ -8,7 +8,6 @@ import { POST as createFlag } from '@/app/api/flags/route';
 import { POST as createReport } from '@/app/api/reports/route';
 import { POST as upvoteReport } from '@/app/api/reports/[id]/upvote/route';
 import { POST as votePolicy, DELETE as unvotePolicy } from '@/app/api/policies/[id]/vote/route';
-import { POST as donate } from '@/app/api/campaigns/[id]/donate/route';
 
 // Admin hanya melihat sisi user: semua aksi partisipasi ditolak 403 sebelum menyentuh data.
 const SOME_ID = '00000000-0000-4000-8000-000000000000';
@@ -59,14 +58,13 @@ describe('Pemisahan fitur admin dan user (DB asli)', () => {
     expect(responses.map((r) => r.status)).toEqual([403, 403, 403]);
   });
 
-  it('laporan fasilitas, dukungan laporan, voting wacana, dan donasi menolak admin dengan 403', async () => {
+  it('laporan fasilitas, dukungan laporan, dan voting wacana menolak admin dengan 403', async () => {
     const responses = await Promise.all([
       createReport(apiRequest('POST', '/api/reports', { user: admin, body: {} })),
       upvoteReport(apiRequest('POST', '/x', { user: admin }), ctx(SOME_ID)),
       votePolicy(apiRequest('POST', '/x', { user: admin, body: { choice: 'AGREE' } }), ctx(SOME_ID)),
       unvotePolicy(apiRequest('DELETE', '/x', { user: admin }), ctx(SOME_ID)),
-      donate(apiRequest('POST', '/x', { user: admin, body: { amount: 10000 } }), ctx(SOME_ID)),
     ]);
-    expect(responses.map((r) => r.status)).toEqual([403, 403, 403, 403, 403]);
+    expect(responses.map((r) => r.status)).toEqual([403, 403, 403, 403]);
   });
 });

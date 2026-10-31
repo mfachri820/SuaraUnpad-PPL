@@ -2,6 +2,7 @@ import type { FlagReason, FlagStatus, Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { authorSelect, toPublicAuthor } from '@/lib/author';
 import { badRequest, conflict, isUniqueViolation, notFound } from '@/lib/http';
+import { notifyAdmins } from '@/services/adminNotificationService';
 
 export const CLOSE_REASON_MIN = 10;
 export const CLOSE_REASON_MAX = 500;
@@ -163,6 +164,8 @@ export const moderationService = {
     const note = payload.note?.trim() || null;
     if (!postId === !commentId) throw badRequest('Pilih tepat satu konten yang dilaporkan.');
 
+    // Konteks untuk notifikasi admin: komentar ditautkan ke postingan/wacana tempatnya berada
+    let context: { postId: string | null; policyId: string | null } = { postId: postId ?? null, policyId: null };
     if (postId) {
       const post = await prisma.post.findUnique({
         where: { id: postId },
@@ -174,25 +177,29 @@ export const moderationService = {
     } else {
       const comment = await prisma.comment.findUnique({
         where: { id: commentId },
-        select: { authorId: true, deletedAt: true }
+        select: { authorId: true, deletedAt: true, postId: true, policyId: true }
       });
       if (!comment) throw notFound('Komentar tidak ditemukan');
       if (comment.authorId === reporterId) throw badRequest('Kamu tidak dapat melaporkan konten milikmu sendiri.');
       if (comment.deletedAt) throw badRequest('Komentar ini sudah dihapus.');
+      context = { postId: comment.postId, policyId: comment.policyId };
     }
 
+    let flag;
     try {
-      const flag = await prisma.contentFlag.create({
+      flag = await prisma.contentFlag.create({
         data: { reporterId, postId: postId ?? null, commentId: commentId ?? null, reason, note },
         select: { id: true, reason: true, status: true, createdAt: true }
       });
-      return flag;
     } catch (error) {
       if (isUniqueViolation(error)) {
         throw conflict('Kamu sudah melaporkan konten ini.', 'DUPLICATE_FLAG');
       }
       throw error;
     }
+
+    await notifyAdmins('NEW_CONTENT_FLAG', reporterId, { ...context, commentId: commentId ?? null });
+    return flag;
   },
 
   async dismissFlags(target: FlagTarget, adminId: string) {

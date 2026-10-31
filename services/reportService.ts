@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { ReportCategory, ReportStatus } from "@prisma/client";
 import { uploadService } from '@/services/uploadService';
 import { authorSelect, toPublicAuthor } from '@/lib/author';
+import { notifyAdmins } from '@/services/adminNotificationService';
 
 // Interface biar ga type 'any'
 export interface CreateReportPayload {
@@ -48,8 +49,9 @@ export function stageTimestamps(current: StageTimestamps, newStatus: ReportStatu
 export const reportService = {
   // FUNGSI CREATE (Membuat Laporan Baru)
   async createReport(authorId: string, data: CreateReportPayload) {
+    let newReport;
     try {
-      const newReport = await prisma.report.create({
+      newReport = await prisma.report.create({
         data: {
           authorId: authorId,
           title: data.title,
@@ -60,8 +62,6 @@ export const reportService = {
           // status dan upvoteCount tidak perlu diisi karena sudah punya nilai default di schema.prisma
         }
       });
-
-      return newReport;
     } catch (error) {
       try {
         await uploadService.deleteImageByUrl(data.imageUrl);
@@ -70,6 +70,10 @@ export const reportService = {
       }
       throw error;
     }
+
+    // Di luar try: laporan sudah tersimpan, jadi gambarnya tidak boleh ikut terhapus
+    await notifyAdmins('NEW_REPORT', authorId, { reportId: newReport.id });
+    return newReport;
   },
 
   // FUNGSI GET ALL (Mengambil Banyak Laporan dengan Pagination & Filter)

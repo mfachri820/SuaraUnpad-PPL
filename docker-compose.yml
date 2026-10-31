@@ -49,7 +49,6 @@ services:
       target: runner
       args:
         NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
-        NEXT_PUBLIC_MIDTRANS_CLIENT_KEY: ${NEXT_PUBLIC_MIDTRANS_CLIENT_KEY:-}
     env_file: .env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-suara}:${POSTGRES_PASSWORD:-suara}@db:5432/${POSTGRES_DB:-suara_mipa}
