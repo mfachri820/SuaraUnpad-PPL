@@ -257,7 +257,7 @@ export default function ReportForm() {
 
         <div className="space-y-4 rounded-2xl bg-white p-4 shadow-sm border border-slate-100">
           <div>
-            <label className="mb-1 block text-sm font-bold text-slate-700">
+            <label htmlFor="input-title" className="mb-1 block text-sm font-bold text-slate-700">
               Judul Singkat
             </label>
             <input
@@ -275,7 +275,7 @@ export default function ReportForm() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-bold text-slate-700">
+            <label htmlFor="input-location" className="mb-1 block text-sm font-bold text-slate-700">
               Lokasi Detail
             </label>
             <input
@@ -293,7 +293,7 @@ export default function ReportForm() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-bold text-slate-700">
+            <label htmlFor="input-description" className="mb-1 block text-sm font-bold text-slate-700">
               Deskripsi Keluhan
             </label>
             <textarea

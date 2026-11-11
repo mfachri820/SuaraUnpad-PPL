@@ -206,7 +206,7 @@ export default function AspirasiDetailPage() {
               </button>
               {menuOpen && (
                 <>
-                  <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
+                  <button type="button" aria-label="Tutup menu" tabIndex={-1} className="fixed inset-0 z-10 cursor-default" onClick={() => setMenuOpen(false)} />
                   <div className="absolute right-0 top-8 z-20 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 overflow-hidden">
                     {isAdmin && !post.isClosed && (
                       <button

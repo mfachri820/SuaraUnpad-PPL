@@ -25,8 +25,8 @@ export async function GET(request: Request) {
     const limitParam = searchParams.get('limit');
     
     // parseInt digunakan untuk mengubah teks "2" menjadi angka matematika 2
-    const page = pageParam ? parseInt(pageParam) : undefined;
-    const limit = limitParam ? parseInt(limitParam) : undefined;
+    const page = pageParam ? Number.parseInt(pageParam, 10) : undefined;
+    const limit = limitParam ? Number.parseInt(limitParam, 10) : undefined;
     
     // as ReportCategory memaksa TypeScript menganggap teks ini sebagai tipe enum Prisma
     const category = searchParams.get('category') as ReportCategory | null;

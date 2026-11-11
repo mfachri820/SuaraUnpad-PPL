@@ -87,7 +87,7 @@ const flagTarget = {
 };
 
 function exactlyOneTarget(data: { postId?: string; commentId?: string }) {
-  return !data.postId !== !data.commentId;
+  return Boolean(data.postId) !== Boolean(data.commentId);
 }
 
 export const createFlagSchema = z

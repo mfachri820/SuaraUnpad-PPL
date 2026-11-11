@@ -13,7 +13,7 @@ export interface TokenPayload {
 export function decodeToken(token: string | undefined | null): TokenPayload | null {
   if (!token) return null;
   try {
-    const payloadBase64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const payloadBase64 = token.split(".")[1].replaceAll("-", "+").replaceAll("_", "/");
     return JSON.parse(atob(payloadBase64)) as TokenPayload;
   } catch {
     return null;

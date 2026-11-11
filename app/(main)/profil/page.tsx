@@ -368,9 +368,9 @@ export default function ProfilePage() {
                 className="space-y-4 text-black"
               >
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-zinc-400 uppercase">
+                  <p className="text-xs font-bold text-zinc-400 uppercase">
                     Foto Profil
-                  </label>
+                  </p>
                   <div className="flex items-center gap-3">
                     <div className="w-16 h-16 rounded-full overflow-hidden bg-zinc-100 flex items-center justify-center">
                       {avatarPreview ? (
@@ -416,30 +416,33 @@ export default function ProfilePage() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-zinc-400 uppercase">
+                  <label htmlFor="profil-nama" className="text-xs font-bold text-zinc-400 uppercase">
                     Nama Lengkap
                   </label>
                   <input
+                    id="profil-nama"
                     value={userData?.studentProfile?.fullName || ""}
                     readOnly
                     className="w-full px-4 py-3 bg-zinc-100 border border-zinc-200 rounded-xl outline-none text-zinc-500 cursor-not-allowed"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-zinc-400 uppercase">
+                  <label htmlFor="profil-npm" className="text-xs font-bold text-zinc-400 uppercase">
                     NPM
                   </label>
                   <input
+                    id="profil-npm"
                     value={userData?.studentProfile?.studentId || ""}
                     readOnly
                     className="w-full px-4 py-3 bg-zinc-100 border border-zinc-200 rounded-xl outline-none text-zinc-500 cursor-not-allowed"
                   />
                 </div>
                 <div hidden className="space-y-1">
-                  <label className="text-xs font-bold text-zinc-400 uppercase">
+                  <label htmlFor="profil-fakultas" className="text-xs font-bold text-zinc-400 uppercase">
                     Fakultas
                   </label>
                   <input
+                    id="profil-fakultas"
                     value="FMIPA"
                     readOnly
                     {...register("faculty")}

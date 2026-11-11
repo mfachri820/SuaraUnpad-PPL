@@ -26,7 +26,15 @@ export async function GET(request: NextRequest) {
   };
 
   const params = request.nextUrl.searchParams;
-  if (params.get('error')) return fail('paus_denied', { error: params.get('error') });
+  if (params.get('error')) {
+    // Ditolak oleh PAuS sendiri (mis. invalid_scope, unauthorized_client, access_denied).
+    return fail('paus_denied', {
+      error: params.get('error'),
+      description: params.get('error_description'),
+      hint: params.get('hint'),
+      message: params.get('message')
+    });
+  }
 
   const code = params.get('code');
   if (!code || !statesMatch(params.get('state'), request.cookies.get(PAUS_STATE_COOKIE)?.value)) {

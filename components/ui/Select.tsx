@@ -200,6 +200,7 @@ export default function Select({
               onPointerMove={() => { if (!option.disabled) setActiveIndex(index); }}
               onPointerDown={event => event.preventDefault()}
               onClick={() => choose(index)}
+              onKeyDown={event => { if (event.key === 'Enter') choose(index); }}
             >
               <span className="truncate">{option.label}</span>
               {option.value === value && <FiCheck className="shrink-0 text-slate-600" aria-hidden="true" />}

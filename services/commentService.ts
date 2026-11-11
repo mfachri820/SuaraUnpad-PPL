@@ -64,7 +64,7 @@ async function assertPostOpen(postId: string | null) {
 export const commentService = {
   async createComment(authorId: string, data: CreateCommentPayload) {
     // Commentnya ada tujuan, ke post atau ke policy
-    if (!data.postId === !data.policyId) {
+    if (Boolean(data.postId) === Boolean(data.policyId)) {
       throw badRequest("Komentar harus ditautkan ke tepat satu Postingan atau Kebijakan");
     }
 
@@ -142,7 +142,7 @@ export const commentService = {
 
   // Get all komen (komen induk)
   async getComments(filter: GetCommentsFilter, viewerId?: string) {
-    if (!filter.postId === !filter.policyId) {
+    if (Boolean(filter.postId) === Boolean(filter.policyId)) {
       throw badRequest("Parameter postId atau policyId wajib diisi untuk melihat komentar");
     }
 

@@ -162,7 +162,7 @@ export const moderationService = {
   async createFlag(reporterId: string, payload: CreateFlagPayload) {
     const { postId, commentId, reason } = payload;
     const note = payload.note?.trim() || null;
-    if (!postId === !commentId) throw badRequest('Pilih tepat satu konten yang dilaporkan.');
+    if (Boolean(postId) === Boolean(commentId)) throw badRequest('Pilih tepat satu konten yang dilaporkan.');
 
     // Konteks untuk notifikasi admin: komentar ditautkan ke postingan/wacana tempatnya berada
     let context: { postId: string | null; policyId: string | null } = { postId: postId ?? null, policyId: null };

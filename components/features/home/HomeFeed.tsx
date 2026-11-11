@@ -33,6 +33,7 @@ import {
 import { fetchPolicies } from "@/components/features/policies/PolicyFetch";
 import { apiFetch, getApiErrorMessage } from "@/lib/api/client";
 import { Post, Paginated } from "@/lib/api/types";
+import { activateOnKey } from "@/lib/a11y";
 
 // 🌟 Interface Tambahan dari Aspirasi
 interface UserData {
@@ -433,7 +434,10 @@ export default function HomeFeed() {
     return (
       <div
         key={`post-${post.id}-${index}`}
+        role="button"
+        tabIndex={0}
         onClick={() => router.push(`/aspirasi/${post.id}`)}
+        onKeyDown={activateOnKey(() => router.push(`/aspirasi/${post.id}`))}
         className={`p-4 sm:p-6 hover:bg-slate-50/50 transition cursor-pointer flex gap-3 sm:gap-4 border-l-4 ${isAnnouncement ? "border-l-pengumuman bg-pengumuman-subtle/50" : "border-l-aspirasi"}`}
       >
         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-slate-100 shrink-0 flex items-center justify-center font-bold text-slate-400 uppercase">
@@ -523,7 +527,10 @@ export default function HomeFeed() {
             {pinnedAnnouncements.map((announcement) => (
               <div
                 key={announcement.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => router.push(`/aspirasi/${announcement.id}`)}
+                onKeyDown={activateOnKey(() => router.push(`/aspirasi/${announcement.id}`))}
                 className="cursor-pointer bg-white rounded-2xl border border-pengumuman/30 p-4 hover:border-pengumuman transition"
               >
                 <div className="text-pengumuman-foreground text-xs font-semibold mb-1">
@@ -643,7 +650,10 @@ export default function HomeFeed() {
                 return (
                   <div
                     key={`report-${report.id}-${index}`}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => setSelectedReport(report)}
+                    onKeyDown={activateOnKey(() => setSelectedReport(report))}
                     className="p-4 sm:p-6 hover:bg-slate-50/50 transition cursor-pointer flex flex-col gap-3 border-l-4 border-l-laporan"
                   >
                     <div className="font-bold text-laporan-foreground text-xs uppercase tracking-widest mb-3 flex items-center gap-1">
@@ -755,11 +765,16 @@ export default function HomeFeed() {
       {selectedReport && (
         <div
           className="fixed inset-0 z-50 py-10  bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6"
-          onClick={() => setSelectedReport(null)}
         >
+          <button
+            type="button"
+            aria-label="Tutup detail laporan"
+            tabIndex={-1}
+            className="absolute inset-0 cursor-default"
+            onClick={() => setSelectedReport(null)}
+          />
           <div
             className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl flex flex-col overflow-y-auto max-h-[90vh]"
-            onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => setSelectedReport(null)}

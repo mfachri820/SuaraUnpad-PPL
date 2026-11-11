@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Cookies from 'js-cookie';
 import { useRouter } from 'next/navigation';
+import { activateOnKey } from "@/lib/a11y";
 import {
   FiBell,
   FiLoader,
@@ -347,7 +348,10 @@ export default function NotifikasiPage() {
                     return (
                       <div 
                         key={notif.id} 
+                        role="button"
+                        tabIndex={0}
                         onClick={() => handleNotificationClick(notif)}
+                        onKeyDown={activateOnKey(() => handleNotificationClick(notif))}
                         className={`group p-5 rounded-3xl flex gap-4 transition-all relative border border-slate-100 cursor-pointer ${
                           !isRead 
                           ? 'bg-white shadow-[0_4px_20px_rgba(0,0,0,0.03)]' 

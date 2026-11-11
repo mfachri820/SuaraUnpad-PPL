@@ -46,11 +46,16 @@ export default function ReportContentModal({ target, onClose, onReported }: Repo
   return (
     <div
       className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4"
-      onClick={onClose}
     >
+      <button
+        type="button"
+        aria-label="Tutup"
+        tabIndex={-1}
+        className="absolute inset-0 cursor-default"
+        onClick={onClose}
+      />
       <div
-        className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6"
-        onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl p-6"
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-black text-slate-900">Laporkan Konten</h2>

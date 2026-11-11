@@ -71,6 +71,28 @@ export function AdminDialog({
     return () => dialog.close();
   }, [open]);
 
+  // Klik di backdrop (di luar kotak dialog) menutup dialog. Pasang via listener native
+  // karena <dialog> bukan elemen interaktif menurut aturan a11y JSX.
+  const busyRef = useRef(busy);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    busyRef.current = busy;
+    onCloseRef.current = onClose;
+  });
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    const handleBackdropClick = (event: MouseEvent) => {
+      if (busyRef.current || event.target !== dialog) return;
+      const rect = dialog.getBoundingClientRect();
+      if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) {
+        onCloseRef.current();
+      }
+    };
+    dialog.addEventListener('click', handleBackdropClick);
+    return () => dialog.removeEventListener('click', handleBackdropClick);
+  }, []);
+
   return (
     <dialog
       ref={ref}
@@ -79,11 +101,6 @@ export function AdminDialog({
       aria-busy={busy}
       className="m-auto w-[calc(100%_-_2rem)] max-w-md rounded-3xl border border-slate-100 bg-white p-5 shadow-xl backdrop:bg-slate-900/40 sm:p-6"
       onCancel={event => { event.preventDefault(); if (!busy) onClose(); }}
-      onClick={event => {
-        if (busy || event.target !== event.currentTarget) return;
-        const rect = event.currentTarget.getBoundingClientRect();
-        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) onClose();
-      }}
     >
       <h2 id={`${id}-title`} className="text-lg font-bold text-moderasi">{title}</h2>
       <p id={`${id}-description`} className="mt-2 mb-5 text-sm leading-relaxed text-slate-800">{description}</p>

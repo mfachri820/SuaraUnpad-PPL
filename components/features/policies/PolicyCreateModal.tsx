@@ -53,10 +53,11 @@ export default function PolicyCreateModal({
         <form onSubmit={handleSubmit} className="p-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">
+              <label htmlFor="policy-modal-title" className="block text-sm font-bold text-slate-700 mb-1">
                 Judul Kebijakan
               </label>
               <input
+                id="policy-modal-title"
                 required
                 type="text"
                 value={title}
@@ -66,10 +67,11 @@ export default function PolicyCreateModal({
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-1">
+              <label htmlFor="policy-modal-content" className="block text-sm font-bold text-slate-700 mb-1">
                 Isi/Keterangan
               </label>
               <textarea
+                id="policy-modal-content"
                 required
                 rows={5}
                 value={content}

@@ -8,7 +8,7 @@ export async function GET() {
     const formattedCategories = categoryValues.map((cat) => ({
       id: cat,
 
-      label: cat.charAt(0) + cat.slice(1).toLowerCase().replace(/_/g, " ")
+      label: cat.charAt(0) + cat.slice(1).toLowerCase().replaceAll("_", " ")
     }));
 
     return NextResponse.json(formattedCategories);
