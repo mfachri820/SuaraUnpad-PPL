@@ -22,7 +22,7 @@ describe('SLA laporan fasilitas & moderasi (DB asli)', () => {
         description: 'Deskripsi laporan',
         category: 'POTHOLE',
         location: 'Gedung D',
-        imageUrl: 'https://example.com/report.jpg',
+        imageUrl: 'https://storage.test/suara-mipa-test/suara-mipa/reports/report.jpg',
         ...data
       }
     });

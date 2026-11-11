@@ -87,7 +87,7 @@ describe('AI Report whitebox', () => {
       description: 'Desc',
       category,
       location: 'Location',
-      imageUrl: 'https://example.com/image.jpg'
+      imageUrl: 'https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg'
     } as ReportRecord);
 
     const response = await POST(
@@ -96,12 +96,12 @@ describe('AI Report whitebox', () => {
         description: 'Desc',
         category,
         location: 'Location',
-        imageUrl: 'https://example.com/image.jpg'
+        imageUrl: 'https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg'
       })
     );
 
     expect(response.status).toBe(201);
-    expect(mockedDetectDamage).toHaveBeenCalledWith('https://example.com/image.jpg', aiType);
+    expect(mockedDetectDamage).toHaveBeenCalledWith('https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg', aiType);
     expect(mockedCreateReport).toHaveBeenCalledOnce();
 
     const body = await response.json();
@@ -125,12 +125,12 @@ describe('AI Report whitebox', () => {
         description: 'Desc',
         category: 'POTHOLE',
         location: 'Location',
-        imageUrl: 'https://example.com/image.jpg'
+        imageUrl: 'https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg'
       })
     );
 
     expect(response.status).toBe(422);
-    expect(mockedDeleteImage).toHaveBeenCalledWith('https://example.com/image.jpg');
+    expect(mockedDeleteImage).toHaveBeenCalledWith('https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg');
     expect(mockedCreateReport).not.toHaveBeenCalled();
 
     const body = await response.json();
@@ -146,7 +146,7 @@ describe('AI Report whitebox', () => {
           description: 'Desc',
           category: 'POTHOLE',
           location: 'Location',
-          imageUrl: 'https://example.com/image.jpg'
+          imageUrl: 'https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg'
         },
         ''
       )
@@ -161,6 +161,22 @@ describe('AI Report whitebox', () => {
     expect(body.message).toMatch(/login terlebih dahulu/i);
   });
 
+  it('returns 400 for an image URL outside the app storage without calling the AI', async () => {
+    const response = await POST(
+      buildRequest({
+        title: 'Test',
+        description: 'Desc',
+        category: 'POTHOLE',
+        location: 'Location',
+        imageUrl: 'https://evil.example/tracker.jpg'
+      })
+    );
+
+    expect(response.status).toBe(400);
+    expect(mockedDetectDamage).not.toHaveBeenCalled();
+    expect(mockedCreateReport).not.toHaveBeenCalled();
+  });
+
   it('returns 400 when category is invalid', async () => {
     const response = await POST(
       buildRequest({
@@ -168,7 +184,7 @@ describe('AI Report whitebox', () => {
         description: 'Desc',
         category: 'INVALID',
         location: 'Location',
-        imageUrl: 'https://example.com/image.jpg'
+        imageUrl: 'https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg'
       })
     );
 
@@ -190,12 +206,12 @@ describe('AI Report whitebox', () => {
         description: 'Desc',
         category: 'POTHOLE',
         location: 'Location',
-        imageUrl: 'https://example.com/image.jpg'
+        imageUrl: 'https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg'
       })
     );
 
     expect(response.status).toBe(502);
-    expect(mockedDeleteImage).toHaveBeenCalledWith('https://example.com/image.jpg');
+    expect(mockedDeleteImage).toHaveBeenCalledWith('https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg');
     expect(mockedCreateReport).not.toHaveBeenCalled();
 
     const body = await response.json();
@@ -219,7 +235,7 @@ describe('AI Report whitebox', () => {
       description: 'Desc',
       category: 'POTHOLE',
       location: 'Location',
-      imageUrl: 'https://example.com/image.jpg'
+      imageUrl: 'https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg'
     } as ReportRecord);
 
     const start = performance.now();
@@ -229,7 +245,7 @@ describe('AI Report whitebox', () => {
         description: 'Desc',
         category: 'POTHOLE',
         location: 'Location',
-        imageUrl: 'https://example.com/image.jpg'
+        imageUrl: 'https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg'
       })
     );
     const duration = performance.now() - start;

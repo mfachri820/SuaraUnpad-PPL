@@ -2,21 +2,19 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { getJwtSecret } from "@/lib/jwt";
+import { appUrl } from "@/lib/appUrl";
 
 // Daftar endpoint API yang bisa diakses tanpa login (Kodingan BE Asli)
 const publicApiPaths = new Set([
-  "/api/auth/login",
-  "/api/auth/register",
-  "/api/auth/verify",
-  "/api/auth/google",
+  "/api/auth/login", // mati kecuali PASSWORD_LOGIN_ENABLED=true (khusus development)
+  "/api/auth/paus/redirect",
+  "/api/auth/paus/callback",
   "/api/health",
 ]);
 
 // Daftar halaman UI/Frontend yang boleh diakses TANPA login
 const publicUIPaths = [
   "/login",
-  "/register",
-  "/complete-profile",
 ];
 
 // Halaman UI khusus user (membuat laporan) yang tidak relevan untuk ADMIN
@@ -26,6 +24,13 @@ const adminBlockedUIPaths = [
 ];
 
 const IDENTITY_HEADERS = ["x-user-id", "x-user-role"];
+
+// Redirect absolut dibangun dari APP_URL (bukan request.url) karena di belakang ingress
+// standalone server melihat dirinya sebagai 0.0.0.0:3000. Lihat lib/appUrl.ts.
+function redirectTo(request: NextRequest, pathname: string, error?: string) {
+  const query = error ? `?error=${encodeURIComponent(error)}` : "";
+  return NextResponse.redirect(appUrl(`${pathname}${query}`, request.nextUrl.origin));
+}
 
 function withoutIdentityHeaders(request: NextRequest) {
   const headers = new Headers(request.headers);
@@ -46,10 +51,7 @@ export async function proxy(request: NextRequest) {
 
     // A. Jika user BELUM login & mencoba akses halaman SELAIN public UI
     if (!tokenCookie && !isPublicUI) {
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = "/login";
-      loginUrl.searchParams.set("error", "unauthorized");
-      return NextResponse.redirect(loginUrl);
+      return redirectTo(request, "/login", "unauthorized");
     }
 
     // B. Jika user SUDAH login
@@ -60,39 +62,32 @@ export async function proxy(request: NextRequest) {
         const { payload } = await jwtVerify(tokenCookie, secret);
         const isVerified = payload.isVerified as boolean;
         const isAdmin = payload.role === "ADMIN";
-        const homeUrl = request.nextUrl.clone();
-        homeUrl.pathname = isAdmin ? "/admin" : "/home";
-        homeUrl.search = "";
+        const homePath = isAdmin ? "/admin" : "/home";
 
         // B1. Jika user mengakses halaman Public UI (seperti /login) saat sudah login -> Tendang ke Home (admin ke panel admin)
         if (isPublicUI) {
-          return NextResponse.redirect(homeUrl);
+          return redirectTo(request, homePath);
         }
 
         // B2. CEK VERIFIKASI: Jika belum verified & mencoba akses halaman SELAIN /verify-notice
         if (!isVerified && !pathname.startsWith("/verify-notice")) {
-          const noticeUrl = request.nextUrl.clone();
-          noticeUrl.pathname = "/verify-notice";
-          return NextResponse.redirect(noticeUrl);
+          return redirectTo(request, "/verify-notice");
         }
 
         // B3. CEK VERIFIKASI: Jika SUDAH verified tapi iseng buka /verify-notice -> Tendang ke Home
         if (isVerified && pathname.startsWith("/verify-notice")) {
-          return NextResponse.redirect(homeUrl);
+          return redirectTo(request, homePath);
         }
 
         // B4. PEMISAHAN ROLE: Panel admin khusus ADMIN; admin tidak membuka halaman yang isinya hanya untuk membuat laporan
         const isAdminArea = pathname === "/admin" || pathname.startsWith("/admin/");
         const isUserOnlyPage = adminBlockedUIPaths.some((path) => pathname === path || pathname.startsWith(path + "/"));
         if ((isAdminArea && !isAdmin) || (isUserOnlyPage && isAdmin)) {
-          return NextResponse.redirect(homeUrl);
+          return redirectTo(request, homePath);
         }
       } catch {
         // Jika token kedaluwarsa atau diotak-atik: Hapus cookie & tendang ke login
-        const loginUrl = request.nextUrl.clone();
-        loginUrl.pathname = "/login";
-        loginUrl.searchParams.set("error", "session_expired");
-        const response = NextResponse.redirect(loginUrl);
+        const response = redirectTo(request, "/login", "session_expired");
         response.cookies.delete("token");
         return response;
       }
@@ -126,7 +121,7 @@ export async function proxy(request: NextRequest) {
     // CEK VERIFIKASI DI API: Cegah user nembak API via Postman kalau belum verified
     if (!payload.isVerified) {
       return NextResponse.json(
-        { status: "error", message: "Akun belum terverifikasi. Silakan cek email Anda." },
+        { status: "error", message: "Akun belum aktif. Silakan hubungi admin." },
         { status: 403 } // 403 Forbidden (Login sukses, tapi hak akses ditolak)
       );
     }

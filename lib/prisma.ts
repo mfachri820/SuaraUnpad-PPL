@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { getDatabaseUrl } from "@/lib/databaseUrl";
 
 // tipe global agar TS tidak error
 const globalForPrisma = globalThis as unknown as {
@@ -9,7 +10,7 @@ const globalForPrisma = globalThis as unknown as {
 
 function createPrismaClient() {
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: getDatabaseUrl(),
     max: Number(process.env.DB_POOL_MAX) || 10,
   });
   return new PrismaClient({ adapter: new PrismaPg(pool) });

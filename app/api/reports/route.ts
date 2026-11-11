@@ -3,6 +3,7 @@ import { successResponse, errorResponse } from '@/lib/apiResponse';
 import { ADMIN_READ_ONLY_MESSAGE } from '@/lib/http';
 import { ReportCategory, ReportStatus } from '@prisma/client';
 import { uploadService } from '@/services/uploadService';
+import { keyFromPublicUrl } from '@/lib/storage';
 import { detectDamage, evaluateAiResult, AiDamageType } from '@/services/reportAiService';
 
 const CATEGORY_TO_AI_TYPE: Record<ReportCategory, AiDamageType | null> = {
@@ -69,6 +70,11 @@ export async function POST(request: Request) {
     // C. Validasi Kesiapan Data (Jangan biarkan data kosong masuk ke Service)
     if (!body.title || !body.description || !body.category || !body.location || !body.imageUrl) {
       return errorResponse('Data tidak lengkap. title, description, category, location, dan imageUrl wajib diisi.', 400);
+    }
+
+    // Gambar wajib hasil /api/uploads (objek storage milik aplikasi), sama seperti postingan.
+    if (typeof body.imageUrl !== 'string' || keyFromPublicUrl(body.imageUrl) === null) {
+      return errorResponse('Gambar harus diunggah lewat fitur upload aplikasi.', 400);
     }
 
     const categoryValue = String(body.category).trim().toUpperCase();

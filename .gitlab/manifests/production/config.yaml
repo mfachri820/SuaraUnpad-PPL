@@ -1,0 +1,20 @@
+# Config non-rahasia khusus production.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ${HELM_RELEASE_NAME}-config
+  namespace: ${KUBE_NAMESPACE}
+data:
+  # TODO: client ID dari Tim Platform. Redirect URI ini harus didaftarkan ke PAuS.
+  PAUS_CLIENT_ID: ""
+  PAUS_REDIRECT_URI: "https://suara.fmipa.unpad.ac.id/api/auth/paus/callback"
+
+  # TODO: nama bucket & URL proxy publik MinIO dari Tim Platform.
+  # AWS_URL = base URL publik objek, sudah termasuk bucket.
+  AWS_BUCKET: "prod-suaraunpad-ppl-storage"
+  AWS_URL: ""
+  STORAGE_ROOT_FOLDER: "suara-mipa/production"
+
+  # Email/NPM PAuS (pisahkan koma) yang dibuatkan akun ADMIN saat login PERTAMA.
+  # Orang yang sudah punya akun (mis. akun mahasiswa) tetap memakai akun & role lamanya.
+  ADMIN_IDENTIFIERS: ""

@@ -2,269 +2,240 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
-import { OAuth2Client } from 'google-auth-library';
-import nodemailer from 'nodemailer';
 import { getJwtSecret } from '@/lib/jwt';
-import { FMIPA_FACULTY, isFmipaMajor } from '@/lib/fmipa';
+import { FMIPA_FACULTY, isFmipaNpm, majorFromNpm } from '@/lib/fmipa';
+import { keyFromPublicUrl } from '@/lib/storage';
+import type { PausProfile } from '@/lib/paus';
 
-const googleClient = new OAuth2Client(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
-
-// Karena linter, butuh bikin interface buat replace 'any'
-export interface RegisterPayload {
-  email: string;
-  password: string; // Buat opsional karena user Google tidak punya password
-  role: 'STUDENT' | 'LECTURER' | 'ADMIN';
-  fullName: string;
-  studentId?: string;
-  employeeId?: string;
-  department?: string;
-  faculty?: string;
-  major?: string;
-  isGoogleAuth?: boolean; // Penanda apakah dari Google
-}
+const SESSION_TTL = '7d';
 
 export interface UpdateProfilePayload {
   fullName?: string;
-  studentId?: string;
   faculty?: string;
-  major?: string;
   department?: string;
-  avatarUrl?: string; 
+  avatarUrl?: string | null;
+}
+
+export interface SessionUser {
+  id: string;
+  email: string;
+  role: 'STUDENT' | 'LECTURER' | 'ADMIN';
+  isVerified: boolean;
+}
+
+export interface PausSession {
+  user: SessionUser;
+  token: string;
+}
+
+/** Error yang aman ditampilkan ke user, dengan kode untuk query ?error= di halaman login. */
+export class AuthFlowError extends Error {
+  constructor(
+    message: string,
+    readonly code: string,
+    readonly status = 400
+  ) {
+    super(message);
+    this.name = 'AuthFlowError';
+  }
+}
+
+const sessionSelect = { id: true, email: true, role: true, isVerified: true } as const;
+
+function parseAdminIdentifiers() {
+  return new Set(
+    (process.env.ADMIN_IDENTIFIERS ?? '')
+      .split(',')
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+function isAdminIdentity(profile: PausProfile) {
+  const admins = parseAdminIdentifiers();
+  return [profile.email, profile.npm].some((value) => value && admins.has(value.toLowerCase()));
+}
+
+// PAuS belum tentu selalu mengirim email (lihat catatan di lib/paus.ts), padahal kolom
+// users.email wajib & unik. Alamat pengganti ini tidak pernah dipakai untuk mengirim email.
+function emailFor(profile: { npm: string | null; email: string | null }) {
+  if (profile.email) return profile.email.toLowerCase();
+  if (profile.npm) return `${profile.npm}@paus.unpad.ac.id`;
+  throw new AuthFlowError('Akun PAuS tidak memiliki email maupun NPM.', 'paus_profile_incomplete', 400);
+}
+
+async function issueSessionToken(user: SessionUser) {
+  return new SignJWT({ userId: user.id, role: user.role, isVerified: user.isVerified })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(SESSION_TTL)
+    .sign(getJwtSecret());
+}
+
+async function toSession(user: SessionUser): Promise<PausSession> {
+  return { user, token: await issueSessionToken(user) };
+}
+
+// Mahasiswa dicocokkan HANYA lewat NPM (identitas resmi dari PAuS). Email tidak dipakai
+// untuk mahasiswa supaya akun orang lain dengan email sama tidak bisa "diambil alih".
+async function findStudentByNpm(npm: string) {
+  const found = await prisma.studentProfile.findUnique({
+    where: { studentId: npm },
+    select: { user: { select: sessionSelect } }
+  });
+  return found?.user ?? null;
+}
+
+async function findUserByEmail(email: string | null) {
+  if (!email) return null;
+  return prisma.user.findUnique({ where: { email: email.toLowerCase() }, select: sessionSelect });
+}
+
+async function createStudentFromPaus(profile: PausProfile & { npm: string; name: string }, major: string) {
+  // Validasi kunci penandatangan sebelum menulis ke database.
+  getJwtSecret();
+
+  try {
+    return await prisma.user.create({
+      data: {
+        email: emailFor(profile),
+        role: 'STUDENT',
+        // Identitas sudah diverifikasi oleh PAuS.
+        isVerified: true,
+        studentProfile: {
+          create: { fullName: profile.name, studentId: profile.npm, faculty: FMIPA_FACULTY, major }
+        }
+      },
+      select: sessionSelect
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      // Dua tab menyelesaikan login bersamaan: akun dengan NPM ini baru saja dibuat request lain.
+      const sameNpm = await findStudentByNpm(profile.npm);
+      if (sameNpm) return sameNpm;
+      // Selain itu: email PAuS ini sudah dipakai akun lain (NPM berbeda). Jangan digabung diam-diam.
+      throw new AuthFlowError('Email akun PAuS ini sudah dipakai akun lain.', 'account_conflict', 409);
+    }
+    throw error;
+  }
 }
 
 export const authService = {
-  // Ganti tipe data 'any' jadi 'RegisterPayload'
-  async register(data: RegisterPayload) {
-  const { email, password, role, fullName, studentId, employeeId, department, major, isGoogleAuth } = data;
-    // Cek email apakah sudah dipakai
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) throw new Error('Email sudah terdaftar');
-
-    // Suara MIPA hanya untuk sivitas FMIPA: fakultas dikunci, program studi dibatasi
-    if (role === 'STUDENT' && (!major || !isFmipaMajor(major))) {
-      throw new Error('Program studi tidak valid. Pilih salah satu program studi FMIPA.');
-    }
-
-    // Validate the signing key before creating a user that needs email verification.
-    const verificationSecret = isGoogleAuth ? undefined : getJwtSecret();
-
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    // Siapkan payload profile sesuai Role
-    let profileData = {};
-    if (role === 'STUDENT') {
-      profileData = { studentProfile: { create: { fullName, studentId: studentId!, faculty: FMIPA_FACULTY, major: major! } } };
-    } else if (role === 'LECTURER') {
-      profileData = { lecturerProfile: { create: { fullName, employeeId: employeeId!, faculty: FMIPA_FACULTY } } };
-    } else if (role === 'ADMIN') {
-      profileData = { adminProfile: { create: { fullName, department: department! } } };
-    }
-
-    // Insert ke database
-    const newUser = await prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        role,
-        ...profileData
-      },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        isVerified: true,
-        createdAt: true
-      }
-    });
-    // --- LOGIKA PENGIRIMAN EMAIL VERIFIKASI (HANYA UNTUK MANUAL REGISTER) ---
-    if (verificationSecret) {
-      // 1. Buat Token Verifikasi khusus (berlaku 1 jam)
-      const verifyToken = await new SignJWT({ userId: newUser.id, action: 'verify_email' })
-        .setProtectedHeader({ alg: 'HS256' })
-        .setIssuedAt()
-        .setExpirationTime('1h')
-        .sign(verificationSecret);
-
-      // 2. Buat URL Verifikasi
-      const appUrl = process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL;
-      const verificationUrl = `${appUrl}/api/auth/verify?token=${verifyToken}`;
-
-      // 3. Kirim Email
-      await transporter.sendMail({
-        from: `"Suara MIPA" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: "Verifikasi Email Akun Suara MIPA",
-        html: `
-          <div style="font-family: sans-serif; padding: 20px;">
-            <h2>Selamat datang, ${fullName}!</h2>
-            <p>Terima kasih telah mendaftar di Suara MIPA. Tinggal satu langkah lagi untuk mengaktifkan akun Anda.</p>
-            <a href="${verificationUrl}" style="background-color: #2682F9; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; display: inline-block; margin-top: 10px;">Verifikasi Email Saya</a>
-            <p style="margin-top: 20px; font-size: 12px; color: gray;">Link ini hanya berlaku selama 1 jam.</p>
-          </div>
-        `,
-      });
-    }
-
-    return newUser;
-  },
-
+  /**
+   * Login email + password. HANYA untuk development lokal & test otomatis
+   * (route-nya mati kecuali PASSWORD_LOGIN_ENABLED=true). Login produksi lewat PAuS.
+   */
   async login(email: string, password: string) {
-    // Cari user
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) throw new Error('Email atau password salah');
+    if (!user?.passwordHash) throw new Error('Email atau password salah');
 
-    // Verifikasi passwordHash
-    if (!user.passwordHash) {
-      throw new Error('Akun ini terdaftar melalui Google. Silakan gunakan tombol "Login with Google".');
-    }
-    // Verifikasi password
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) throw new Error('Email atau password salah');
 
-    // Buat JWT Token (menggunakan jose)
-    const token = await new SignJWT({ userId: user.id, role: user.role, isVerified: user.isVerified })
-      .setProtectedHeader({ alg: 'HS256' })
-      .setIssuedAt()
-      .setExpirationTime('7d') // Token berlaku 7 hari
-      .sign(getJwtSecret());
-
-    return {  
-      user: { id: user.id, email: user.email, role: user.role, isVerified: user.isVerified },
-      token
-    };
+    const sessionUser: SessionUser = { id: user.id, email: user.email, role: user.role, isVerified: user.isVerified };
+    return { user: sessionUser, token: await issueSessionToken(sessionUser) };
   },
 
-  async googleLogin(idToken: string) {
-    // 1. Verifikasi token ke server Google
-    const ticket = await googleClient.verifyIdToken({
-      idToken,
-      audience: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-    });
-    const payload = ticket.getPayload();
-
-    if (!payload || !payload.email) {
-      throw new Error('Token Google tidak valid');
+  /**
+   * Dipanggil setelah profil PAuS berhasil diambil. Aturan masuk:
+   * 1. Email/NPM di ADMIN_IDENTIFIERS -> admin (akun lama dipakai, atau dibuat sebagai ADMIN).
+   * 2. Punya NPM -> WAJIB NPM FMIPA (14xx) dengan kode prodi yang dikenal; selain itu ditolak,
+   *    termasuk bila kebetulan sudah ada akun lama. Akun dicocokkan lewat NPM, akun baru dibuat
+   *    otomatis dengan prodi dari NPM.
+   * 3. Tanpa NPM (dosen/staf) -> hanya boleh bila emailnya sudah terdaftar sebagai DOSEN/ADMIN.
+   */
+  async loginWithPaus(profile: PausProfile): Promise<PausSession> {
+    if (!profile.name) {
+      throw new AuthFlowError('Data nama dari PAuS kosong.', 'paus_profile_incomplete', 400);
     }
 
-    // 2. Cek apakah user sudah terdaftar di database kita
-    const user = await prisma.user.findUnique({ 
-      where: { email: payload.email } 
-    });
+    if (isAdminIdentity(profile)) {
+      const existingAdmin = (profile.npm && (await findStudentByNpm(profile.npm))) || (await findUserByEmail(profile.email));
+      if (existingAdmin) return toSession(existingAdmin);
 
-    // 3. SKENARIO A: User sudah ada -> Langsung Login!
-    if (user) {
-      // Pastikan isVerified jadi true karena dia berhasil login via Google
-      if (!user.isVerified) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { isVerified: true }
-        });
-        user.isVerified = true; // Sinkronisasi objek lokal
-      }
-
-      // BUAT TOKEN DENGAN MENYERTAKAN isVerified
-      const token = await new SignJWT({ 
-          userId: user.id, 
-          role: user.role, 
-          isVerified: user.isVerified // <-- WAJIB MASUK KE SINI
-        })  
-        .setProtectedHeader({ alg: 'HS256' })
-        .setIssuedAt()
-        .setExpirationTime('7d')
-        .sign(getJwtSecret());
-
-      // Kalau avatar di DB masih kosong, kita update pakai foto profil Google
-      if (!user.avatarUrl && payload.picture) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { avatarUrl: payload.picture }
-        });
-      }
-
-      return {
-        isNewUser: false, // Beritahu Frontend ini login biasa
-        user: { id: user.id, email: user.email, role: user.role, isVerified: user.isVerified },
-        token
-      };
+      const admin = await prisma.user.create({
+        data: {
+          email: emailFor(profile),
+          role: 'ADMIN',
+          isVerified: true,
+          adminProfile: { create: { fullName: profile.name, department: FMIPA_FACULTY } }
+        },
+        select: sessionSelect
+      });
+      return toSession(admin);
     }
 
-    // 4. SKENARIO B: User belum ada -> Lempar data dasar ke Frontend untuk form "Lengkapi Profil"
-    return {
-      isNewUser: true, // Beritahu Frontend untuk pindah ke halaman Pendaftaran
-      googleData: {
-        email: payload.email,
-        fullName: payload.name,
-        avatarUrl: payload.picture
+    if (profile.npm) {
+      if (!isFmipaNpm(profile.npm)) {
+        throw new AuthFlowError('Suara MIPA khusus mahasiswa FMIPA Universitas Padjadjaran.', 'not_fmipa', 403);
       }
-    };
-  },
 
- async updateProfile(userId: string, role: string, data: UpdateProfilePayload) {
-      // Antrean query dengan tipe khusus dari Prisma agar tidak jadi 'any'
-      const queries: Prisma.PrismaPromise<unknown>[] = [];
-
-      // Jika ada update untuk tabel User 
-      if (data.avatarUrl !== undefined) {
-        queries.push(
-          prisma.user.update({
-            where: { id: userId },
-            data: { avatarUrl: data.avatarUrl },
-          })
+      const major = majorFromNpm(profile.npm);
+      if (!major) {
+        throw new AuthFlowError(
+          `Kode program studi pada NPM ${profile.npm} belum dikenali. Hubungi admin.`,
+          'prodi_unknown',
+          403
         );
       }
 
-      // Suara MIPA hanya untuk FMIPA: fakultas dikunci, program studi dibatasi
-      if (role === 'STUDENT' && data.major !== undefined && !isFmipaMajor(data.major)) {
-        throw new Error('Program studi tidak valid. Pilih salah satu program studi FMIPA.');
-      }
+      const existing = await findStudentByNpm(profile.npm);
+      if (existing) return toSession(existing);
 
-      // Rakit data profil secara type-safe.
-      // Teknik spread bersyarat ini hanya memasukkan properti jika nilainya BUKAN undefined.
-      const profileUpdateData = {
-        ...(data.fullName !== undefined && { fullName: data.fullName }),
-        ...(data.faculty !== undefined && { faculty: FMIPA_FACULTY }),
-        ...(data.major !== undefined && { major: data.major }),
-        ...(data.department !== undefined && { department: data.department }),
-      };
-
-const npmRegex = /^[0-9]{10}$/;
-    if (role === 'STUDENT' && data.studentId !== undefined) {
-      if (!npmRegex.test(data.studentId)) {
-        throw new Error('Format NPM tidak valid');
-      }
-      Object.assign(profileUpdateData, { studentId: data.studentId });
+      const student = await createStudentFromPaus({ ...profile, npm: profile.npm, name: profile.name }, major);
+      return toSession(student);
     }
 
-    // Jika ada atribut profil yang di-update, dorong ke antrean query
-      if (Object.keys(profileUpdateData).length > 0) {
-        if (role === 'STUDENT') {
-          queries.push(prisma.studentProfile.update({ where: { userId }, data: profileUpdateData }));
-        } else if (role === 'LECTURER') {
-          queries.push(prisma.lecturerProfile.update({ where: { userId }, data: profileUpdateData }));
-        } else if (role === 'ADMIN') {
-          queries.push(prisma.adminProfile.update({ where: { userId }, data: profileUpdateData }));
-        } else {
-          throw new Error('Role tidak valid');
-        }
-      }
+    const staff = await findUserByEmail(profile.email);
+    if (staff && staff.role !== 'STUDENT') return toSession(staff);
 
-      //  Eksekusi semua query secara bersamaan
-      if (queries.length > 0) {
-        await prisma.$transaction(queries);
-      }
+    throw new AuthFlowError(
+      'Akun PAuS ini tidak memiliki NPM. Akun dosen/staf perlu didaftarkan oleh admin.',
+      'not_registered',
+      403
+    );
+  },
 
-      // Return response
-      return { message: "Profil berhasil diperbarui" };
+  async updateProfile(userId: string, role: string, data: UpdateProfilePayload) {
+    const queries: Prisma.PrismaPromise<unknown>[] = [];
+
+    if (data.avatarUrl !== undefined) {
+      // Foto profil wajib hasil /api/uploads (objek storage milik aplikasi); null = hapus foto.
+      if (data.avatarUrl !== null && keyFromPublicUrl(data.avatarUrl) === null) {
+        throw new Error('URL foto profil tidak valid. Unggah lewat fitur upload aplikasi.');
+      }
+      queries.push(
+        prisma.user.update({
+          where: { id: userId },
+          data: { avatarUrl: data.avatarUrl }
+        })
+      );
     }
+
+    // NPM dan program studi sengaja tidak bisa diubah: keduanya berasal dari PAuS (prodi dari kode
+    // di NPM) dan NPM dipakai untuk mencocokkan akun saat login. Fakultas selalu dikunci ke FMIPA.
+    const profileUpdateData = {
+      ...(data.fullName !== undefined && { fullName: data.fullName }),
+      ...(data.faculty !== undefined && { faculty: FMIPA_FACULTY }),
+      ...(data.department !== undefined && { department: data.department })
+    };
+
+    if (Object.keys(profileUpdateData).length > 0) {
+      if (role === 'STUDENT') {
+        queries.push(prisma.studentProfile.update({ where: { userId }, data: profileUpdateData }));
+      } else if (role === 'LECTURER') {
+        queries.push(prisma.lecturerProfile.update({ where: { userId }, data: profileUpdateData }));
+      } else if (role === 'ADMIN') {
+        queries.push(prisma.adminProfile.update({ where: { userId }, data: profileUpdateData }));
+      } else {
+        throw new Error('Role tidak valid');
+      }
+    }
+
+    if (queries.length > 0) {
+      await prisma.$transaction(queries);
+    }
+
+    return { message: 'Profil berhasil diperbarui' };
+  }
 };

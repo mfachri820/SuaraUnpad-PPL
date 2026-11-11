@@ -1,9 +1,10 @@
 import { prisma } from '@/lib/prisma';
+import { getDatabaseUrl } from '@/lib/databaseUrl';
 
 const DB_TIMEOUT_MS = 3000;
 
 export function validateDatabaseUrl() {
-  const databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl = getDatabaseUrl();
   if (!databaseUrl) {
     throw new Error(
       'DATABASE_URL is not defined. Set the database connection string in environment variables.'

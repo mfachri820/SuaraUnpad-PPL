@@ -1,116 +1,35 @@
 // components/features/auth/AuthFetch.ts
 
-// --- 1. DEFINISI INTERFACES ---
-
 export interface LoginPayload {
   email: string;
-  password?: string; // Optional karena Google Auth tidak butuh password di form
+  password: string;
 }
 
-export interface RegisterPayload {
-  fullName: string;
+export interface SessionUser {
+  id: string;
   email: string;
-  studentId: string;
-  faculty: string;
-  major: string;
-  password?: string;
-  employeeId?: string;
-  role?: "STUDENT" | "ADMIN" | "LECTURER"; // 🌟 Tambahkan buat CICD
-  isGoogleAuth?: boolean; // 🌟 TAMBAHKAN INI SESUAI PERMINTAAN BE
+  role: string;
+  isVerified: boolean;
 }
 
-// 🌟 Buat cetakan khusus untuk menggantikan 'any' pada data
-export interface AuthResponseData {
-  token?: string;
-  isNewUser?: boolean;
-  user?: {
-    id: string;
-    email: string;
-    role: string;
-    isVerified: boolean;
-  };
-  googleData?: {
-    email: string;
-    fullName: string;
-    avatarUrl?: string;
-  };
-  [key: string]: unknown; // Fleksibilitas ekstra jika backend nambah field, tanpa pakai any
-}
-
-// Interface untuk standard response API kamu
-export interface AuthResponse {
+export interface AuthResponse<T = { token?: string; user?: SessionUser }> {
   status: string;
   message: string;
-  token?: string; // Tergantung backend, kadang di root
-  data?: AuthResponseData; // 🌟 Ganti any menjadi AuthResponseData
+  data?: T;
 }
 
-// --- 2. FUNGSI FETCHING ---
-
-// 🌟 Ganti Promise<any> menjadi Promise<AuthResponse>
-export const verifyGoogleAuth = async (idToken: string): Promise<AuthResponse> => {
-  const res = await fetch("/api/auth/google", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ idToken })
-  });
-
-  const result = await res.json();
-
-  if (!res.ok) {
-    throw new Error(result.message || "Gagal verifikasi Google");
-  }
-
+async function parseOrThrow<T>(res: Response, fallbackMessage: string): Promise<AuthResponse<T>> {
+  const result = (await res.json().catch(() => null)) as AuthResponse<T> | null;
+  if (!res.ok || !result) throw new Error(result?.message || fallbackMessage);
   return result;
-};
+}
 
-export const registerManual = async (
-  data: RegisterPayload
-): Promise<AuthResponse> => {
-  const payload = { ...data, role: "STUDENT", isGoogleAuth: false };
-
-  const res = await fetch("/api/auth/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-  const result = await res.json();
-  if (!res.ok) throw new Error(result.message || "Gagal daftar akun");
-  return result;
-};
-
-export const loginManual = async (
-  data: LoginPayload
-): Promise<AuthResponse> => {
+// Login email + password: hanya aktif untuk development lokal (PASSWORD_LOGIN_ENABLED=true).
+export const loginManual = async (data: LoginPayload) => {
   const res = await fetch("/api/auth/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data)
   });
-
-  const result = await res.json();
-
-  if (!res.ok) {
-    throw new Error(result.message || "Login gagal");
-  }
-  return result;
-};
-
-export const completeGoogleProfile = async (
-  data: RegisterPayload
-): Promise<AuthResponse> => {
-  const payload = {
-    ...data,
-    password: "GOOGLE_AUTH_USER",
-    role: "STUDENT",
-    isGoogleAuth: true
-  };
-  const res = await fetch("/api/auth/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  });
-  const result = await res.json();
-  if (!res.ok) throw new Error(result.message || "Gagal melengkapi profil");
-  return result;
+  return parseOrThrow<{ token?: string; user?: SessionUser }>(res, "Login gagal");
 };

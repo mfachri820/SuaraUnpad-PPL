@@ -28,8 +28,6 @@ export const test = base.extend<{ actors: Actors }>({
         expect(typeof token).toBe('string');
         await context.addCookies([{ name: 'token', value: token, url: baseURL! }]);
         const page = await context.newPage();
-        // Third-party login widgets are outside this QA scope. Application APIs are never mocked.
-        await page.route('https://accounts.google.com/**', route => route.abort());
         actors[role] = { context, page, token, ...seed[role] };
       }
       await provide(actors);

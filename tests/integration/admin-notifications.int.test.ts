@@ -51,7 +51,7 @@ describe('Notifikasi laporan user ke admin (DB asli)', () => {
           description: 'Lampu koridor Gedung D mati sejak kemarin',
           category: 'OTHER',
           location: 'Gedung D',
-          imageUrl: 'https://res.cloudinary.com/x/y.jpg'
+          imageUrl: 'https://storage.test/suara-mipa-test/suara-mipa/reports/y.jpg'
         }
       }))
     );

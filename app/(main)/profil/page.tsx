@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Controller, useForm, SubmitHandler } from "react-hook-form";
-import Select from "@/components/ui/Select";
+import { useForm, SubmitHandler } from "react-hook-form";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Cookies from "js-cookie";
@@ -15,7 +14,6 @@ import {
 } from "react-icons/fi";
 import Image from "next/image";
 import { toast } from "react-hot-toast";
-import { FMIPA_MAJORS } from "@/lib/fmipa";
 
 // --- 1. DEFINISI INTERFACES (LINTER FRIENDLY) ---
 interface StudentProfile {
@@ -43,7 +41,6 @@ interface Report {
 
 interface EditProfileInputs {
   faculty: string;
-  major: string;
 }
 
 export default function ProfilePage() {
@@ -59,7 +56,7 @@ export default function ProfilePage() {
   const [isUpdating, setIsUpdating] = useState(false);
 
   const router = useRouter();
-  const { register, handleSubmit, setValue, control } = useForm<EditProfileInputs>();
+  const { register, handleSubmit, setValue } = useForm<EditProfileInputs>();
 
   const handleOpenEdit = () => {
     setSelectedAvatarFile(null);
@@ -124,7 +121,6 @@ export default function ProfilePage() {
 
           // Set form defaults
           setValue("faculty", user.studentProfile?.faculty || "");
-          setValue("major", user.studentProfile?.major || "");
         }
       } catch {
         console.error("Sync error");
@@ -184,8 +180,7 @@ export default function ProfilePage() {
         },
         body: JSON.stringify({
           avatarUrl,
-          faculty: data.faculty,
-          major: data.major
+          faculty: data.faculty
         })
       });
 
@@ -200,8 +195,7 @@ export default function ProfilePage() {
           avatarUrl: avatarUrl || prev.avatarUrl,
           studentProfile: {
             ...prev.studentProfile,
-            faculty: data.faculty,
-            major: data.major
+            faculty: data.faculty
           }
         };
       });
@@ -456,24 +450,12 @@ export default function ProfilePage() {
                   <label htmlFor="profile-major" className="text-xs font-bold text-zinc-400 uppercase">
                     Program Studi
                   </label>
-                  <Controller
-                    name="major"
-                    control={control}
-                    defaultValue=""
-                    rules={{ required: true }}
-                    render={({ field, fieldState }) => (
-                      <Select
-                        id="profile-major"
-                        name={field.name}
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        onBlur={field.onBlur}
-                        inputRef={field.ref}
-                        invalid={fieldState.invalid}
-                        options={FMIPA_MAJORS.map(option => ({ value: option, label: option }))}
-                        aria-required
-                      />
-                    )}
+                  {/* Prodi ditentukan otomatis dari kode prodi di NPM (lib/fmipa.ts), tidak bisa diubah. */}
+                  <input
+                    id="profile-major"
+                    value={userData?.studentProfile?.major || ""}
+                    readOnly
+                    className="w-full px-4 py-3 bg-zinc-100 border border-zinc-200 rounded-xl outline-none text-zinc-500 cursor-not-allowed"
                   />
                 </div>
                 <button

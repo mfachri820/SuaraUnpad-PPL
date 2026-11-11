@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function RootPage() {
-  redirect("/register"); 
+  redirect("/home"); // proxy mengarahkan ke /login bila belum masuk 
 }

@@ -41,7 +41,7 @@ async function main() {
     database: database.name,
     scope: ['REQ-03 Pengumuman', 'REQ-04 Moderasi pengguna/admin'],
     assumptions: ['Pengumuman boleh dikomentari sesuai implementasi saat ini.', 'Moderasi setelah publikasi, bukan persetujuan sebelum terbit.'],
-    limitations: ['SSO, deployment DPSI, dan AI bukan scope.', 'Upload Cloudinary berhasil tidak termasuk alur E2E; validasi file diuji melalui HTTP.'],
+    limitations: ['Login PAuS (SSO), deployment DPSI, dan AI bukan scope; fixture login memakai PASSWORD_LOGIN_ENABLED.', 'Upload sukses ke storage S3 tidak termasuk alur E2E; validasi file diuji melalui HTTP.'],
     exitCodes: {},
   };
   await prepareDatabase();
@@ -50,7 +50,7 @@ async function main() {
   }
   if (phase !== 'integration') {
     metadata.exitCodes.build = await run('playwright/build', path.join(root, 'node_modules/next/dist/bin/next'), ['build'], {
-      DATABASE_URL: database.url, JWT_SECRET: process.env.QA_JWT_SECRET, CLOUDINARY_CLOUD_NAME: 'test-cloud', NODE_ENV: 'production',
+      DATABASE_URL: database.url, JWT_SECRET: process.env.QA_JWT_SECRET, NODE_ENV: 'production',
     });
     if (metadata.exitCodes.build === 0) {
       metadata.exitCodes.e2e = await run('playwright/console', path.join(root, 'node_modules/@playwright/test/cli.js'), ['test', '--config', 'tests/e2e/playwright.config.ts']);

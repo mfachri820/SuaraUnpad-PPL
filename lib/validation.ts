@@ -3,6 +3,7 @@ import { booleanFlag, optionalUuid, paginationSchema } from '@/lib/http';
 import { ANNOUNCEMENT_PIN_DAYS } from '@/services/postService';
 import { CLOSE_REASON_MAX, CLOSE_REASON_MIN, FLAG_NOTE_MAX } from '@/services/moderationService';
 import { FMIPA_MAJORS } from '@/lib/fmipa';
+import { keyFromPublicUrl } from '@/lib/storage';
 
 type PinDays = (typeof ANNOUNCEMENT_PIN_DAYS)[number];
 const PIN_DAYS_MESSAGE = `Durasi pin harus salah satu dari ${ANNOUNCEMENT_PIN_DAYS.join('/')} hari.`;
@@ -11,14 +12,9 @@ export const TITLE_MAX = 150;
 export const POST_CONTENT_MAX = 5000;
 export const COMMENT_CONTENT_MAX = 1000;
 
-export const cloudinaryImageUrl = z
+export const storageImageUrl = z
   .url({ message: 'URL gambar tidak valid.' })
-  .refine((value) => {
-    const url = new URL(value);
-    if (url.protocol !== 'https:' || url.hostname !== 'res.cloudinary.com') return false;
-    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-    return !cloudName || url.pathname.startsWith(`/${cloudName}/`);
-  }, 'Gambar harus diunggah lewat fitur upload aplikasi.');
+  .refine((value) => keyFromPublicUrl(value) !== null, 'Gambar harus diunggah lewat fitur upload aplikasi.');
 
 const trimmed = (max: number, label: string) =>
   z.string({ message: `${label} wajib diisi.` }).trim().max(max, `${label} maksimal ${max} karakter.`);
@@ -27,7 +23,7 @@ export const createPostSchema = z
   .object({
     title: trimmed(TITLE_MAX, 'Judul').optional().default(''),
     content: trimmed(POST_CONTENT_MAX, 'Isi postingan').optional().default(''),
-    imageUrl: cloudinaryImageUrl.optional(),
+    imageUrl: storageImageUrl.optional(),
     policyId: optionalUuid,
     kind: z.enum(['ASPIRASI', 'ANNOUNCEMENT']).optional().default('ASPIRASI'),
     pinDays: z

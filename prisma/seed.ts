@@ -33,7 +33,7 @@ const SEED_ACCOUNTS: SeedAccount[] = [
   { key: "budi", email: "budi@mail.unpad.ac.id", role: "STUDENT", isVerified: true, fullName: "Budi Santoso", studentId: "1408102201", major: "Teknik Informatika" },
   { key: "siti", email: "siti@mail.unpad.ac.id", role: "STUDENT", isVerified: true, fullName: "Siti Rahmawati", studentId: "1401102202", major: "Matematika" },
   { key: "andi", email: "andi@mail.unpad.ac.id", role: "STUDENT", isVerified: true, fullName: "Andi Pratama", studentId: "1403102203", major: "Fisika" },
-  { key: "belum", email: "belumverif@mail.unpad.ac.id", role: "STUDENT", isVerified: false, fullName: "Mahasiswa Belum Verifikasi", studentId: "1406102204", major: "Kimia" }
+  { key: "belum", email: "belumverif@mail.unpad.ac.id", role: "STUDENT", isVerified: false, fullName: "Mahasiswa Belum Verifikasi", studentId: "1406102204", major: "Statistika" }
 ];
 
 function resolvePassword() {

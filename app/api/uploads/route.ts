@@ -6,7 +6,7 @@ const VALID_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE = 5 * 1024 * 1024; // 5 Megabytes
 
 export const POST = withErrorHandling(async (request: Request) => {
-  // Pastikan hanya user yang login yang bisa upload (cegah spamming ke Cloudinary)
+  // Pastikan hanya user yang login yang bisa upload (cegah spamming ke storage)
   requireAuth(request);
 
   // Tangkap FormData (bukan JSON, karena ini pengiriman file fisik)
@@ -40,7 +40,7 @@ export const POST = withErrorHandling(async (request: Request) => {
     return errorResponse('Konten file tidak valid. Pastikan file benar-benar gambar.', 400);
   }
 
-  // Eksekusi Upload ke Cloudinary
+  // Eksekusi upload ke storage S3 (MinIO)
   const imageUrl = await uploadService.uploadImage(buffer, resolveUploadFolder(folder as UploadFolder));
 
   // Kembalikan URL-nya ke Frontend

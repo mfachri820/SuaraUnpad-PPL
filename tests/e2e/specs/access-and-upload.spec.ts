@@ -21,7 +21,7 @@ test('E2E-HTTP-01 proxy menolak non-admin, token tidak valid, belum verifikasi, 
 });
 
 test('E2E-HTTP-02 upload pengumuman menolak MIME salah, gambar palsu, dan ukuran di atas 5 MiB', async ({ actors }, info) => {
-  info.annotations.push({ type: 'scope', description: 'Real HTTP upload validation; no successful Cloudinary upload is claimed.' });
+  info.annotations.push({ type: 'scope', description: 'Real HTTP upload validation; no successful storage upload is claimed.' });
   const outcomes = [];
   for (const sample of [
     { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('Bukan gambar') },

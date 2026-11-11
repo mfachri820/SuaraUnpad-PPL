@@ -1,7 +1,7 @@
 "use client"; // 🌟 Wajib tambahkan ini karena kita pakai onClick dan Cookies
 
 import { useRouter } from "next/navigation";
-import { FiMail } from "react-icons/fi";
+import { FiLock } from "react-icons/fi";
 import Cookies from "js-cookie"; // 🌟 Import js-cookie
 
 export default function VerifyNoticePage() {
@@ -19,17 +19,17 @@ export default function VerifyNoticePage() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
       <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm max-w-md w-full text-center">
         <div className="w-20 h-20 bg-blue-50 text-[#2682F9] rounded-full flex items-center justify-center mx-auto mb-6">
-          <FiMail className="text-4xl" />
+          <FiLock className="text-4xl" />
         </div>
 
         <h2 className="text-2xl font-black text-slate-800 mb-3">
-          Cek Email Anda
+          Akun Belum Aktif
         </h2>
 
         <p className="text-slate-600 text-sm leading-relaxed mb-8">
-          Kami telah mengirimkan tautan verifikasi ke alamat email Anda. Silakan
-          cek kotak masuk (Inbox) atau folder Spam untuk mengaktifkan akun
-          Suara MIPA Anda.
+          Akun Suara MIPA Anda sedang dinonaktifkan atau menunggu verifikasi
+          admin. Silakan hubungi admin Suara MIPA FMIPA untuk mengaktifkan
+          kembali akun Anda.
         </p>
 
         {/* 🌟 Ubah Link menjadi button interaktif */}

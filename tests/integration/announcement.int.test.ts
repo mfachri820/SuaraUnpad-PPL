@@ -44,7 +44,7 @@ describe('Pengumuman admin (DB asli)', () => {
     expect(badPin.status).toBe(400);
   });
 
-  it('aspirasi tidak boleh di-pin, gambar harus dari Cloudinary milik aplikasi', async () => {
+  it('aspirasi tidak boleh di-pin, gambar harus dari storage milik aplikasi', async () => {
     const pinnedAspirasi = await createPost(apiRequest('POST', '/api/posts', { user: student, body: { content: 'aspirasi', pinDays: 3 } }));
     const foreignImage = await createPost(
       apiRequest('POST', '/api/posts', { user: student, body: { content: 'aspirasi', imageUrl: 'https://example.com/a.jpg' } })
@@ -62,7 +62,7 @@ describe('Pengumuman admin (DB asli)', () => {
             kind: 'ANNOUNCEMENT',
             title: 'Pemeliharaan jaringan',
             content: 'Internet mati Sabtu pagi.',
-            imageUrl: 'https://res.cloudinary.com/test-cloud/image/upload/v1/suara_mipa/announcements/a.jpg',
+            imageUrl: 'https://storage.test/suara-mipa-test/suara-mipa/announcements/a.jpg',
             pinDays: 3
           }
         })

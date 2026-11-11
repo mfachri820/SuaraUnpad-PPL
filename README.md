@@ -90,4 +90,27 @@ Platform ini diharapkan mampu:
 
 - [Development lokal (Postgres lokal, seeder, test)](docs/DEVELOPMENT.md)
 - [API contract & arahan frontend (moderasi, pengumuman)](docs/API_CONTRACT_FE.md)
-- [Setup AWS staging + CI/CD](docs/SETUP_AWS_CICD.md)
+- [Setup AWS staging + CI/CD](docs/SETUP_AWS_CICD.md) (lama, sebelum pindah ke platform Unpad)
+
+## Deploy ke platform Unpad (GitLab `git.unpad.dev`)
+
+Deploy memakai pipeline bersama `unpad/devops/pipeline` (Auto DevOps). File terkait:
+
+| File | Isi |
+| :--- | :--- |
+| `.gitlab-ci.yml` | Template pipeline, URL staging/production, `DB_MIGRATE` (Prisma) |
+| `.gitlab/auto-deploy-values.yaml` | Port 3000, ingress, startup probe `/api/health`, resource, `DB_URL` dari `postgresql-creds` |
+| `.gitlab/manifests/static.yaml` | Config non-rahasia bersama (endpoint MinIO, `APP_URL`) |
+| `.gitlab/manifests/{staging,production}/config.yaml` | Client ID PAuS, redirect URI, bucket & URL publik MinIO, admin |
+
+Secret diisi di **Settings > CI/CD > Variables** (Masked, scope per environment):
+`K8S_SECRET_JWT_SECRET`, `K8S_SECRET_PAUS_CLIENT_SECRET`, `K8S_SECRET_AWS_ACCESS_KEY_ID`, `K8S_SECRET_AWS_SECRET_ACCESS_KEY`.
+
+**Login** memakai PAuS (SSO Unpad): tombol *Masuk dengan PAuS* → `/api/auth/paus/redirect` → PAuS →
+`/api/auth/paus/callback`. Mahasiswa FMIPA (NPM berawalan `14`) yang baru pertama login langsung dibuatkan akun; program studi
+diambil dari 2 digit kode prodi setelah `14` (lihat `lib/fmipa.ts`). Email/NPM di `ADMIN_IDENTIFIERS` otomatis menjadi admin.
+
+**Upload gambar** disimpan di MinIO (S3) lewat `@aws-sdk/client-s3`; URL publik dibentuk dari `AWS_URL`.
+
+**Lokal**: `docker compose up -d db minio minio-init`, salin `.env.example` ke `.env`
+(`PASSWORD_LOGIN_ENABLED=true` agar bisa login dengan akun seeder), lalu `npm run db:deploy && npm run db:seed && npm run dev`.

@@ -68,7 +68,7 @@ describe('Middleware and profile validation', () => {
     const body = await response.json();
     expect(body).toEqual({
       status: 'error',
-      message: 'Akun belum terverifikasi. Silakan cek email Anda.'
+      message: 'Akun belum aktif. Silakan hubungi admin.'
     });
     expect(mockedJwtVerify).toHaveBeenCalledOnce();
   });
@@ -141,12 +141,14 @@ describe('Middleware and profile validation', () => {
     process.env.JWT_SECRET = original;
   });
 
-  it('throws error and does not call Prisma when studentId is invalid during profile update', async () => {
-    await expect(
-      authService.updateProfile('user-1', 'STUDENT', { studentId: 'invalid-npm' })
-    ).rejects.toThrow(/Format NPM tidak valid/i);
+  it('ignores studentId on profile update because the NPM comes from PAuS', async () => {
+    await authService.updateProfile('user-1', 'STUDENT', { studentId: '140810230099', fullName: 'Nama Baru' } as never);
 
-    expect(mockedTransaction).not.toHaveBeenCalled();
+    expect(prisma.studentProfile.update).toHaveBeenCalledWith({
+      where: { userId: 'user-1' },
+      data: { fullName: 'Nama Baru' }
+    });
+    expect(mockedTransaction).toHaveBeenCalledOnce();
   });
 });
 
@@ -185,6 +187,19 @@ describe('Pemisahan halaman admin dan user (proxy UI)', () => {
     expect(redirectPath(await pageRequest('/profil/my-report', 'ADMIN'))).toBe('/admin');
     expect(redirectPath(await pageRequest('/login', 'ADMIN'))).toBe('/admin');
     expect(redirectPath(await pageRequest('/login', 'STUDENT'))).toBe('/home');
+  });
+
+  it('redirect memakai APP_URL, bukan host internal container', async () => {
+    const original = process.env.APP_URL;
+    process.env.APP_URL = 'https://suara.fmipa.stg.unpad.ac.id';
+    try {
+      const { NextRequest } = await import('next/server');
+      const response = await middleware(new NextRequest('http://0.0.0.0:3000/home'));
+      expect(response.headers.get('location')).toBe('https://suara.fmipa.stg.unpad.ac.id/login?error=unauthorized');
+    } finally {
+      if (original === undefined) delete process.env.APP_URL;
+      else process.env.APP_URL = original;
+    }
   });
 
   it('halaman yang hanya berawalan sama tidak ikut diblokir', async () => {

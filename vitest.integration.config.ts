@@ -23,7 +23,9 @@ export default defineConfig({
     env: {
       DATABASE_URL: testDatabaseUrl,
       JWT_SECRET: randomBytes(32).toString('hex'),
-      CLOUDINARY_CLOUD_NAME: 'test-cloud',
+      AWS_URL: 'https://storage.test/suara-mipa-test',
+      AWS_BUCKET: 'suara-mipa-test',
+      STORAGE_ROOT_FOLDER: 'suara-mipa',
       NODE_ENV: 'test',
     },
   },

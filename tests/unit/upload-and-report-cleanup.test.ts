@@ -10,7 +10,8 @@ vi.mock('@/lib/prisma', () => ({
 
 import { POST as uploadRoutePOST } from '@/app/api/uploads/route';
 import { reportService } from '@/services/reportService';
-import { uploadService, extractPublicIdFromUrl } from '@/services/uploadService';
+import { uploadService } from '@/services/uploadService';
+import { keyFromPublicUrl, type StorageConfig } from '@/lib/storage';
 import { prisma } from '@/lib/prisma';
 import type { ReportCategory } from '@prisma/client';
 
@@ -19,7 +20,7 @@ describe('Upload handler and report cleanup', () => {
     vi.clearAllMocks();
   });
 
-  it('rejects a .jpg file whose magic bytes do not match image/jpeg before uploading to Cloudinary', async () => {
+  it('rejects a .jpg file whose magic bytes do not match image/jpeg before uploading to storage', async () => {
     const invalidBuffer = Buffer.from('this-is-not-a-real-jpeg');
     const fakeFile = {
       name: 'fake.jpg',
@@ -28,7 +29,7 @@ describe('Upload handler and report cleanup', () => {
       arrayBuffer: async () => invalidBuffer.buffer,
     } as unknown as File;
 
-    const uploadImageSpy = vi.spyOn(uploadService, 'uploadImage').mockResolvedValue('https://res.cloudinary.com/demo/image/upload/fake.jpg');
+    const uploadImageSpy = vi.spyOn(uploadService, 'uploadImage').mockResolvedValue('https://svc.unpad.ac.id/minio/suara/suara-mipa/general/fake.jpg');
 
     const request = {
       headers: new Headers({ 'x-user-id': 'user-1', 'x-user-role': 'STUDENT' }),
@@ -48,7 +49,7 @@ describe('Upload handler and report cleanup', () => {
       description: 'Desc',
       category: 'POTHOLE',
       location: 'Gedung A',
-      imageUrl: 'https://res.cloudinary.com/demo/image/upload/v1/suara_unpad/reports/fake-image.jpg',
+      imageUrl: 'https://svc.unpad.ac.id/minio/suara/suara-mipa/reports/fake-image.jpg',
     };
 
     const deleteImageByUrlSpy = vi.spyOn(uploadService, 'deleteImageByUrl').mockResolvedValue({ result: 'ok' });
@@ -60,19 +61,34 @@ describe('Upload handler and report cleanup', () => {
     expect(deleteImageByUrlSpy).toHaveBeenCalledWith(payload.imageUrl);
   });
 
-  it('extracts the full Cloudinary public_id (folder included, version & extension removed)', () => {
-    expect(
-      extractPublicIdFromUrl('https://res.cloudinary.com/my-cloud/image/upload/v1712345678/suara_mipa/reports/abc123.jpg', 'my-cloud')
-    ).toBe('suara_mipa/reports/abc123');
-    expect(
-      extractPublicIdFromUrl('https://res.cloudinary.com/my-cloud/image/upload/suara_unpad/general/file.name.png', 'my-cloud')
-    ).toBe('suara_unpad/general/file.name');
+  const storage: StorageConfig = {
+    endpoint: 'https://nodes.minio.unpad.dev',
+    region: 'id-dipatiukur-1',
+    bucket: 'suara',
+    forcePathStyle: true,
+    publicBaseUrl: 'https://svc.unpad.ac.id/minio/suara'
+  };
+
+  it('maps a public storage URL back to its object key (root folder included)', () => {
+    expect(keyFromPublicUrl('https://svc.unpad.ac.id/minio/suara/suara-mipa/reports/abc123.jpg', storage, 'suara-mipa')).toBe(
+      'suara-mipa/reports/abc123.jpg'
+    );
+    expect(keyFromPublicUrl('https://svc.unpad.ac.id/minio/suara/suara-mipa/general/file%20name.png', storage, 'suara-mipa')).toBe(
+      'suara-mipa/general/file name.png'
+    );
   });
 
-  it('refuses to touch assets that do not belong to our Cloudinary account', () => {
-    expect(extractPublicIdFromUrl('https://res.cloudinary.com/demo/image/upload/sample.jpg', 'my-cloud')).toBeNull();
-    expect(extractPublicIdFromUrl('https://example.com/image.jpg', 'my-cloud')).toBeNull();
-    expect(extractPublicIdFromUrl('bukan-url', 'my-cloud')).toBeNull();
+  it('refuses URLs that do not belong to our bucket or root folder', () => {
+    const cases = [
+      'https://res.cloudinary.com/demo/image/upload/sample.jpg',
+      'https://svc.unpad.ac.id/minio/other-bucket/suara-mipa/a.jpg',
+      'https://svc.unpad.ac.id/minio/suara/app-lain/a.jpg',
+      'https://svc.unpad.ac.id/minio/suara/suara-mipa/../secret.jpg',
+      'https://svc.unpad.ac.id/minio/suara/suara-mipa/a.jpg?X-Amz-Signature=1',
+      'http://svc.unpad.ac.id/minio/suara/suara-mipa/a.jpg',
+      'bukan-url'
+    ];
+    for (const url of cases) expect(keyFromPublicUrl(url, storage, 'suara-mipa'), url).toBeNull();
   });
 
   it('rejects upload folders outside the allowlist', async () => {

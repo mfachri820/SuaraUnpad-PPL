@@ -23,7 +23,7 @@
 ## 1. Konvensi umum
 
 ### Auth
-Tidak berubah: header `Authorization: Bearer <token>`, token diambil dari cookie `token` (auth nanti diganti SSO kampus). Semua `/api/*` wajib token **kecuali**: `/api/auth/login`, `/api/auth/register`, `/api/auth/verify`, `/api/auth/google`, `/api/health`. Semua `/api/admin/*` hanya untuk role `ADMIN`; role lain mendapat 403.
+Tidak berubah: header `Authorization: Bearer <token>`, token diambil dari cookie `token` (dipasang server setelah login PAuS). Semua `/api/*` wajib token **kecuali**: `/api/auth/paus/*` (redirect, callback), `/api/auth/login` (hanya aktif bila `PASSWORD_LOGIN_ENABLED=true`, untuk development), `/api/health`. Semua `/api/admin/*` hanya untuk role `ADMIN`; role lain mendapat 403.
 
 ### Envelope response
 ```jsonc
@@ -135,7 +135,7 @@ Contoh item (dari seeder):
   "kind": "ANNOUNCEMENT",
   "title": "Pemeliharaan Jaringan Kampus Sabtu Ini",
   "content": "Akan ada pemeliharaan jaringan internet …",
-  "imageUrl": "https://res.cloudinary.com/demo/image/upload/samples/landscapes/architecture-signs.jpg",
+  "imageUrl": "https://<AWS_URL>/suara-mipa/staging/reports/<uuid>.jpg",
   "pinnedUntil": "2026-10-05T17:33:45.664Z",
   "closedAt": null,
   "closedReason": null,
@@ -169,7 +169,7 @@ Banner yang disarankan: 🔒 **Ditutup oleh {closedBy.displayName} · {tanggal c
 ### `POST /api/posts`
 ```jsonc
 // Aspirasi (semua user login). title opsional: kalau kosong, server pakai 5 kata pertama.
-{ "content": "WiFi Gedung D sering putus", "imageUrl": "https://res.cloudinary.com/<cloud>/…", "policyId": "<uuid, opsional>" }
+{ "content": "WiFi Gedung D sering putus", "imageUrl": "<url dari /api/uploads>", "policyId": "<uuid, opsional>" }
 
 // Pengumuman (hanya ADMIN)
 { "kind": "ANNOUNCEMENT", "title": "Pemeliharaan Jaringan", "content": "…", "imageUrl": "…(opsional)", "pinDays": 3 }
@@ -178,7 +178,7 @@ Banner yang disarankan: 🔒 **Ditutup oleh {closedBy.displayName} · {tanggal c
 |---|---|
 | `content` | wajib, kecuali ada `imageUrl` (khusus aspirasi); maksimal 5000 karakter |
 | `title` | aspirasi: opsional; pengumuman: **wajib ≥ 5 karakter**; maksimal 150 |
-| `imageUrl` | harus URL hasil `/api/uploads` (Cloudinary milik aplikasi), selain itu 400 |
+| `imageUrl` | harus URL hasil `/api/uploads` (storage S3/MinIO milik aplikasi, di bawah `AWS_URL`), selain itu 400 |
 | `pinDays` | hanya untuk pengumuman: `1`, `3`, `7`, atau `30`. Tanpa `pinDays` = tidak di-pin |
 | `kind` | `ASPIRASI` (default) atau `ANNOUNCEMENT` |
 
@@ -389,7 +389,7 @@ Perbaikan lain: `COMMENT_ON_POST` dan `REPLY_ON_COMMENT` sekarang juga membawa `
 | `avatars` | foto profil |
 | `general` | default kalau `folder` tidak dikirim |
 
-Folder lain → 400. Response: `{ "url": "https://res.cloudinary.com/…" }`. Kirim `url` ini apa adanya sebagai `imageUrl`.
+Folder lain → 400. Response: `{ "url": "<AWS_URL>/<STORAGE_ROOT_FOLDER>/<folder>/<uuid>.<ext>" }`. Kirim `url` ini apa adanya sebagai `imageUrl`.
 
 ---
 
@@ -516,7 +516,7 @@ Mengacu ke `PLAN.md` §3–§5. Backend untuk semua poin di bawah **sudah siap**
 
 ## 11. Akun untuk testing
 
-Jalankan backend lokal (`docs/DEVELOPMENT.md`) lalu `npm run db:seed`. Password semua akun lokal: **`Password123!`**. Di staging, password mengikuti `SEED_PASSWORD` (tanyakan ke tim backend).
+Jalankan backend lokal (`docs/DEVELOPMENT.md`) lalu `npm run db:seed`. Password semua akun lokal: **`Password123!`** (login password hanya aktif bila `PASSWORD_LOGIN_ENABLED=true`). Di staging/production login lewat PAuS.
 
 | Role | Email | Catatan |
 |---|---|---|
@@ -525,6 +525,6 @@ Jalankan backend lokal (`docs/DEVELOPMENT.md`) lalu `npm run db:seed`. Password 
 | STUDENT | `budi@mail.unpad.ac.id` | Punya aspirasi dengan komentar + notifikasi |
 | STUDENT | `siti@mail.unpad.ac.id` | |
 | STUDENT | `andi@mail.unpad.ac.id` | Punya postingan yang **ditutup** admin + komentar yang **dihapus** admin (cek notifikasinya) |
-| STUDENT | `belumverif@mail.unpad.ac.id` | Belum terverifikasi → diarahkan ke `/verify-notice` |
+| STUDENT | `belumverif@mail.unpad.ac.id` | Belum aktif (dinonaktifkan admin) → diarahkan ke `/verify-notice` |
 
 Data contoh yang tersedia: 1 pengumuman ter-pin + 1 yang pin-nya sudah lewat, aspirasi dengan dan tanpa gambar, 1 postingan ditutup, komentar + balasan + komentar terhapus, laporan konten PENDING/ACTIONED, 3 kebijakan (DRAFT/ACTIVE/CLOSED) dengan vote, 2 laporan fasilitas, dan notifikasi setiap tipe baru.

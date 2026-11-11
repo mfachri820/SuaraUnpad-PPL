@@ -20,45 +20,75 @@ services:
       timeout: 5s
       retries: 20
 
-  mailpit:
-    image: axllent/mailpit:latest
-    container_name: suara-mipa-mailpit
-    profiles: ["mail"]
+  # S3-compatible storage lokal, meniru MinIO platform Unpad.
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: suara-mipa-minio
+    command: server /data --console-address ":9001"
     environment:
-      MP_SMTP_AUTH_ACCEPT_ANY: "1"
-      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
     ports:
-      - "127.0.0.1:1025:1025"
-      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
+  # Buat bucket + izinkan baca publik (setara proxy publik MinIO di platform).
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${MINIO_USER} $${MINIO_PASSWORD} &&
+      mc mb --ignore-existing local/$${BUCKET} &&
+      mc anonymous set download local/$${BUCKET}
+      "
+    environment:
+      MINIO_USER: ${AWS_ACCESS_KEY_ID:-minioadmin}
+      MINIO_PASSWORD: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
+      BUCKET: ${AWS_BUCKET:-suara-mipa}
+
+  # Image yang sama dengan app; menjalankan perintah yang sama dengan DB_MIGRATE di pipeline.
   migrate:
     profiles: ["app"]
     build:
       context: .
-      target: tools
+    image: suara-mipa:local
+    command: ["/bin/sh", "-c", "cd /app/migrate && ./node_modules/.bin/prisma migrate deploy"]
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-suara}:${POSTGRES_PASSWORD:-suara}@db:5432/${POSTGRES_DB:-suara_mipa}
+      DB_URL: postgresql://${POSTGRES_USER:-suara}:${POSTGRES_PASSWORD:-suara}@db:5432/${POSTGRES_DB:-suara_mipa}
     depends_on:
       db:
         condition: service_healthy
 
   app:
     profiles: ["app"]
-    build:
-      context: .
-      target: runner
-      args:
-        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
+    image: suara-mipa:local
     env_file: .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-suara}:${POSTGRES_PASSWORD:-suara}@db:5432/${POSTGRES_DB:-suara_mipa}
+      DATABASE_URL: ""
+      DB_URL: postgresql://${POSTGRES_USER:-suara}:${POSTGRES_PASSWORD:-suara}@db:5432/${POSTGRES_DB:-suara_mipa}
+      APP_URL: http://localhost:${APP_PORT:-3000}
+      AWS_ENDPOINT: http://minio:9000
+      AWS_URL: http://localhost:9000/${AWS_BUCKET:-suara-mipa}
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"
     depends_on:
       db:
         condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
       migrate:
         condition: service_completed_successfully
 
 volumes:
   pgdata:
+  miniodata:

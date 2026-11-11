@@ -693,8 +693,7 @@ export default function HomeFeed() {
                       </p>
                     </div>
 
-                    {report.imageUrl &&
-                      report.imageUrl !== "https://res.cloudinary.com/..." && (
+                    {report.imageUrl && (
                         <div className="relative w-full h-48 rounded-2xl overflow-hidden border border-slate-100 mt-2">
                           <Image
                             src={report.imageUrl}
@@ -769,8 +768,7 @@ export default function HomeFeed() {
               <FiX className="text-xl" />
             </button>
 
-            {selectedReport.imageUrl &&
-            selectedReport.imageUrl !== "https://res.cloudinary.com/..." ? (
+            {selectedReport.imageUrl ? (
               <div className="relative w-full h-64 bg-slate-100 shrink-0">
                 <Image
                   src={selectedReport.imageUrl}

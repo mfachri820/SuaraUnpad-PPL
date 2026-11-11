@@ -1,0 +1,15 @@
+---
+include:
+  - project: "unpad/devops/pipeline"
+    ref: v4
+    file: "/templates/base.gitlab-ci.yml"
+
+variables:
+  TEST_DISABLED: "true"
+  SENTRY_RELEASE_DISABLED: "true"
+
+  # TODO: sesuaikan dengan domain yang disetujui lewat domain_request.
+  STAGING_URL: "https://suara.fmipa.stg.unpad.ac.id"
+  PRODUCTION_URL: "https://suara.fmipa.unpad.ac.id"
+
+  DB_MIGRATE: "cd /app/migrate && ./node_modules/.bin/prisma migrate deploy"

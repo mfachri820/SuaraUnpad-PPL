@@ -1,0 +1,50 @@
+# Helm values untuk auto-deploy-app (platform Unpad). Referensi:
+# platform-docs/docs/deployments/helm-values.md
+nameOverride: app
+service:
+  externalPort: 3000
+  internalPort: 3000
+
+ingress:
+  enabled: true
+  className: "nginx"
+  # Domain dedicated (suaraunpad[.stg].unpad.ac.id), jadi tanpa rewrite path.
+  path: "/"
+  annotations:
+    # Default ingress-nginx 1m; upload gambar dibatasi 5MB di /api/uploads.
+    nginx.ingress.kubernetes.io/proxy-body-size: "6m"
+
+livenessProbe: &livenessProbe
+  enabled: false
+readinessProbe: &readinessProbe
+  enabled: false
+startupProbe: &startupProbe
+  enabled: true
+  # 200 hanya jika aplikasi bisa query ke PostgreSQL.
+  path: "/api/health"
+
+podAnnotations:
+  reloader.stakater.com/auto: "true"
+
+serviceAccount: {}
+
+extraEnvFrom: &extraEnvFrom
+  - configMapRef:
+      name: "${HELM_RELEASE_NAME}-static"
+  - configMapRef:
+      name: "${HELM_RELEASE_NAME}-config"
+
+extraEnv: &extraEnv
+  - name: DB_URL
+    valueFrom:
+      secretKeyRef:
+        name: postgresql-creds
+        key: uri
+
+# Tier M (rekomendasi platform-docs).
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
