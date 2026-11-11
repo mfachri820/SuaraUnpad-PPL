@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import bcrypt from 'bcryptjs';
@@ -10,8 +11,10 @@ export default async function setup() {
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: database.url }) });
   try {
     await prisma.$executeRawUnsafe('TRUNCATE TABLE users RESTART IDENTITY CASCADE');
-    const passwordHash = await bcrypt.hash('Sprint4QaPassword!', 10);
-    const fixtures: Record<string, { id: string; email: string; name: string }> = {};
+    // Password acak per run (tidak ada password tetap di repo); dibagikan ke fixtures lewat fixtures.json.
+    const loginSecret = crypto.randomBytes(18).toString('base64url');
+    const passwordHash = await bcrypt.hash(loginSecret, 10);
+    const fixtures: Record<string, { id: string; email: string; name: string; loginSecret: string }> = {};
     for (const [key, role, name, verified] of [
       ['admin', 'ADMIN', 'Admin QA Sprint 4', true],
       ['author', 'STUDENT', 'Penulis QA Sprint 4', true],
@@ -29,7 +32,7 @@ export default async function setup() {
               : { studentProfile: { create: { fullName: name, studentId: `140810${String(Object.keys(fixtures).length).padStart(4, '0')}`, faculty: 'FMIPA', major: 'Matematika' } } }),
         },
       });
-      fixtures[key] = { id: user.id, email: user.email, name };
+      fixtures[key] = { id: user.id, email: user.email, name, loginSecret };
     }
     const output = path.join(database.root, 'tests/results/sprint-4/playwright');
     fs.mkdirSync(output, { recursive: true });

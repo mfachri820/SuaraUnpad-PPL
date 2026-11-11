@@ -516,7 +516,7 @@ Mengacu ke `PLAN.md` §3–§5. Backend untuk semua poin di bawah **sudah siap**
 
 ## 11. Akun untuk testing
 
-Jalankan backend lokal (`docs/DEVELOPMENT.md`) lalu `npm run db:seed`. Password semua akun lokal: **`Password123!`** (login password hanya aktif bila `PASSWORD_LOGIN_ENABLED=true`). Di staging/production login lewat PAuS.
+Jalankan backend lokal (`docs/DEVELOPMENT.md`) lalu `npm run db:seed`. Password semua akun lokal: nilai `SEED_PASSWORD` di `.env`, atau password acak yang dicetak di akhir `npm run db:seed` bila kosong (login password hanya aktif bila `PASSWORD_LOGIN_ENABLED=true`). Di staging/production login lewat PAuS.
 
 | Role | Email | Catatan |
 |---|---|---|

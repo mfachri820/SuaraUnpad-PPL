@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
+import { randomBytes } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 
 describe('Authentication hashing', () => {
   it('calls bcrypt.hash with 10 salt rounds and bcrypt.compare returns true for valid passwords', async () => {
-    const password = 'StrongPassword123!';
+    const password = randomBytes(16).toString('hex');
     const hashSpy = vi.spyOn(bcrypt, 'hash');
     const compareSpy = vi.spyOn(bcrypt, 'compare');
 

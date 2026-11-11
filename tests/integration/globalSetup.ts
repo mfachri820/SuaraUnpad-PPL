@@ -1,4 +1,5 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
 import 'dotenv/config';
 
 export default function setup() {
@@ -9,7 +10,9 @@ export default function setup() {
     throw new Error('TEST_DATABASE_URL tidak boleh sama dengan DATABASE_URL (data dev akan terhapus).');
   }
 
-  execSync('npx prisma migrate deploy', {
+  // Jalankan CLI prisma lewat binary node yang sedang dipakai (path absolut), bukan lewat PATH.
+  const prismaCli = path.join(process.cwd(), 'node_modules/prisma/build/index.js');
+  execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy'], {
     stdio: 'inherit',
     env: { ...process.env, DATABASE_URL: databaseUrl, PRISMA_HIDE_UPDATE_MESSAGE: '1' },
   });

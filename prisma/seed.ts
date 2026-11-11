@@ -1,9 +1,9 @@
 import "dotenv/config";
+import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import type { FlagReason, NotificationType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
-const DEFAULT_PASSWORD = "Password123!";
 const DAY = 24 * 60 * 60 * 1000;
 
 const IMG = {
@@ -36,13 +36,12 @@ const SEED_ACCOUNTS: SeedAccount[] = [
   { key: "belum", email: "belumverif@mail.unpad.ac.id", role: "STUDENT", isVerified: false, fullName: "Mahasiswa Belum Verifikasi", studentId: "1406102204", major: "Statistika" }
 ];
 
+// Tidak ada password default: pakai SEED_PASSWORD, atau buat acak setiap kali seed dijalankan.
+// Dengan begitu tidak ada password yang bisa ditebak walaupun seed tak sengaja jalan di server.
 function resolvePassword() {
   const fromEnv = process.env.SEED_PASSWORD?.trim();
-  if (fromEnv) return fromEnv;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("SEED_PASSWORD wajib di-set saat NODE_ENV=production (jangan pakai password default di server).");
-  }
-  return DEFAULT_PASSWORD;
+  if (fromEnv) return { value: fromEnv, generated: false };
+  return { value: randomBytes(12).toString("base64url"), generated: true };
 }
 
 async function upsertAccounts(passwordHash: string) {
@@ -313,8 +312,8 @@ async function seedContent(u: Record<string, string>) {
 }
 
 async function main() {
-  const password = resolvePassword();
-  const passwordHash = await bcrypt.hash(password, 10);
+  const credential = resolvePassword();
+  const passwordHash = await bcrypt.hash(credential.value, 10);
   const ids = await upsertAccounts(passwordHash);
   console.log(`✔ ${SEED_ACCOUNTS.length} akun contoh siap`);
 
@@ -327,13 +326,11 @@ async function main() {
   }
 
   console.log("\nAkun untuk login:");
-  console.table(
-    SEED_ACCOUNTS.map((a) => ({
-      role: a.role,
-      email: a.email,
-      password: process.env.SEED_PASSWORD ? "(SEED_PASSWORD)" : DEFAULT_PASSWORD,
-      verified: a.isVerified
-    }))
+  console.table(SEED_ACCOUNTS.map((a) => ({ role: a.role, email: a.email, verified: a.isVerified })));
+  console.log(
+    credential.generated
+      ? `Password semua akun (acak, hanya untuk seed kali ini): ${credential.value}`
+      : "Password semua akun: nilai SEED_PASSWORD"
   );
 }
 

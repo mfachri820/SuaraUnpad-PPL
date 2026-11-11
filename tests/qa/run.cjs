@@ -2,11 +2,29 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const { spawn, execFileSync } = require('node:child_process');
+const { spawn } = require('node:child_process');
 const { resolveTestDatabase, root } = require('./environment.cjs');
 const { prepareDatabase } = require('./prepare-database.cjs');
 
 const output = path.join(root, 'tests/results/sprint-4');
+
+// Info commit/branch dibaca langsung dari folder .git (tanpa menjalankan perintah git lewat PATH).
+function readGitInfo() {
+  try {
+    const gitDir = path.join(root, '.git');
+    const head = fs.readFileSync(path.join(gitDir, 'HEAD'), 'utf8').trim();
+    if (!head.startsWith('ref: ')) return { commit: head, branch: '' };
+    const ref = head.slice(5);
+    const branch = ref.replace('refs/heads/', '');
+    const refFile = path.join(gitDir, ref);
+    if (fs.existsSync(refFile)) return { commit: fs.readFileSync(refFile, 'utf8').trim(), branch };
+    const packed = fs.readFileSync(path.join(gitDir, 'packed-refs'), 'utf8').split('\n');
+    const line = packed.find((entry) => entry.endsWith(` ${ref}`));
+    return { commit: line ? line.split(' ')[0] : 'unknown', branch };
+  } catch {
+    return { commit: 'unknown', branch: 'unknown' };
+  }
+}
 const phase = process.argv[2] || 'all';
 const database = resolveTestDatabase();
 
@@ -33,8 +51,7 @@ async function main() {
   const metadata = {
     sprint: 4,
     startedAt: new Date().toISOString(),
-    commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
-    branch: execFileSync('git', ['branch', '--show-current'], { cwd: root, encoding: 'utf8' }).trim(),
+    ...readGitInfo(),
     node: process.version,
     vitest: require('vitest/package.json').version,
     playwright: require('@playwright/test/package.json').version,

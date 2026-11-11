@@ -21,7 +21,7 @@ export const test = base.extend<{ actors: Actors }>({
     try {
       for (const role of ['admin', 'author', 'reporter', 'lecturer', 'unverified'] as const) {
         const context = await browser.newContext({ baseURL, viewport: { width: 1366, height: 900 } });
-        const response = await context.request.post('/api/auth/login', { data: { email: seed[role].email, password: 'Sprint4QaPassword!' } });
+        const response = await context.request.post('/api/auth/login', { data: { email: seed[role].email, password: seed[role].loginSecret } });
         expect(response.status(), `Login fixture ${role}`).toBe(200);
         const json = await response.json();
         const token = json.data.token;
