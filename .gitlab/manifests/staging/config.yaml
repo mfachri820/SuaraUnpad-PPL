@@ -5,8 +5,9 @@ metadata:
   name: ${HELM_RELEASE_NAME}-config
   namespace: ${KUBE_NAMESPACE}
 data:
-  # TODO: client ID dari Tim Platform. Redirect URI ini harus didaftarkan ke PAuS.
-  PAUS_CLIENT_ID: ""
+  # Client PAuS (client secret ada di GitLab var K8S_SECRET_PAUS_CLIENT_SECRET).
+  # Redirect URI ini harus terdaftar di client PAuS.
+  PAUS_CLIENT_ID: "TQJXe0CR9WiJg.paus.unpad.ac.id"
   PAUS_REDIRECT_URI: "https://suara.fmipa.stg.unpad.ac.id/api/auth/paus/callback"
 
   # TODO: nama bucket & URL proxy publik MinIO dari Tim Platform.
