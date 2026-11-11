@@ -2,3 +2,6 @@
 59c009085b371cc2045ed2f62485ee3dc9445e20:components/features/report/ReportForm.tsx:jwt:46
 # Placeholder token terpotong ("eyJhbGciOiJSUzI1NiIs...") di halaman login lama, bukan secret asli
 1e7fe1ce46696309456d843f5e36da20b433494f:app/(main)/login/page.tsx:generic-api-key:104
+# docker-compose.yml lama (commit e822373): URL DB dev lokal suara:suara, bukan secret
+e822373ae2b9661372909f8c7505c20f0f8e1d50:docker-compose.yml:Password in URL:67
+e822373ae2b9661372909f8c7505c20f0f8e1d50:docker-compose.yml:Password in URL:78

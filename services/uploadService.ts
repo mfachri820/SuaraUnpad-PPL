@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getS3Client, getStorageConfig, getStorageRootFolder, keyFromPublicUrl, publicUrlFor } from '@/lib/storage';
+import { trimSlashes } from '@/lib/slashes';
 
 const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff]);
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -47,7 +48,7 @@ export const uploadService = {
     const config = getStorageConfig();
     if (!config.bucket) throw new Error('Storage belum dikonfigurasi: AWS_BUCKET kosong.');
 
-    const key = `${folder.replace(/^\/+|\/+$/g, '')}/${randomUUID()}.${EXTENSION_BY_MIME[contentType]}`;
+    const key = `${trimSlashes(folder)}/${randomUUID()}.${EXTENSION_BY_MIME[contentType]}`;
 
     await getS3Client().send(
       new PutObjectCommand({

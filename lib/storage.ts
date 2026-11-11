@@ -1,4 +1,5 @@
 import { S3Client } from '@aws-sdk/client-s3';
+import { trimSlashes, trimTrailingSlashes as trimTrailingSlash } from '@/lib/slashes';
 
 // Penyimpanan file pakai S3-compatible storage (MinIO platform Unpad).
 // Nama env sengaja disamakan dengan konvensi AWS / Laravel yang dipakai project lain
@@ -21,8 +22,6 @@ export interface StorageConfig {
   publicBaseUrl: string;
 }
 
-const trimSlashes = (value: string) => value.replace(/^\/+|\/+$/g, '');
-const trimTrailingSlash = (value: string) => value.replace(/\/+$/, '');
 
 export function getStorageConfig(): StorageConfig {
   const bucket = process.env.AWS_BUCKET?.trim() ?? '';

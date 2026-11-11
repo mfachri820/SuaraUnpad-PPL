@@ -6,9 +6,10 @@ services:
     container_name: suara-mipa-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-suara}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-suara}
-      POSTGRES_DB: ${POSTGRES_DB:-suara_mipa}
+      # Kredensial khusus dev lokal (sama dengan .env.example), bukan secret.
+      POSTGRES_USER: suara
+      POSTGRES_PASSWORD: suara
+      POSTGRES_DB: suara_mipa
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -64,7 +65,7 @@ services:
     image: suara-mipa:local
     command: ["/bin/sh", "-c", "cd /app/migrate && ./node_modules/.bin/prisma migrate deploy"]
     environment:
-      DB_URL: postgresql://${POSTGRES_USER:-suara}:${POSTGRES_PASSWORD:-suara}@db:5432/${POSTGRES_DB:-suara_mipa}
+      DB_URL: postgresql://suara:suara@db:5432/suara_mipa # gitleaks:allow (kredensial dev lokal)
     depends_on:
       db:
         condition: service_healthy
@@ -75,7 +76,7 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: ""
-      DB_URL: postgresql://${POSTGRES_USER:-suara}:${POSTGRES_PASSWORD:-suara}@db:5432/${POSTGRES_DB:-suara_mipa}
+      DB_URL: postgresql://suara:suara@db:5432/suara_mipa # gitleaks:allow (kredensial dev lokal)
       APP_URL: http://localhost:${APP_PORT:-3000}
       AWS_ENDPOINT: http://minio:9000
       AWS_URL: http://localhost:9000/${AWS_BUCKET:-suara-mipa}

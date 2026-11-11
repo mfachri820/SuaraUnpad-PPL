@@ -1,3 +1,5 @@
+import { trimTrailingSlashes } from '@/lib/slashes';
+
 // URL publik aplikasi (mis. https://suara.fmipa.stg.unpad.ac.id), dari env APP_URL.
 //
 // Di container standalone (HOSTNAME=0.0.0.0) di belakang ingress, request.url bisa
@@ -6,8 +8,8 @@
 // fallback saat development lokal (APP_URL kosong).
 export function getAppBaseUrl(fallbackOrigin?: string): string {
   const configured = process.env.APP_URL?.trim();
-  if (configured) return configured.replace(/\/+$/, '');
-  return (fallbackOrigin ?? 'http://localhost:3000').replace(/\/+$/, '');
+  if (configured) return trimTrailingSlashes(configured);
+  return trimTrailingSlashes(fallbackOrigin ?? 'http://localhost:3000');
 }
 
 export function appUrl(pathWithQuery: string, fallbackOrigin?: string): URL {

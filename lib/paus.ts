@@ -9,6 +9,7 @@
 //   4. server mengambil profil dari https://paus.unpad.ac.id/api (Bearer token)
 
 import { getAppBaseUrl } from '@/lib/appUrl';
+import { trimTrailingSlashes } from '@/lib/slashes';
 
 export const PAUS_DEFAULT_BASE_URL = 'https://paus.unpad.ac.id';
 export const PAUS_SCOPE = 'user.basic';
@@ -16,7 +17,7 @@ export const PAUS_SCOPE = 'user.basic';
 // PAUS_BASE_URL hanya untuk menguji alur login dengan server PAuS tiruan secara lokal.
 // Di staging/production biarkan kosong.
 function pausEndpoint(path: string) {
-  const base = (process.env.PAUS_BASE_URL?.trim() || PAUS_DEFAULT_BASE_URL).replace(/\/+$/, '');
+  const base = trimTrailingSlashes(process.env.PAUS_BASE_URL?.trim() || PAUS_DEFAULT_BASE_URL);
   return `${base}${path}`;
 }
 
