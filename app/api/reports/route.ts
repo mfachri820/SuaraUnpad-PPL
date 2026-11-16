@@ -4,15 +4,7 @@ import { ADMIN_READ_ONLY_MESSAGE } from '@/lib/http';
 import { ReportCategory, ReportStatus } from '@prisma/client';
 import { uploadService } from '@/services/uploadService';
 import { keyFromPublicUrl } from '@/lib/storage';
-import { detectDamage, evaluateAiResult, AiDamageType } from '@/services/reportAiService';
-
-const CATEGORY_TO_AI_TYPE: Record<ReportCategory, AiDamageType | null> = {
-  POTHOLE: 'pothole',
-  CRACK: 'crack',
-  CORROSION: 'korosi',
-  SAMPAH: 'sampah',
-  OTHER: null
-};
+import { assessReport, ReportAssessment } from '@/services/reportAiService';
 
 // 1. METHOD GET: Untuk List Laporan (Public / Tidak perlu login)
 export async function GET(request: Request) {
@@ -65,11 +57,13 @@ export async function POST(request: Request) {
     }
 
     // B. Tangkap data JSON yang dikirim Frontend
-    const body = (await request.json()) as CreateReportPayload;
+    const body = (await request.json()) as Partial<CreateReportPayload>;
 
     // C. Validasi Kesiapan Data (Jangan biarkan data kosong masuk ke Service)
-    if (!body.title || !body.description || !body.category || !body.location || !body.imageUrl) {
-      return errorResponse('Data tidak lengkap. title, description, category, location, dan imageUrl wajib diisi.', 400);
+    // Kategori TIDAK diterima dari user; ditentukan AI dari judul.
+    const title = typeof body.title === 'string' ? body.title.trim() : '';
+    if (!title || !body.description || !body.location || !body.imageUrl) {
+      return errorResponse('Data tidak lengkap. title, description, location, dan imageUrl wajib diisi.', 400);
     }
 
     // Gambar wajib hasil /api/uploads (objek storage milik aplikasi), sama seperti postingan.
@@ -77,45 +71,40 @@ export async function POST(request: Request) {
       return errorResponse('Gambar harus diunggah lewat fitur upload aplikasi.', 400);
     }
 
-    const categoryValue = String(body.category).trim().toUpperCase();
-    if (!(categoryValue in CATEGORY_TO_AI_TYPE)) {
-      return errorResponse('Kategori tidak valid.', 400);
+    // D. AI: judul -> kategori (IndoBERT), lalu foto dicek sesuai kategori (CV). OTHER tidak dicek CV.
+    let assessment: ReportAssessment;
+    try {
+      assessment = await assessReport(title, body.imageUrl);
+    } catch (error) {
+      await uploadService.deleteImageByUrl(body.imageUrl);
+      const errorMessage = error instanceof Error ? error.message : 'Gagal memproses AI deteksi kerusakan.';
+      return errorResponse(errorMessage, 502);
     }
 
-    const normalizedBody: CreateReportPayload = {
-      ...body,
-      category: categoryValue as ReportCategory
-    };
-
-    const aiType = CATEGORY_TO_AI_TYPE[normalizedBody.category];
-    let aiEvaluation = null as ReturnType<typeof evaluateAiResult> | null;
-    let aiResult = null as Awaited<ReturnType<typeof detectDamage>> | null;
-
-    if (aiType) {
-      try {
-        aiResult = await detectDamage(body.imageUrl, aiType);
-        aiEvaluation = evaluateAiResult(aiResult);
-
-        if (aiEvaluation.decision === 'reject') {
-          await uploadService.deleteImageByUrl(body.imageUrl);
-          return errorResponse(aiEvaluation.message, 422);
-        }
-      } catch (error) {
-        await uploadService.deleteImageByUrl(body.imageUrl);
-        const errorMessage = error instanceof Error ? error.message : 'Gagal memproses AI deteksi kerusakan.';
-        return errorResponse(errorMessage, 502);
-      }
+    if (assessment.decision === 'reject') {
+      await uploadService.deleteImageByUrl(body.imageUrl);
+      return errorResponse(assessment.message, 422);
     }
 
-    // D. Menyuruh Service menyimpan ke Database
-    const newReport = await reportService.createReport(authorId, normalizedBody);
-    
-    // E. Kasih tahu Frontend kalau berhasil (Status 201 Created)
-    const message = aiEvaluation?.decision === 'warn'
-      ? `Laporan berhasil dibuat. ${aiEvaluation.message}`
+    // E. Menyuruh Service menyimpan ke Database
+    const newReport = await reportService.createReport(authorId, {
+      title,
+      description: body.description,
+      location: body.location,
+      imageUrl: body.imageUrl,
+      category: assessment.category
+    });
+
+    // F. Kasih tahu Frontend kalau berhasil (Status 201 Created)
+    const message = assessment.evaluation?.decision === 'warn'
+      ? `Laporan berhasil dibuat. ${assessment.evaluation.message}`
       : 'Laporan berhasil dibuat';
 
-    return successResponse({ report: newReport, ai: aiEvaluation }, message, 201);
+    return successResponse(
+      { report: newReport, ai: assessment.evaluation, labels: assessment.textLabels },
+      message,
+      201
+    );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Terjadi kesalahan server';
     return errorResponse(errorMessage, 500);

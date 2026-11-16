@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
-import Select from "@/components/ui/Select";
+import { useEffect, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { FaCamera } from "react-icons/fa";
 import { IoMdInformationCircle } from "react-icons/io";
+import { HiSparkles } from "react-icons/hi";
 import Image from "next/image";
 import Cookies from "js-cookie"; // Tambahkan import js-cookie
 import { toast } from "react-hot-toast";
@@ -14,13 +14,24 @@ import {
   REPORT_CATEGORIES,
   uploadImage,
   submitReport,
-  ReportPayload
+  fetchCategorySuggestion,
+  ReportPayload,
+  CategorySuggestionResult
 } from "./ReportFetch";
+
+const SUGGESTION_MIN_TEXT_LENGTH = 5;
+const SUGGESTION_DEBOUNCE_MS = 800;
+
+type SuggestionStatus = "idle" | "loading" | "done" | "unavailable";
+
+const getCategoryLabel = (id: string) =>
+  REPORT_CATEGORIES.find((cat) => cat.id === id)?.label ?? id;
+
+const formatPercent = (probability: number) => `${Math.round(probability * 100)}%`;
 
 interface ReportFormData {
   image: FileList;
   title: string;
-  category: string;
   location: string;
   description: string;
 }
@@ -33,12 +44,52 @@ export default function ReportForm() {
     formState: { errors },
     reset,
     trigger
-  } = useForm<ReportFormData>({ defaultValues: { category: "" } });
+  } = useForm<ReportFormData>();
 
   // States
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Pratinjau kategori dari AI (IndoBERT) berdasarkan judul singkat.
+  // Kategori final ditentukan server saat laporan dikirim; user tidak memilih kategori.
+  const [suggestion, setSuggestion] = useState<CategorySuggestionResult | null>(null);
+  const [suggestionStatus, setSuggestionStatus] = useState<SuggestionStatus>("idle");
+
+  const title = useWatch({ control, name: "title" }) ?? "";
+  const suggestionText = title.trim();
+
+  useEffect(() => {
+    if (suggestionText.length < SUGGESTION_MIN_TEXT_LENGTH) {
+      setSuggestion(null);
+      setSuggestionStatus("idle");
+      return;
+    }
+
+    // gitleaks:allow
+    const token = Cookies.get("token");
+    if (!token) return;
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setSuggestionStatus("loading");
+      try {
+        const result = await fetchCategorySuggestion(suggestionText, token, controller.signal);
+        setSuggestion(result);
+        setSuggestionStatus("done");
+      } catch {
+        if (controller.signal.aborted) return;
+        // Pratinjau gagal: kategori tetap ditentukan server saat laporan dikirim.
+        setSuggestion(null);
+        setSuggestionStatus("unavailable");
+      }
+    }, SUGGESTION_DEBOUNCE_MS);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [suggestionText]);
 
   // Image handler untuk Preview
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,14 +107,6 @@ export default function ReportForm() {
     if (!isImageValid) {
       document
         .getElementById("section-foto")
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
-
-    const isCategoryValid = await trigger("category");
-    if (!isCategoryValid) {
-      document
-        .getElementById("section-kategori")
         ?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -120,7 +163,6 @@ export default function ReportForm() {
       const finalPayload: ReportPayload = {
         title: data.title,
         description: data.description,
-        category: data.category,
         location: data.location,
         imageUrl: uploadJson.data.url
       };
@@ -128,7 +170,12 @@ export default function ReportForm() {
       // Gunakan token dinamis untuk submit data laporan
       const reportResponse = await submitReport(finalPayload, token);
 
-      toast.success("Laporan berhasil dikirim!");
+      const finalCategory = reportResponse?.data?.report?.category;
+      toast.success(
+        finalCategory
+          ? `Laporan berhasil dikirim dengan kategori ${getCategoryLabel(finalCategory)}!`
+          : "Laporan berhasil dikirim!"
+      );
 
       const aiDecision = reportResponse?.data?.ai?.decision;
       const aiMessage = reportResponse?.data?.ai?.message;
@@ -136,6 +183,8 @@ export default function ReportForm() {
         toast(aiMessage);
       }
       reset();
+      setSuggestion(null);
+      setSuggestionStatus("idle");
       setImageFile(null);
       setImagePreview(null);
     } catch (error) {
@@ -206,51 +255,11 @@ export default function ReportForm() {
         )}
       </section>
 
-      {/* BAGIAN 2: KATEGORI */}
-      <section id="section-kategori">
-        <div className="flex items-center gap-2 mb-3">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-laporan text-xs font-bold text-slate-900">
-            2
-          </span>
-          <h2 className="font-bold text-slate-800">Pilih Kategori</h2>
-        </div>
-
-        <div className="rounded-2xl bg-white p-4 shadow-sm border border-slate-100">
-          <Controller
-            name="category"
-            control={control}
-            defaultValue=""
-            rules={{ required: true }}
-            render={({ field }) => (
-              <Select
-                id="input-category"
-                name={field.name}
-                value={field.value}
-                onValueChange={field.onChange}
-                onBlur={field.onBlur}
-                inputRef={field.ref}
-                options={REPORT_CATEGORIES.map(cat => ({ value: cat.id, label: cat.label }))}
-                placeholder="Pilih kategori kerusakan"
-                aria-label="Kategori kerusakan"
-                aria-required
-                aria-describedby={errors.category ? "category-error" : undefined}
-                invalid={Boolean(errors.category)}
-              />
-            )}
-          />
-          {errors.category && (
-            <span id="category-error" className="text-xs text-red-500 mt-2 block">
-              *Kategori wajib dipilih
-            </span>
-          )}
-        </div>
-      </section>
-
-      {/* BAGIAN 3: DETAIL LAPORAN */}
+      {/* BAGIAN 2: DETAIL LAPORAN */}
       <section id="section-detail">
         <div className="flex items-center gap-2 mb-3">
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-laporan text-xs font-bold text-slate-900">
-            3
+            2
           </span>
           <h2 className="font-bold text-slate-800">Detail Laporan</h2>
         </div>
@@ -272,6 +281,9 @@ export default function ReportForm() {
                 *Judul laporan wajib diisi
               </span>
             )}
+            <div className="mt-2">
+              <CategoryPreview status={suggestionStatus} suggestion={suggestion} />
+            </div>
           </div>
 
           <div>
@@ -331,5 +343,82 @@ export default function ReportForm() {
         {isSubmitting ? "MENGIRIM LAPORAN..." : "LAPOR"}
       </button>
     </form>
+  );
+}
+
+function CategoryBadge({ id, probability }: { id: string; probability?: number }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-laporan-subtle px-2 py-0.5 text-xs font-bold text-slate-800 border border-laporan/20">
+      {getCategoryLabel(id)}
+      {probability !== undefined && (
+        <span className="font-medium text-slate-500">{formatPercent(probability)}</span>
+      )}
+    </span>
+  );
+}
+
+function CategoryPreview({
+  status,
+  suggestion
+}: {
+  status: SuggestionStatus;
+  suggestion: CategorySuggestionResult | null;
+}) {
+  if (status === "idle") {
+    return (
+      <p className="flex items-center gap-1 text-xs text-slate-500">
+        <HiSparkles className="text-[#2682F9]" aria-hidden />
+        Kategori ditentukan otomatis oleh AI dari judul singkat.
+      </p>
+    );
+  }
+
+  if (status === "loading") {
+    return (
+      <p className="flex items-center gap-1 text-xs text-slate-500" aria-live="polite">
+        <HiSparkles className="animate-pulse text-[#2682F9]" aria-hidden />
+        Menganalisis judul singkat...
+      </p>
+    );
+  }
+
+  if (status === "unavailable") {
+    return (
+      <p className="text-xs text-slate-500" aria-live="polite">
+        Pratinjau kategori belum tersedia. Kategori tetap ditentukan otomatis saat laporan dikirim.
+      </p>
+    );
+  }
+
+  const matches = suggestion?.matches ?? [];
+  if (matches.length === 0) {
+    return (
+      <div className="space-y-1" aria-live="polite">
+        <p className="flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
+          <HiSparkles className="text-[#2682F9]" aria-hidden />
+          Kategori: <CategoryBadge id="OTHER" />
+        </p>
+        <p className="text-xs text-slate-500">
+          Judul tidak dikenali sebagai Pothole, Crack, Corrosion, atau Sampah.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1" aria-live="polite">
+      <p className="flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
+        <HiSparkles className="text-[#2682F9]" aria-hidden />
+        Kategori terdeteksi:
+        {matches.map((m) => (
+          <CategoryBadge key={m.category} id={m.category} probability={m.probability} />
+        ))}
+      </p>
+      <p className="text-xs text-slate-500">
+        {matches.length > 1
+          ? "Foto akan dicek AI untuk tiap kategori; yang cocok dengan skor tertinggi dipakai."
+          : "Foto akan dicek AI sesuai kategori ini."}
+      </p>
+    </div>
   );
 }

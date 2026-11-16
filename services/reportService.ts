@@ -172,9 +172,9 @@ export const reportService = {
   },
 
   // FUNGSI ANTREAN ADMIN: laporan per status, yang paling lama menunggu di atas
-  async getAdminQueue(status: ReportStatus) {
+  async getAdminQueue(status: ReportStatus, category?: ReportCategory) {
     const reports = await prisma.report.findMany({
-      where: { status },
+      where: { status, ...(category && { category }) },
       orderBy: status === "RESOLVED" ? { resolvedAt: { sort: "desc", nulls: "last" } } : { createdAt: "asc" },
       take: ADMIN_QUEUE_LIMIT,
       select: {

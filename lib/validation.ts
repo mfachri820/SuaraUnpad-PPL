@@ -110,8 +110,12 @@ export const flagQueueQuerySchema = z.object({
 
 export const REPORT_STATUSES = ['SUBMITTED', 'VERIFIED', 'IN_PROGRESS', 'RESOLVED'] as const;
 
+export const REPORT_CATEGORY_VALUES = ['POTHOLE', 'CRACK', 'CORROSION', 'SAMPAH', 'OTHER'] as const;
+
 export const adminReportQuerySchema = z.object({
-  status: z.enum(REPORT_STATUSES, { message: 'Status laporan tidak valid.' }).default('SUBMITTED')
+  status: z.enum(REPORT_STATUSES, { message: 'Status laporan tidak valid.' }).default('SUBMITTED'),
+  // Kosong = semua kategori
+  category: z.enum(REPORT_CATEGORY_VALUES, { message: 'Kategori laporan tidak valid.' }).optional()
 });
 
 export const majorSchema = z.enum(FMIPA_MAJORS, {

@@ -4,13 +4,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { FiArrowRight, FiClock, FiMapPin, FiThumbsUp } from "react-icons/fi";
 import { apiFetch, getApiErrorMessage } from "@/lib/api/client";
-import { AdminReportItem, REPORT_CATEGORY_LABELS, REPORT_STATUS_LABELS, ReportStatus } from "@/lib/api/types";
+import { AdminReportItem, REPORT_CATEGORY_LABELS, REPORT_STATUS_LABELS, ReportCategory, ReportStatus } from "@/lib/api/types";
 import { formatAge, formatDuration } from "@/lib/duration";
 import Select from "@/components/ui/Select";
 
 import { AdminDialog, AdminNotice, AdminPanel } from "./AdminUI";
 
 const STATUSES: ReportStatus[] = ["SUBMITTED", "VERIFIED", "IN_PROGRESS", "RESOLVED"];
+
+type CategoryFilter = ReportCategory | "ALL";
+const CATEGORY_FILTER_OPTIONS = [
+  { value: "ALL", label: "Semua kategori" },
+  ...(Object.keys(REPORT_CATEGORY_LABELS) as ReportCategory[]).map(value => ({ value, label: REPORT_CATEGORY_LABELS[value] }))
+];
 
 const NEXT_ACTION: Partial<Record<ReportStatus, { status: ReportStatus; label: string }>> = {
   SUBMITTED: { status: "VERIFIED", label: "Verifikasi" },
@@ -33,6 +39,7 @@ export default function ReportQueue({
   onActionDone?: () => void;
 }) {
   const [status, setStatus] = useState<ReportStatus>("SUBMITTED");
+  const [category, setCategory] = useState<CategoryFilter>("ALL");
   const [items, setItems] = useState<AdminReportItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,12 +49,14 @@ export default function ReportQueue({
   const [changeError, setChangeError] = useState<string | null>(null);
   const requestId = useRef(0);
 
-  const loadQueue = useCallback(async (queueStatus: ReportStatus) => {
+  const loadQueue = useCallback(async (queueStatus: ReportStatus, queueCategory: CategoryFilter) => {
     const currentRequest = ++requestId.current;
     setIsLoading(true);
     setError(null);
     try {
-      const data = await apiFetch<AdminReportItem[]>(`/api/admin/reports?status=${queueStatus}`);
+      const params = new URLSearchParams({ status: queueStatus });
+      if (queueCategory !== "ALL") params.set("category", queueCategory);
+      const data = await apiFetch<AdminReportItem[]>(`/api/admin/reports?${params}`);
       if (currentRequest === requestId.current) setItems(data);
     } catch (error) {
       if (currentRequest === requestId.current) setError(getApiErrorMessage(error, "Gagal memuat antrean laporan."));
@@ -57,9 +66,9 @@ export default function ReportQueue({
   }, []);
 
   useEffect(() => {
-    loadQueue(status);
+    loadQueue(status, category);
     return () => { requestId.current += 1; };
-  }, [status, loadQueue]);
+  }, [status, category, loadQueue]);
 
   const updateStatus = async (report: AdminReportItem, newStatus: ReportStatus) => {
     setPendingId(report.id);
@@ -113,15 +122,31 @@ export default function ReportQueue({
         ))}
       </div>
 
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <label htmlFor="admin-report-category-filter" className="text-sm font-semibold text-slate-800">Kategori</label>
+        <div className="w-full sm:w-56">
+          <Select
+            id="admin-report-category-filter"
+            value={category}
+            onValueChange={value => setCategory(value as CategoryFilter)}
+            options={CATEGORY_FILTER_OPTIONS}
+            disabled={busy}
+          />
+        </div>
+      </div>
+
       {isLoading ? (
         <p role="status" className="admin-empty">Memuat laporan fasilitas...</p>
       ) : error ? (
         <div className="space-y-3">
           <AdminNotice feedback={{ type: "error", message: error }} />
-          <button type="button" onClick={() => loadQueue(status)} className="admin-button admin-button-secondary">Coba lagi</button>
+          <button type="button" onClick={() => loadQueue(status, category)} className="admin-button admin-button-secondary">Coba lagi</button>
         </div>
       ) : items.length === 0 ? (
-        <p className="admin-empty">Tidak ada laporan berstatus {REPORT_STATUS_LABELS[status].toLowerCase()}.</p>
+        <p className="admin-empty">
+          Tidak ada laporan berstatus {REPORT_STATUS_LABELS[status].toLowerCase()}
+          {category !== "ALL" && <> dengan kategori {REPORT_CATEGORY_LABELS[category].toLowerCase()}</>}.
+        </p>
       ) : (
         <ul className="space-y-3" aria-label="Daftar laporan fasilitas">
           {items.map(report => {

@@ -1,7 +1,6 @@
 export interface ReportPayload {
   title: string;
   description: string;
-  category: string;
   location: string;
   imageUrl: string;
 }
@@ -61,4 +60,31 @@ export const submitReport = async (payload: ReportPayload, token: string) => {
     throw new Error(errorMessage);
   }
   return res.json();
+};
+// 3. Fungsi Saran Kategori dari AI (IndoBERT)
+export interface CategorySuggestionResult {
+  suggestedCategory: string | null;
+  matches: { category: string; probability: number }[];
+}
+
+export const fetchCategorySuggestion = async (
+  text: string,
+  token: string,
+  signal?: AbortSignal
+): Promise<CategorySuggestionResult> => {
+  const res = await fetch("/api/reports/classify", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text }),
+    signal,
+  });
+
+  if (!res.ok) {
+    throw new Error("Saran kategori AI tidak tersedia");
+  }
+  const json = await res.json();
+  return json.data as CategorySuggestionResult;
 };
