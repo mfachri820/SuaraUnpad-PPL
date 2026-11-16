@@ -1,5 +1,21 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { apiRequest, createUser, prisma, readJson, resetDatabase, type TestUser } from './helpers';
+
+// Kategori laporan ditentukan AI dari judul. Di tes ini AI teks dipalsukan tidak mengenali judul,
+// sehingga laporan menjadi OTHER dan model CV tidak dipanggil (tidak ada request jaringan).
+vi.mock('@/services/reportAiService', async () => {
+  const actual = await vi.importActual<typeof import('@/services/reportAiService')>('@/services/reportAiService');
+  return {
+    ...actual,
+    assessReport: vi.fn(async () => ({
+      decision: 'accept',
+      category: 'OTHER',
+      evaluation: null,
+      textLabels: [],
+      cvChecks: []
+    }))
+  };
+});
 import { POST as createPost } from '@/app/api/posts/route';
 import { POST as createComment } from '@/app/api/comments/route';
 import { POST as createFlag } from '@/app/api/flags/route';
@@ -49,7 +65,6 @@ describe('Notifikasi laporan user ke admin (DB asli)', () => {
         body: {
           title: 'Lampu koridor mati',
           description: 'Lampu koridor Gedung D mati sejak kemarin',
-          category: 'OTHER',
           location: 'Gedung D',
           imageUrl: 'https://res.cloudinary.com/x/y.jpg'
         }

@@ -5,7 +5,7 @@ import { adminReportQuerySchema } from '@/lib/validation';
 
 export const GET = withErrorHandling(async (request: Request) => {
   requireAdmin(request);
-  const { status } = parseQuery(request, adminReportQuerySchema);
-  const queue = await reportService.getAdminQueue(status);
+  const { status, category } = parseQuery(request, adminReportQuerySchema);
+  const queue = await reportService.getAdminQueue(status, category);
   return successResponse(queue, 'Berhasil mengambil antrean laporan', 200);
 });
