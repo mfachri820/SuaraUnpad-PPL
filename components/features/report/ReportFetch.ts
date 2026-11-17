@@ -18,6 +18,7 @@ export const REPORT_CATEGORIES = [
 export const uploadImage = async (file: File, token: string) => {
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("folder", "reports");
 
   const res = await fetch("/api/uploads", {
     method: "POST",
