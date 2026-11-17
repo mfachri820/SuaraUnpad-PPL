@@ -346,7 +346,7 @@ export default function ReportForm() {
   );
 }
 
-function CategoryBadge({ id, probability }: { id: string; probability?: number }) {
+function CategoryBadge({ id, probability }: Readonly<{ id: string; probability?: number }>) {
   return (
     <span className="inline-flex items-center gap-1 rounded-md bg-laporan-subtle px-2 py-0.5 text-xs font-bold text-slate-800 border border-laporan/20">
       {getCategoryLabel(id)}
@@ -360,10 +360,10 @@ function CategoryBadge({ id, probability }: { id: string; probability?: number }
 function CategoryPreview({
   status,
   suggestion
-}: {
+}: Readonly<{
   status: SuggestionStatus;
   suggestion: CategorySuggestionResult | null;
-}) {
+}>) {
   if (status === "idle") {
     return (
       <p className="flex items-center gap-1 text-xs text-slate-500">

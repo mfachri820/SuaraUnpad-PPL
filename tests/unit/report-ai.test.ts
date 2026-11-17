@@ -200,7 +200,8 @@ describe('POST /api/reports — kategori otomatis dari judul + cek foto', () => 
     const response = await POST(buildRequest({ ...basePayload, title: 'Jalan berlubang dan banyak sampah' }));
 
     expect(response.status).toBe(201);
-    expect(cvCalls().sort()).toEqual(['pothole', 'sampah']);
+    expect(cvCalls()).toHaveLength(2);
+    expect(cvCalls()).toEqual(expect.arrayContaining(['pothole', 'sampah']));
     expect(mockedCreateReport).toHaveBeenCalledWith('user-1', expect.objectContaining({ category: 'POTHOLE' }));
     const body = await response.json();
     expect(body.data.labels.map((l: { category: string }) => l.category)).toEqual(['SAMPAH', 'POTHOLE']);
