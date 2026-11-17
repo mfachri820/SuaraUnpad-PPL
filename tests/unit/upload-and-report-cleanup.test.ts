@@ -11,7 +11,7 @@ vi.mock('@/lib/prisma', () => ({
 import { POST as uploadRoutePOST } from '@/app/api/uploads/route';
 import { reportService } from '@/services/reportService';
 import { uploadService } from '@/services/uploadService';
-import { keyFromPublicUrl, type StorageConfig } from '@/lib/storage';
+import { keyFromPublicUrl, storageFolderPrefix, type StorageConfig } from '@/lib/storage';
 import { prisma } from '@/lib/prisma';
 import type { ReportCategory } from '@prisma/client';
 
@@ -89,6 +89,26 @@ describe('Upload handler and report cleanup', () => {
       'bukan-url'
     ];
     for (const url of cases) expect(keyFromPublicUrl(url, storage, 'suara-mipa'), url).toBeNull();
+  });
+
+  it('without a root folder, maps <bucket>/<folder>/<file> straight to the key', () => {
+    expect(keyFromPublicUrl('https://svc.unpad.ac.id/minio/suara/reports/abc123.jpg', storage, '')).toBe('reports/abc123.jpg');
+    expect(keyFromPublicUrl('https://svc.unpad.ac.id/minio/suara/avatars/x.png', storage, '')).toBe('avatars/x.png');
+    expect(storageFolderPrefix('reports', '')).toBe('reports');
+    expect(storageFolderPrefix('reports', 'suara-mipa')).toBe('suara-mipa/reports');
+  });
+
+  it('without a root folder, still refuses unknown folders, bare files and foreign URLs', () => {
+    const cases = [
+      'https://svc.unpad.ac.id/minio/suara/a.jpg',
+      'https://svc.unpad.ac.id/minio/suara/reports',
+      'https://svc.unpad.ac.id/minio/suara/rahasia/a.jpg',
+      'https://svc.unpad.ac.id/minio/suara/suara-mipa/staging/general/old.png',
+      'https://svc.unpad.ac.id/minio/suara/reports/../secret.jpg',
+      'https://svc.unpad.ac.id/minio/other-bucket/reports/a.jpg',
+      'https://res.cloudinary.com/demo/image/upload/reports/sample.jpg'
+    ];
+    for (const url of cases) expect(keyFromPublicUrl(url, storage, ''), url).toBeNull();
   });
 
   it('rejects upload folders outside the allowlist', async () => {

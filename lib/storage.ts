@@ -12,7 +12,12 @@ import { trimSlashes, trimTrailingSlashes as trimTrailingSlash } from '@/lib/sla
 //   AWS_USE_PATH_STYLE_ENDPOINT  "true" untuk MinIO
 //   AWS_URL                      base URL publik objek, sudah termasuk bucket
 //                                (mis. lewat proxy svc publik). Kosong = <endpoint>/<bucket>.
-//   STORAGE_ROOT_FOLDER          prefix key di dalam bucket (mis. suara-mipa); bucket sudah per environment
+//   STORAGE_ROOT_FOLDER          prefix key opsional di dalam bucket. Kosong (default) = file langsung
+//                                di <bucket>/<folder>/..., karena bucket sudah khusus app & per environment.
+
+/** Folder upload yang diizinkan, langsung di bawah root (atau di bawah bucket jika root kosong). */
+export const STORAGE_FOLDERS = ['general', 'avatars', 'posts', 'reports', 'announcements'] as const;
+export type StorageFolder = (typeof STORAGE_FOLDERS)[number];
 
 export interface StorageConfig {
   endpoint?: string;
@@ -44,7 +49,12 @@ export function getStorageConfig(): StorageConfig {
 }
 
 export function getStorageRootFolder() {
-  return trimSlashes(process.env.STORAGE_ROOT_FOLDER?.trim() || 'suara-mipa');
+  return trimSlashes(process.env.STORAGE_ROOT_FOLDER?.trim() ?? '');
+}
+
+/** Object key prefix untuk sebuah folder upload, mis. "reports" atau "<root>/reports". */
+export function storageFolderPrefix(folder: StorageFolder, rootFolder: string = getStorageRootFolder()) {
+  return rootFolder ? `${rootFolder}/${folder}` : folder;
 }
 
 let cachedClient: S3Client | undefined;
@@ -75,7 +85,8 @@ export function publicUrlFor(key: string, config: StorageConfig = getStorageConf
 
 /**
  * Balikkan URL publik menjadi object key, HANYA jika URL itu milik bucket aplikasi ini
- * dan berada di bawah STORAGE_ROOT_FOLDER. URL lain (eksternal, bucket lain, path traversal)
+ * dan berada di salah satu STORAGE_FOLDERS (di bawah STORAGE_ROOT_FOLDER jika diisi).
+ * URL lain (eksternal, bucket lain, folder lain, path traversal)
  * menghasilkan null supaya tidak pernah dihapus atau diterima sebagai gambar upload.
  */
 export function keyFromPublicUrl(
@@ -106,7 +117,11 @@ export function keyFromPublicUrl(
 
   const segments = key.split('/');
   if (segments.some((segment) => segment === '' || segment === '.' || segment === '..')) return null;
-  if (!key.startsWith(`${rootFolder}/`)) return null;
+  // Setelah root (jika ada), segmen pertama harus folder upload resmi dan harus ada nama file.
+  const rootSegments = rootFolder ? rootFolder.split('/') : [];
+  if (rootSegments.some((segment, index) => segments[index] !== segment)) return null;
+  const [folder, ...fileSegments] = segments.slice(rootSegments.length);
+  if (!STORAGE_FOLDERS.includes(folder as StorageFolder) || fileSegments.length === 0) return null;
 
   return key;
 }

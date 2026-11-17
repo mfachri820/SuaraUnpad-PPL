@@ -1,6 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getS3Client, getStorageConfig, getStorageRootFolder, keyFromPublicUrl, publicUrlFor } from '@/lib/storage';
+import {
+  STORAGE_FOLDERS,
+  getS3Client,
+  getStorageConfig,
+  keyFromPublicUrl,
+  publicUrlFor,
+  storageFolderPrefix,
+  type StorageFolder
+} from '@/lib/storage';
 import { trimSlashes } from '@/lib/slashes';
 
 const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff]);
@@ -13,11 +21,11 @@ const EXTENSION_BY_MIME: Record<string, string> = {
   'image/webp': 'webp'
 };
 
-export const UPLOAD_FOLDERS = ['general', 'avatars', 'posts', 'reports', 'announcements'] as const;
-export type UploadFolder = (typeof UPLOAD_FOLDERS)[number];
+export const UPLOAD_FOLDERS = STORAGE_FOLDERS;
+export type UploadFolder = StorageFolder;
 
 export function resolveUploadFolder(folder: UploadFolder) {
-  return `${getStorageRootFolder()}/${folder}`;
+  return storageFolderPrefix(folder);
 }
 
 function getImageMimeType(fileBuffer: Buffer): string | null {
