@@ -14,7 +14,7 @@ data:
   # AWS_URL = base URL publik objek, sudah termasuk bucket.
   AWS_BUCKET: "prod-suaraunpad-ppl-storage"
   AWS_URL: ""
-  STORAGE_ROOT_FOLDER: "suara-mipa/production"
+  STORAGE_ROOT_FOLDER: "suara-mipa"
 
   # Email/NPM PAuS (pisahkan koma) yang dibuatkan akun ADMIN saat login PERTAMA.
   # Orang yang sudah punya akun (mis. akun mahasiswa) tetap memakai akun & role lamanya.

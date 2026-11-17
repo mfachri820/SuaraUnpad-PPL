@@ -12,7 +12,7 @@ import { trimSlashes, trimTrailingSlashes as trimTrailingSlash } from '@/lib/sla
 //   AWS_USE_PATH_STYLE_ENDPOINT  "true" untuk MinIO
 //   AWS_URL                      base URL publik objek, sudah termasuk bucket
 //                                (mis. lewat proxy svc publik). Kosong = <endpoint>/<bucket>.
-//   STORAGE_ROOT_FOLDER          prefix key per environment (mis. suara-mipa/staging)
+//   STORAGE_ROOT_FOLDER          prefix key di dalam bucket (mis. suara-mipa); bucket sudah per environment
 
 export interface StorageConfig {
   endpoint?: string;
