@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import {
-  STORAGE_FOLDERS,
   getS3Client,
   getStorageConfig,
   keyFromPublicUrl,
@@ -21,10 +20,9 @@ const EXTENSION_BY_MIME: Record<string, string> = {
   'image/webp': 'webp'
 };
 
-export const UPLOAD_FOLDERS = STORAGE_FOLDERS;
-export type UploadFolder = StorageFolder;
+export { STORAGE_FOLDERS as UPLOAD_FOLDERS, type StorageFolder as UploadFolder } from '@/lib/storage';
 
-export function resolveUploadFolder(folder: UploadFolder) {
+export function resolveUploadFolder(folder: StorageFolder) {
   return storageFolderPrefix(folder);
 }
 
