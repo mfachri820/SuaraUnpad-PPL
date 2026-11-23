@@ -101,7 +101,7 @@ describe('AI Report whitebox', () => {
     );
 
     expect(response.status).toBe(201);
-    expect(mockedDetectDamage).toHaveBeenCalledWith('https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg', aiType);
+    expect(mockedDetectDamage).toHaveBeenCalledWith('suara-mipa/reports/image.jpg', aiType);
     expect(mockedCreateReport).toHaveBeenCalledOnce();
 
     const body = await response.json();
@@ -130,7 +130,7 @@ describe('AI Report whitebox', () => {
     );
 
     expect(response.status).toBe(422);
-    expect(mockedDeleteImage).toHaveBeenCalledWith('https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg');
+    expect(mockedDeleteImage).toHaveBeenCalledWith('suara-mipa/reports/image.jpg');
     expect(mockedCreateReport).not.toHaveBeenCalled();
 
     const body = await response.json();
@@ -211,7 +211,7 @@ describe('AI Report whitebox', () => {
     );
 
     expect(response.status).toBe(502);
-    expect(mockedDeleteImage).toHaveBeenCalledWith('https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg');
+    expect(mockedDeleteImage).toHaveBeenCalledWith('suara-mipa/reports/image.jpg');
     expect(mockedCreateReport).not.toHaveBeenCalled();
 
     const body = await response.json();

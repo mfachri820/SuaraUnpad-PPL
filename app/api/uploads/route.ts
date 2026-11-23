@@ -1,6 +1,7 @@
 import { uploadService, UPLOAD_FOLDERS, resolveUploadFolder, type UploadFolder } from '@/services/uploadService';
 import { successResponse, errorResponse } from '@/lib/apiResponse';
 import { requireAuth, withErrorHandling } from '@/lib/http';
+import { signedUrlForKey } from '@/lib/storage';
 
 const VALID_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_SIZE = 5 * 1024 * 1024; // 5 Megabytes
@@ -41,8 +42,9 @@ export const POST = withErrorHandling(async (request: Request) => {
   }
 
   // Eksekusi upload ke storage S3 (MinIO)
-  const imageUrl = await uploadService.uploadImage(buffer, resolveUploadFolder(folder as UploadFolder));
+  const key = await uploadService.uploadImage(buffer, resolveUploadFolder(folder as UploadFolder));
 
-  // Kembalikan URL-nya ke Frontend
-  return successResponse({ url: imageUrl }, 'File berhasil diunggah', 201);
+  // url = temporary URL untuk preview. Frontend cukup mengirim balik `url` (atau `key`)
+  // sebagai imageUrl/avatarUrl; server menyimpan key-nya saja.
+  return successResponse({ key, url: await signedUrlForKey(key) }, 'File berhasil diunggah', 201);
 });

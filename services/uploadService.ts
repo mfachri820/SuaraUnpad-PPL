@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { getS3Client, getStorageConfig, getStorageRootFolder, keyFromPublicUrl, publicUrlFor } from '@/lib/storage';
+import { getS3Client, getStorageConfig, getStorageRootFolder, uploadedKeyFrom } from '@/lib/storage';
 import { trimSlashes } from '@/lib/slashes';
 
 const JPEG_MAGIC = Buffer.from([0xff, 0xd8, 0xff]);
@@ -41,6 +41,7 @@ function getImageMimeType(fileBuffer: Buffer): string | null {
 }
 
 export const uploadService = {
+  /** Upload gambar ke bucket privat. Mengembalikan object key (yang disimpan di DB). */
   async uploadImage(fileBuffer: Buffer, folder: string = resolveUploadFolder('general')): Promise<string> {
     const contentType = getImageMimeType(fileBuffer);
     if (!contentType) throw new Error('Konten file bukan gambar yang didukung.');
@@ -61,17 +62,18 @@ export const uploadService = {
       })
     );
 
-    return publicUrlFor(key, config);
+    return key;
   },
 
   isValidImageBuffer(fileBuffer: Buffer, mimeType: string) {
     return getImageMimeType(fileBuffer) === mimeType;
   },
 
-  async deleteImageByUrl(imageUrl: string) {
-    const key = keyFromPublicUrl(imageUrl);
+  /** Hapus objek berdasarkan key atau URL storage (polos / bertanda tangan). */
+  async deleteImageByUrl(imageRef: string) {
+    const key = uploadedKeyFrom(imageRef);
     if (!key) {
-      console.warn('Lewati hapus gambar: URL bukan objek storage milik aplikasi ini:', imageUrl);
+      console.warn('Lewati hapus gambar: bukan objek storage milik aplikasi ini:', imageRef);
       return { result: 'skipped' };
     }
 

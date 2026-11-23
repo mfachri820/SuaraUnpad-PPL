@@ -3,7 +3,7 @@ import { successResponse, errorResponse } from '@/lib/apiResponse';
 import { ADMIN_READ_ONLY_MESSAGE } from '@/lib/http';
 import { ReportCategory, ReportStatus } from '@prisma/client';
 import { uploadService } from '@/services/uploadService';
-import { keyFromPublicUrl } from '@/lib/storage';
+import { uploadedKeyFrom } from '@/lib/storage';
 import { detectDamage, evaluateAiResult, AiDamageType } from '@/services/reportAiService';
 
 const CATEGORY_TO_AI_TYPE: Record<ReportCategory, AiDamageType | null> = {
@@ -73,7 +73,8 @@ export async function POST(request: Request) {
     }
 
     // Gambar wajib hasil /api/uploads (objek storage milik aplikasi), sama seperti postingan.
-    if (typeof body.imageUrl !== 'string' || keyFromPublicUrl(body.imageUrl) === null) {
+    const imageKey = typeof body.imageUrl === 'string' ? uploadedKeyFrom(body.imageUrl) : null;
+    if (!imageKey) {
       return errorResponse('Gambar harus diunggah lewat fitur upload aplikasi.', 400);
     }
 
@@ -84,6 +85,7 @@ export async function POST(request: Request) {
 
     const normalizedBody: CreateReportPayload = {
       ...body,
+      imageUrl: imageKey, // yang disimpan di DB: object key, bukan URL
       category: categoryValue as ReportCategory
     };
 
@@ -93,15 +95,15 @@ export async function POST(request: Request) {
 
     if (aiType) {
       try {
-        aiResult = await detectDamage(body.imageUrl, aiType);
+        aiResult = await detectDamage(imageKey, aiType);
         aiEvaluation = evaluateAiResult(aiResult);
 
         if (aiEvaluation.decision === 'reject') {
-          await uploadService.deleteImageByUrl(body.imageUrl);
+          await uploadService.deleteImageByUrl(imageKey);
           return errorResponse(aiEvaluation.message, 422);
         }
       } catch (error) {
-        await uploadService.deleteImageByUrl(body.imageUrl);
+        await uploadService.deleteImageByUrl(imageKey);
         const errorMessage = error instanceof Error ? error.message : 'Gagal memproses AI deteksi kerusakan.';
         return errorResponse(errorMessage, 502);
       }

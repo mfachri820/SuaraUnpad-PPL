@@ -18,3 +18,11 @@ data:
   AWS_ENDPOINT: "https://nodes.minio.unpad.dev"
   AWS_USE_PATH_STYLE_ENDPOINT: "true"
   AWS_DEFAULT_REGION: "id-dipatiukur-1"
+  # Masa berlaku temporary URL gambar (jam). URL dibulatkan per jam supaya bisa di-cache browser.
+  STORAGE_URL_TTL_HOURS: "24"
+
+  # Service AI deteksi kerusakan. Kosong = HF Space default.
+  # AI_INPUT_MODE: "url" (kirim temporary URL 10 menit) atau "file" (kirim file multipart).
+  AI_ENDPOINT: ""
+  AI_INPUT_MODE: "url"
+  AI_TIMEOUT_MS: "20000"

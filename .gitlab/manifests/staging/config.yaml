@@ -10,10 +10,10 @@ data:
   PAUS_CLIENT_ID: "TQJXe0CR9WiJg.paus.unpad.ac.id"
   PAUS_REDIRECT_URI: "https://suara.fmipa.stg.unpad.ac.id/api/auth/paus/callback"
 
-  # TODO: nama bucket & URL proxy publik MinIO dari Tim Platform.
-  # AWS_URL = base URL publik objek, sudah termasuk bucket.
+  # Bucket privat. AWS_URL = base proxy MinIO (termasuk bucket); gambar dibuka lewat
+  # temporary URL yang ditandatangani app (lihat lib/storage.ts).
   AWS_BUCKET: "stg-suaraunpad-ppl-storage"
-  AWS_URL: ""
+  AWS_URL: "https://svc.stg.unpad.ac.id/minio/stg-suaraunpad-ppl-storage"
   STORAGE_ROOT_FOLDER: "suara-mipa/staging"
 
   # Email/NPM PAuS (pisahkan koma) yang dibuatkan akun ADMIN saat login PERTAMA.

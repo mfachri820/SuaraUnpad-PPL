@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 import { getJwtSecret } from '@/lib/jwt';
 import { FMIPA_FACULTY, isFmipaNpm, majorFromNpm } from '@/lib/fmipa';
-import { keyFromPublicUrl } from '@/lib/storage';
+import { uploadedKeyFrom } from '@/lib/storage';
 import type { PausProfile } from '@/lib/paus';
 
 const SESSION_TTL = '7d';
@@ -201,13 +201,14 @@ export const authService = {
 
     if (data.avatarUrl !== undefined) {
       // Foto profil wajib hasil /api/uploads (objek storage milik aplikasi); null = hapus foto.
-      if (data.avatarUrl !== null && keyFromPublicUrl(data.avatarUrl) === null) {
+      const avatarKey = data.avatarUrl === null ? null : uploadedKeyFrom(data.avatarUrl);
+      if (data.avatarUrl !== null && avatarKey === null) {
         throw new Error('URL foto profil tidak valid. Unggah lewat fitur upload aplikasi.');
       }
       queries.push(
         prisma.user.update({
           where: { id: userId },
-          data: { avatarUrl: data.avatarUrl }
+          data: { avatarUrl: avatarKey }
         })
       );
     }

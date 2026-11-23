@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { signImageFields } from '@/lib/storage';
 
-export function successResponse<T>(data: T | null = null, message = 'Success', statusCode = 200) {
+// Semua field imageUrl / avatarUrl di response otomatis diubah jadi temporary URL (bucket privat).
+export async function successResponse<T>(data: T | null = null, message = 'Success', statusCode = 200) {
+  const payload = data === null ? null : await signImageFields(data);
   return NextResponse.json({
     status: 'success',
     message,
-    ...(data !== null && { data })
+    ...(payload !== null && { data: payload })
   }, { status: statusCode });
 }
 

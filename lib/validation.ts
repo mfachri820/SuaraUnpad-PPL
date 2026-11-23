@@ -3,7 +3,7 @@ import { booleanFlag, optionalUuid, paginationSchema } from '@/lib/http';
 import { ANNOUNCEMENT_PIN_DAYS } from '@/services/postService';
 import { CLOSE_REASON_MAX, CLOSE_REASON_MIN, FLAG_NOTE_MAX } from '@/services/moderationService';
 import { FMIPA_MAJORS } from '@/lib/fmipa';
-import { keyFromPublicUrl } from '@/lib/storage';
+import { uploadedKeyFrom } from '@/lib/storage';
 
 type PinDays = (typeof ANNOUNCEMENT_PIN_DAYS)[number];
 const PIN_DAYS_MESSAGE = `Durasi pin harus salah satu dari ${ANNOUNCEMENT_PIN_DAYS.join('/')} hari.`;
@@ -12,9 +12,17 @@ export const TITLE_MAX = 150;
 export const POST_CONTENT_MAX = 5000;
 export const COMMENT_CONTENT_MAX = 1000;
 
+// Menerima key / URL hasil /api/uploads (boleh yang bertanda tangan), output = object key untuk disimpan.
 export const storageImageUrl = z
-  .url({ message: 'URL gambar tidak valid.' })
-  .refine((value) => keyFromPublicUrl(value) !== null, 'Gambar harus diunggah lewat fitur upload aplikasi.');
+  .string({ message: 'URL gambar tidak valid.' })
+  .transform((value, ctx) => {
+    const key = uploadedKeyFrom(value);
+    if (!key) {
+      ctx.addIssue({ code: 'custom', message: 'Gambar harus diunggah lewat fitur upload aplikasi.' });
+      return z.NEVER;
+    }
+    return key;
+  });
 
 const trimmed = (max: number, label: string) =>
   z.string({ message: `${label} wajib diisi.` }).trim().max(max, `${label} maksimal ${max} karakter.`);
