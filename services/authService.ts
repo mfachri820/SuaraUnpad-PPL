@@ -65,7 +65,7 @@ function emailFor(profile: { npm: string | null; email: string | null }) {
 }
 
 async function issueSessionToken(user: SessionUser) {
-  return new SignJWT({ userId: user.id, role: user.role, isVerified: user.isVerified })
+  return await new SignJWT({ userId: user.id, role: user.role, isVerified: user.isVerified })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(SESSION_TTL)
@@ -88,7 +88,7 @@ async function findStudentByNpm(npm: string) {
 
 async function findUserByEmail(email: string | null) {
   if (!email) return null;
-  return prisma.user.findUnique({ where: { email: email.toLowerCase() }, select: sessionSelect });
+  return await prisma.user.findUnique({ where: { email: email.toLowerCase() }, select: sessionSelect });
 }
 
 async function createStudentFromPaus(profile: PausProfile & { npm: string; name: string }, major: string) {

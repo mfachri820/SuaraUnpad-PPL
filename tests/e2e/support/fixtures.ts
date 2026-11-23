@@ -45,7 +45,7 @@ export const test = base.extend<{ actors: Actors }>({
 export { expect };
 
 export async function api(actor: Actor, method: string, url: string, data?: unknown) {
-  return actor.context.request.fetch(url, { method, headers: { Authorization: `Bearer ${actor.token}` }, data });
+  return await actor.context.request.fetch(url, { method, headers: { Authorization: `Bearer ${actor.token}` }, data });
 }
 
 export async function aspiration(actor: Actor, title: string) {

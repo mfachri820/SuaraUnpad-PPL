@@ -128,7 +128,7 @@ export default function ProfilePage() {
         setIsLoading(false);
       }
     };
-    fetchData();
+    fetchData().catch((error) => console.error(error));
   }, [router, setValue]);
 
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -462,6 +462,7 @@ export default function ProfilePage() {
                   />
                 </div>
                 <button
+                  type="submit"
                   disabled={isUpdating}
                   className="w-full py-4 bg-[#E8A34D] cursor-pointer hover:bg-[#cc7d2f] text-white rounded-xl font-bold mt-4 active:scale-95 transition-all"
                 >

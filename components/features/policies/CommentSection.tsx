@@ -17,6 +17,9 @@ import ReportContentModal from "@/components/features/moderation/ReportContentMo
 import { apiFetch, getApiErrorMessage } from "@/lib/api/client";
 import UserAvatar from "@/components/ui/UserAvatar";
 
+// Fokus otomatis saat kotak balasan/edit dibuka (pengganti atribut autoFocus).
+const focusOnMount = (element: HTMLTextAreaElement | null) => element?.focus();
+
 const COMMENT_MAX_LENGTH = 1000;
 
 interface CommentItemProps {
@@ -126,7 +129,7 @@ const CommentItem = ({
         {isEditing ? (
           <div className="my-4 animate-in fade-in slide-in-from-top-1 duration-200">
             <textarea
-              autoFocus
+              ref={focusOnMount}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               className="w-full text-sm text-slate-700 bg-white border border-blue-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-100 outline-none transition-all shadow-sm resize-none"
@@ -221,7 +224,7 @@ const CommentItem = ({
             <UserAvatar src={currentUserAvatar} />
             <div className="flex-1">
               <textarea
-                autoFocus
+                ref={focusOnMount}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 rows={2}

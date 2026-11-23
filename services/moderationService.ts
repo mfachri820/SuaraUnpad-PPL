@@ -66,7 +66,7 @@ export const moderationService = {
       throw badRequest(`Alasan penutupan wajib ${CLOSE_REASON_MIN}-${CLOSE_REASON_MAX} karakter.`);
     }
 
-    return prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx) => {
       const post = await tx.post.findUnique({
         where: { id: postId },
         select: { id: true, authorId: true, closedAt: true }
@@ -122,7 +122,7 @@ export const moderationService = {
   },
 
   async removeComment(commentId: string, adminId: string) {
-    return prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx) => {
       const comment = await tx.comment.findUnique({
         where: { id: commentId },
         select: { id: true, authorId: true, postId: true, policyId: true, deletedAt: true }
