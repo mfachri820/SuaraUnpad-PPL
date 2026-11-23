@@ -13,7 +13,7 @@ data:
   # TODO: nama bucket & URL proxy publik MinIO dari Tim Platform.
   # AWS_URL = base URL publik objek, sudah termasuk bucket.
   AWS_BUCKET: "stg-suaraunpad-ppl-storage"
-  AWS_URL: ""
+  AWS_URL: "https://svc.stg.unpad.ac.id/minio/stg-suaraunpad-ppl-storage"
   STORAGE_ROOT_FOLDER: ""
 
   # Email/NPM PAuS (pisahkan koma) yang dibuatkan akun ADMIN saat login PERTAMA.
