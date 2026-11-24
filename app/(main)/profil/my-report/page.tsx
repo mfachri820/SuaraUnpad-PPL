@@ -54,7 +54,7 @@ export default function MyReportPage() {
         setIsLoading(false);
       }
     };
-    fetchReports();
+    fetchReports().catch((error) => console.error(error));
   }, []);
 
   return (

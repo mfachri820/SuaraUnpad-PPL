@@ -11,7 +11,7 @@ vi.mock('@/lib/prisma', () => ({
 import { POST as uploadRoutePOST } from '@/app/api/uploads/route';
 import { reportService } from '@/services/reportService';
 import { uploadService } from '@/services/uploadService';
-import { keyFromPublicUrl, storageFolderPrefix, type StorageConfig } from '@/lib/storage';
+import { keyFromPublicUrl, storageFolderPrefix, uploadedKeyFrom, type StorageConfig } from '@/lib/storage';
 import { prisma } from '@/lib/prisma';
 import type { ReportCategory } from '@prisma/client';
 
@@ -109,6 +109,15 @@ describe('Upload handler and report cleanup', () => {
       'https://res.cloudinary.com/demo/image/upload/reports/sample.jpg'
     ];
     for (const url of cases) expect(keyFromPublicUrl(url, storage, ''), url).toBeNull();
+  });
+
+  it('without a root folder, accepts plain keys and signed URLs for <folder>/<file> only', () => {
+    const signed = 'https://svc.unpad.ac.id/minio/suara/reports/abc.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Signature=x';
+    expect(uploadedKeyFrom(signed, storage, '')).toBe('reports/abc.png');
+    expect(uploadedKeyFrom('reports/abc.png', storage, '')).toBe('reports/abc.png');
+    expect(uploadedKeyFrom('rahasia/abc.png', storage, '')).toBeNull();
+    expect(uploadedKeyFrom('abc.png', storage, '')).toBeNull();
+    expect(uploadedKeyFrom('https://svc.unpad.ac.id/minio/suara/reports/abc.png?foo=1', storage, '')).toBeNull();
   });
 
   it('rejects upload folders outside the allowlist', async () => {

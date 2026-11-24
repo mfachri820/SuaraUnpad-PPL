@@ -162,7 +162,7 @@ export default function HomeFeed() {
       }
     };
 
-    fetchAllData();
+    fetchAllData().catch((error) => console.error(error));
   }, [router]);
 
   // 🔁 REFETCH POSTS SAAT TAB BERGANTI (kecuali LAPORAN/WACANA yang tidak butuh posts)

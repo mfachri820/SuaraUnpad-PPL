@@ -31,7 +31,7 @@ export default function PolicyDetailPage() {
         setIsLoading(false);
       }
     };
-    loadPolicy();
+    loadPolicy().catch((error) => console.error(error));
   }, [id, router]);
 
   if (isLoading)

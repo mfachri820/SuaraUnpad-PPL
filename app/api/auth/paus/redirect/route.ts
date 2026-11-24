@@ -7,7 +7,7 @@ import { buildAuthorizeUrl, getPausConfig } from '@/lib/paus';
 export const dynamic = 'force-dynamic';
 
 // Tombol "Masuk dengan PAuS" adalah link biasa ke route ini (sama seperti /bff/auth/paus/redirect di Prabu).
-export async function GET(request: Request) {
+export function GET(request: Request) {
   const config = getPausConfig();
   if (!config) {
     console.error('[paus] PAUS_CLIENT_ID / PAUS_CLIENT_SECRET belum di-set');

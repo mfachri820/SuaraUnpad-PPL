@@ -103,11 +103,11 @@ export default function NotifikasiPage() {
   };
 
   useEffect(() => {
-    fetchNotifications();
+    fetchNotifications().catch((error) => console.error(error));
   }, []);
 
   // --- 3. HANDLE ACTIONS ---
-  const handleNotificationClick = async (notif: Notification) => {
+  const handleNotificationClick = (notif: Notification) => {
     if (!notif.isRead) {
       const token = Cookies.get('token');
       fetch(`/api/notifications/${notif.id}/read`, {

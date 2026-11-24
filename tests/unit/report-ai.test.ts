@@ -40,6 +40,8 @@ type CvType = 'pothole' | 'crack' | 'korosi' | 'sampah';
 
 // URL harus milik storage aplikasi (lihat AWS_URL di vitest.config.ts)
 const IMAGE_URL = 'https://storage.test/suara-mipa-test/suara-mipa/reports/image.jpg';
+// Bucket privat: yang disimpan di DB, dihapus, dan dikirim ke AI adalah object key-nya.
+const IMAGE_KEY = 'suara-mipa/reports/image.jpg';
 const TEXT_AI_HOST = 'ai-labelling-tool.streamlit.app';
 const CV_AI_HOST = 'unagisupreme-ai-objectdamagedetection.hf.space';
 
@@ -221,7 +223,7 @@ describe('POST /api/reports — kategori otomatis dari judul + cek foto', () => 
     const response = await POST(buildRequest(basePayload));
 
     expect(response.status).toBe(422);
-    expect(mockedDeleteImage).toHaveBeenCalledWith(IMAGE_URL);
+    expect(mockedDeleteImage).toHaveBeenCalledWith(IMAGE_KEY);
     expect(mockedCreateReport).not.toHaveBeenCalled();
     const body = await response.json();
     expect(body.message).toMatch(/Tidak ada kerusakan terdeteksi/i);
@@ -244,7 +246,7 @@ describe('POST /api/reports — kategori otomatis dari judul + cek foto', () => 
     const response = await POST(buildRequest(basePayload));
 
     expect(response.status).toBe(502);
-    expect(mockedDeleteImage).toHaveBeenCalledWith(IMAGE_URL);
+    expect(mockedDeleteImage).toHaveBeenCalledWith(IMAGE_KEY);
     expect(mockedCreateReport).not.toHaveBeenCalled();
   });
 

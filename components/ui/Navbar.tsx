@@ -14,7 +14,7 @@ export default function Navbar() {
   const router = useRouter();
 
   useEffect(() => {
-    const checkUserRole = async () => {
+    const checkUserRole = () => {
       const token = Cookies.get("token");
       if (token) {
         try {
@@ -39,7 +39,7 @@ export default function Navbar() {
     { name: "Notifikasi", href: "/notif" }
   ];
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     try {
       Cookies.remove("token");
       setIsOpen(false);

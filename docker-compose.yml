@@ -40,7 +40,7 @@ services:
       timeout: 5s
       retries: 20
 
-  # Buat bucket + izinkan baca publik (setara proxy publik MinIO di platform).
+  # Buat bucket PRIVAT (sama seperti platform: gambar dibuka lewat temporary URL).
   minio-init:
     image: quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z
     depends_on:
@@ -50,7 +50,7 @@ services:
       /bin/sh -c "
       mc alias set local http://minio:9000 $${MINIO_USER} $${MINIO_PASSWORD} &&
       mc mb --ignore-existing local/$${BUCKET} &&
-      mc anonymous set download local/$${BUCKET}
+      mc anonymous set none local/$${BUCKET}
       "
     environment:
       MINIO_USER: ${AWS_ACCESS_KEY_ID:-minioadmin}
@@ -79,6 +79,8 @@ services:
       DB_URL: postgresql://suara:suara@db:5432/suara_mipa # gitleaks:allow (kredensial dev lokal)
       APP_URL: http://localhost:${APP_PORT:-3000}
       AWS_ENDPOINT: http://minio:9000
+      # Temporary URL ditandatangani untuk host yang dibuka browser (bukan host internal compose).
+      AWS_PRESIGN_ENDPOINT: http://localhost:9000
       AWS_URL: http://localhost:9000/${AWS_BUCKET:-suara-mipa}
     ports:
       - "127.0.0.1:${APP_PORT:-3000}:3000"

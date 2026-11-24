@@ -72,6 +72,13 @@ describe('Pengumuman admin (DB asli)', () => {
     expect(body.data).toMatchObject({ kind: 'ANNOUNCEMENT', isPinned: true, title: 'Pemeliharaan jaringan' });
     pinnedId = body.data.id;
 
+    // Bucket privat: DB menyimpan object key, response berisi temporary URL.
+    const stored = await prisma.post.findUniqueOrThrow({ where: { id: pinnedId } });
+    expect(stored.imageUrl).toBe('suara-mipa/announcements/a.jpg');
+    const shown = new URL(body.data.imageUrl);
+    expect(`${shown.origin}${shown.pathname}`).toBe('https://storage.test/suara-mipa-test/suara-mipa/announcements/a.jpg');
+    expect(shown.searchParams.get('X-Amz-Signature')).toMatch(/^[0-9a-f]{64}$/);
+
     const recipients = await prisma.notification.findMany({ where: { type: 'NEW_ANNOUNCEMENT', postId: pinnedId } });
     expect(recipients.map((n) => n.recipientId).sort()).toEqual([student.id, otherStudent.id].sort());
     expect(recipients.some((n) => n.recipientId === unverified.id || n.recipientId === admin.id)).toBe(false);

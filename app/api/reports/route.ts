@@ -3,7 +3,7 @@ import { successResponse, errorResponse } from '@/lib/apiResponse';
 import { ADMIN_READ_ONLY_MESSAGE } from '@/lib/http';
 import { ReportCategory, ReportStatus } from '@prisma/client';
 import { uploadService } from '@/services/uploadService';
-import { keyFromPublicUrl } from '@/lib/storage';
+import { uploadedKeyFrom } from '@/lib/storage';
 import { assessReport, ReportAssessment } from '@/services/reportAiService';
 
 // 1. METHOD GET: Untuk List Laporan (Public / Tidak perlu login)
@@ -67,22 +67,24 @@ export async function POST(request: Request) {
     }
 
     // Gambar wajib hasil /api/uploads (objek storage milik aplikasi), sama seperti postingan.
-    if (typeof body.imageUrl !== 'string' || keyFromPublicUrl(body.imageUrl) === null) {
+    // Yang disimpan di DB dan dikirim ke AI adalah object key, bukan URL (bucket privat).
+    const imageKey = typeof body.imageUrl === 'string' ? uploadedKeyFrom(body.imageUrl) : null;
+    if (!imageKey) {
       return errorResponse('Gambar harus diunggah lewat fitur upload aplikasi.', 400);
     }
 
     // D. AI: judul -> kategori (IndoBERT), lalu foto dicek sesuai kategori (CV). OTHER tidak dicek CV.
     let assessment: ReportAssessment;
     try {
-      assessment = await assessReport(title, body.imageUrl);
+      assessment = await assessReport(title, imageKey);
     } catch (error) {
-      await uploadService.deleteImageByUrl(body.imageUrl);
+      await uploadService.deleteImageByUrl(imageKey);
       const errorMessage = error instanceof Error ? error.message : 'Gagal memproses AI deteksi kerusakan.';
       return errorResponse(errorMessage, 502);
     }
 
     if (assessment.decision === 'reject') {
-      await uploadService.deleteImageByUrl(body.imageUrl);
+      await uploadService.deleteImageByUrl(imageKey);
       return errorResponse(assessment.message, 422);
     }
 
@@ -91,7 +93,7 @@ export async function POST(request: Request) {
       title,
       description: body.description,
       location: body.location,
-      imageUrl: body.imageUrl,
+      imageUrl: imageKey,
       category: assessment.category
     });
 

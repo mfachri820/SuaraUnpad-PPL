@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { ReportCategory } from "@prisma/client";
 
-export async function GET() {
+export function GET() {
   try {
     const categoryValues = Object.values(ReportCategory);
 
